@@ -1,0 +1,10 @@
+(ahkfov|(((kbyepe,bitnlz),uzraum),jwxcwu)),
+(qmhxym|((!(!tjwhwv)),(hxfqxs,(!(!(nfksxy;(pukcoi,qfzchq))))))),
+(ehfstg|(((!((yjymwu,kecarj),uvgxjp)),(!vkwqcb));(qacdtb;(!(kbyepe,tjwhwv))))),
+(((!((umdojt,qmhxym),((ekktia,sdylnv),imlwaq)));(!((qfzchq;kecarj);yjhjvb)))|xqzrek),
+(eudtuh|(((bitnlz;nczzft),(rxdcpo;(!mseezu)));((ekktia,yqgits);nfksxy))),
+(lqkuhm|((!nczzft),(!((!(yqgits;qfzchq)),(!(hlfkvb;(dwubec;((nszegq;wqhfxq),tjwhwv)))))))),
+(opaism|((lgbjfd,(!hlfkvb));(!(toftgt,tysbdy)))),
+(((!(aizweo,hlfkvb));hxfqxs)|((!toftgt);((!rpbrkx),(jwxcwu,imlwaq)))),
+(((!aizweo);uzraum)|((!(!(pqezgq,(kecarj,eudtuh))));(!acoldc))),
+(ahkfov|((!((njkuge;kecarj);yjymwu));(!(hxfqxs,nczzft))))
