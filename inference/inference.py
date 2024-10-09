@@ -31,7 +31,7 @@ class Inference(ABC):
         else:
             self.epistemic_state.result_dict.update(self.single_inference(queries, timeout))
     
-    def single_inference(self,  queries, timeout):
+    def single_inference(self, queries, timeout):
         result_dict = dict()
         for index, query in queries.items():
             self.epistemic_state._kill_time = timeout + process_time()

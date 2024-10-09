@@ -54,7 +54,7 @@ class InferenceOperator:
         return inference_instance #type: ignore
 
 
-    def inference(self, queries: Queries, inference_timeout=300, preprocessing_timeout=300, queries_name=None, multi_inference=False, decimals=1) -> pd.DataFrame:
+    def inference(self, queries: Queries, total_timeout=0, inference_timeout=0, preprocessing_timeout=0, queries_name=None, multi_inference=False, decimals=1) -> pd.DataFrame:
         if queries_name:
             queries.name = queries_name
         
@@ -63,28 +63,40 @@ class InferenceOperator:
                    'queries', 'query', 'inference_system', 'solver', 'optimizer']
 
         df = pd.DataFrame(columns=columns) # type: ignore
+        
         inference_instance = self.create_inference_instance()
+        
+        if total_timeout and preprocessing_timeout:
+            preprocessing_timeout = min(total_timeout, preprocessing_timeout)
+        elif total_timeout:
+            preprocessing_timeout = total_timeout
+
         inference_instance.preprocess_belief_base(preprocessing_timeout)
+
+        if total_timeout and inference_timeout:
+            inference_timeout = min(total_timeout - self.epistemic_state.preprocessing_time / 1000, inference_timeout)
+        elif total_timeout:
+            inference_timeout = total_timeout - self.epistemic_state.preprocessing_time / 1000
 
         inference_instance.inference(queries.conditionals, inference_timeout, multi_inference)
         results = self.epistemic_state.result_dict
-        p = 0 
+
         for index, query in enumerate(queries.conditionals.values()):
             query = str(query)
-            df.at[index + p, 'index'] = results[query][0] 
-            df.at[index + p, 'result'] = results[query][1]
-            df.at[index + p, 'preprocessing_timeout'] = self.epistemic_state.preprocessing_timed_out
-            df.at[index + p, 'preprocessing_time'] = round(self.epistemic_state.preprocessing_time, decimals)
-            df.at[index + p, 'inference_timeout'] = results[query][2]
-            df.at[index + p, 'inference_time'] = round(results[query][3], decimals)
-            df.at[index + p, 'inference_system'] = self.epistemic_state.inference_system
-            df.at[index + p, 'solver'] = self.epistemic_state.solver
-            df.at[index + p, 'optimizer'] = self.epistemic_state.optimizer
-            df.at[index + p, 'belief_base'] = self.epistemic_state.belief_base_name
-            df.at[index + p, 'queries'] = queries.name
-            df.at[index + p, 'query'] = query
-            df.at[index + p, 'signature_size'] = self.epistemic_state.signature_size
-            df.at[index + p, 'number_conditionals'] = self.epistemic_state.number_conditionals
+            df.at[index, 'index'] = results[query][0] 
+            df.at[index, 'result'] = results[query][1]
+            df.at[index, 'preprocessing_timeout'] = self.epistemic_state.preprocessing_timed_out
+            df.at[index, 'preprocessing_time'] = round(self.epistemic_state.preprocessing_time, decimals)
+            df.at[index, 'inference_timeout'] = results[query][2]
+            df.at[index, 'inference_time'] = round(results[query][3], decimals)
+            df.at[index, 'inference_system'] = self.epistemic_state.inference_system
+            df.at[index, 'solver'] = self.epistemic_state.solver
+            df.at[index, 'optimizer'] = self.epistemic_state.optimizer
+            df.at[index, 'belief_base'] = self.epistemic_state.belief_base_name
+            df.at[index, 'queries'] = queries.name
+            df.at[index, 'query'] = query
+            df.at[index, 'signature_size'] = self.epistemic_state.signature_size
+            df.at[index, 'number_conditionals'] = self.epistemic_state.number_conditionals
         
         return df
 
