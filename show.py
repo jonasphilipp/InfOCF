@@ -14,12 +14,14 @@ timeout = 300
 solver = 'z3'
 alt_solver = 'cvc5'
 
+optimizer = 'rc2 g3'
+
 # parallel query inference
 multi_inference = False
 
 all_results = pd.DataFrame()  
 for j in [60]:
-    for i in [60]:
+    for i in [80]:
         for l in range(13, 14):
             belief_base_string = f'./sum_bench/randomTest_{i}_{j}_{l}.cl'
             querystring = f'./sum_bench/randomQueries_{i}_{j}_{l}.cl'
@@ -43,15 +45,15 @@ for j in [60]:
             print(f'system-w inf on {i} {j} {l}')
             results3 = sysw.inference(queries, preprocessing_timeout=timeout, inference_timeout=timeout, multi_inference=multi_inference)
  
-            sysw = InferenceOperator(belief_base, inference_system='system-w', solver=solver, optimizer='rc2')
+            sysw = InferenceOperator(belief_base, inference_system='system-w', solver=solver, optimizer=optimizer)
             print(f'system-w inf on {i} {j} {l}')
             results4 = sysw.inference(queries, preprocessing_timeout=timeout, inference_timeout=timeout, multi_inference=multi_inference)                       
              
-            cinf = InferenceOperator(belief_base, inference_system='c-inference', solver=solver, optimizer='rc2')
+            cinf = InferenceOperator(belief_base, inference_system='c-inference', solver=solver, optimizer=optimizer)
             print(f'c-inference  on {i} {j} {l}')
             results5 = cinf.inference(queries, preprocessing_timeout=timeout, inference_timeout=timeout, multi_inference=multi_inference)           
             
-            cinf = InferenceOperator(belief_base, inference_system='c-inference', solver=alt_solver, optimizer='rc2')
+            cinf = InferenceOperator(belief_base, inference_system='c-inference', solver=alt_solver, optimizer=optimizer)
             print(f'c-inference  on {i} {j} {l}')
             results6 = cinf.inference(queries, preprocessing_timeout=timeout, inference_timeout=timeout, multi_inference=multi_inference)
             

@@ -28,12 +28,9 @@ class InferenceOperator:
             if optimizer == 'z3':
                 self.epistemic_state = EpistemicStateZ(belief_base, solver, optimizer)
                 self.epistemic_state._inference_system = 'system-w'
-            elif optimizer == 'rc2':    
+            else: 
                 self.epistemic_state = EpistemicStateW(belief_base, solver, optimizer)
-            else:
-                Exception('only z3 and rc2 optimizertt implemented for system-w yet')
         elif inference_system == 'c' or inference_system == 'c-inference':
-            assert optimizer == 'rc2', 'only rc2 optimizer implemented for c-inference yet'
             self.epistemic_state = EpistemicStateC(belief_base, solver, optimizer)
         else:
             Exception('no correct inference system provided')

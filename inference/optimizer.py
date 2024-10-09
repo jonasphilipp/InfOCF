@@ -2,42 +2,20 @@ from time import process_time
 from pysat.formula import WCNF
 from pysat.examples.rc2 import RC2
 from inference.epistemic_state import EpistemicStateWCNF
+from abc import ABC, abstractmethod
 
-class Optmizer:
+    
+
+class Optimizer(ABC):
     epistemic_state: EpistemicStateWCNF
 
 
     def __init__(self, epistemic_state: EpistemicStateWCNF):
         self.epistemic_state = epistemic_state
 
-
+    @abstractmethod
     def minimal_correction_subsets(self, wcnf: WCNF, ignore_index: int = 0):
-        xMins = []
-        with RC2(wcnf) as rc2:
-            while True:
-                if process_time() > self.epistemic_state._kill_time:
-                    raise TimeoutError
-
-                model = rc2.compute()
-                
-                if model == None:
-                    break
-                
-                cost = rc2.cost
-                
-                violated = self.get_violated_conditional(model, cost, ignore_index)
-                
-                if not violated:
-                    xMins.append(violated)
-                    break
-                
-                xMins.append(violated)
-                clauses_to_add = self.exclude_violated(violated)
-
-                [rc2.add_clause(clause) for clause in clauses_to_add]
-        
-        xMins_lst = remove_supersets(xMins)
-        return xMins_lst
+        return list()
 
 
     """
@@ -126,3 +104,43 @@ def remove_supersets(lst_of_sets: list[set[int]]) -> list[list[int]]:
             filtered.append(a)
 
     return [list(s) for s in filtered]
+
+
+class OptimizerRC2(Optimizer):
+    def minimal_correction_subsets(self, wcnf: WCNF, ignore_index: int = 0):
+        xMins = []
+        sat_solver = self.epistemic_state.optimizer[4:]
+        if not sat_solver: sat_solver = 'g3'
+        with RC2(wcnf, solver=sat_solver) as rc2:
+            while True:
+                if process_time() > self.epistemic_state._kill_time:
+                    raise TimeoutError
+
+                model = rc2.compute()
+                
+                if model == None:
+                    break
+                
+                cost = rc2.cost
+                
+                violated = self.get_violated_conditional(model, cost, ignore_index)
+                
+                if not violated:
+                    xMins.append(violated)
+                    break
+                
+                xMins.append(violated)
+                clauses_to_add = self.exclude_violated(violated)
+
+                [rc2.add_clause(clause) for clause in clauses_to_add]
+        
+        xMins_lst = remove_supersets(xMins)
+        return xMins_lst
+
+
+def create_optimizer(epistemic_state: EpistemicStateWCNF) -> Optimizer:
+    if epistemic_state.optimizer.startswith('rc2'):
+        optimizer = OptimizerRC2(epistemic_state)
+    else:
+        Exception('no correct optimizer provided')
+    return optimizer #type: ignore

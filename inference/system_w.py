@@ -1,10 +1,9 @@
 from inference.inference import Inference
 from inference.tseitin_transformation import TseitinTransformation
 from inference.consistency_sat import consistency_indices
-from inference.optimizer import Optmizer
+from inference.optimizer import create_optimizer
 from inference.conditional import Conditional
 from inference.epistemic_state import EpistemicStateW
-from inference.optimizer import Optmizer
 from z3 import unsat, Or, is_true
 from warnings import warn
 from pysat.formula import WCNF
@@ -40,7 +39,7 @@ class SystemW(Inference):
         wcnf_prime = wcnf.copy()
         [wcnf.append(c) for c in self.epistemic_state._ABs[0]]
         [wcnf_prime.append(c) for c in self.epistemic_state._AnotBs[0]]
-        optimizer = Optmizer(self.epistemic_state)
+        optimizer = create_optimizer(self.epistemic_state)
         xi_i_list = optimizer.minimal_correction_subsets(wcnf)
         xi_i_prime_list = optimizer.minimal_correction_subsets(wcnf_prime)
         xi_i_set = frozenset([frozenset(l) for l in xi_i_list])

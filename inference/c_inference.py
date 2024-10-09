@@ -4,7 +4,7 @@ from pysat.formula import WCNF
 from inference.inference import Inference
 from inference.conditional import Conditional
 from inference.tseitin_transformation import TseitinTransformation
-from inference.optimizer import Optmizer
+from inference.optimizer import create_optimizer
 
 class CInference(Inference):
 
@@ -114,7 +114,7 @@ class CInference(Inference):
                 [wcnf.append(c) for c in conditional]
                 [wcnf.append(s, weight=1) for j, softc in self.epistemic_state._notAorBs.items() if i != j for s in softc]
                 
-                optimizer = Optmizer(self.epistemic_state)
+                optimizer = create_optimizer(self.epistemic_state)
                 xMins_lst = optimizer.minimal_correction_subsets(wcnf, i)
 
                 if leading_conditional is self.epistemic_state._ABs:
@@ -150,7 +150,7 @@ class CInference(Inference):
             [wcnf.append(c) for c in conditional]
             [wcnf.append(s, weight=1) for j, softc in self.epistemic_state._notAorBs.items() for s in softc]
             
-            optimizer = Optmizer(self.epistemic_state)
+            optimizer = create_optimizer(self.epistemic_state)
             xMins_lst = optimizer.minimal_correction_subsets(wcnf)
 
             if conditional is transformed_conditionals[0]:
