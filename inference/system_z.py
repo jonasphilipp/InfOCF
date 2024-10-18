@@ -1,5 +1,4 @@
 from inference.inference import Inference
-from inference.epistemic_state import EpistemicStateZ
 from inference.consistency_sat import consistency
 from warnings import warn
 from pysmt.shortcuts import Solver, Not, is_unsat
@@ -8,7 +7,6 @@ from pysmt.shortcuts import Solver, Not, is_unsat
 class SystemZ(Inference):
     def _preprocess_belief_base(self) -> None:
             partition, _ = consistency(self.epistemic_state['belief_base'], solver=self.epistemic_state['solver'])
-            print(partition)
             if not partition: warn('belief base inconsistent')
             self.epistemic_state['partition'] = partition #type: ignore
 

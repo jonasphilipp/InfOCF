@@ -1,7 +1,6 @@
 from inference.inference import Inference
 from inference.conditional import Conditional
 from inference.conditional_z3 import Conditional_z3
-from inference.epistemic_state import EpistemicStateZ
 from inference.consistency_sat import consistency
 from z3 import z3, unsat, Or, is_true, unknown
 from warnings import warn

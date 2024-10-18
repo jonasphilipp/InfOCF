@@ -1,6 +1,5 @@
 import pandas as pd
 from pysmt.environment import get_env
-from inference import epistemic_state
 from inference.belief_base import BeliefBase
 from inference.system_w import  SystemW
 from inference.system_w_z3 import SystemWZ3
@@ -8,7 +7,6 @@ from inference.system_z import SystemZ
 from inference.p_entailment import PEntailment
 from inference.c_inference import CInference
 from inference.queries import Queries
-from inference.epistemic_state import EpistemicStateZ, EpistemicStateW, EpistemicStateP, EpistemicStateC, EpistemicState
 
 
 def create_epistemic_state(belief_base: BeliefBase, inference_system: str, solver: str, optimizer: str) -> dict:
@@ -56,7 +54,6 @@ class InferenceOperator:
         available_solvers = get_env().factory.all_solvers().keys()
         assert solver in available_solvers, f'only {available_solvers} are available as solver'
         self.epistemic_state = create_epistemic_state(belief_base, inference_system, solver, optimizer)
-        print(self.epistemic_state['inference_system'])
             
 
 

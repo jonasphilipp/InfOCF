@@ -3,7 +3,6 @@ from inference.tseitin_transformation import TseitinTransformation
 from inference.consistency_sat import consistency_indices
 from inference.optimizer import create_optimizer
 from inference.conditional import Conditional
-from inference.epistemic_state import EpistemicStateW
 from z3 import unsat, Or, is_true
 from warnings import warn
 from pysat.formula import WCNF
