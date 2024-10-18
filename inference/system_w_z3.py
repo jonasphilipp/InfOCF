@@ -20,31 +20,29 @@ def makeOptimizer():
 class SystemWZ3(Inference):
 
     def _preprocess_belief_base(self) -> None:
-        partition, _ = consistency(self.epistemic_state._belief_base, self.epistemic_state.solver)
+        partition, _ = consistency(self.epistemic_state['belief_base'], self.epistemic_state['solver'])
         if not partition: warn('belief base inconsistent')
-        self.epistemic_state._partition = []
+        self.epistemic_state['partition'] = []
         for part in partition: # type: ignore
             translated_part = []
             for conditional in part:
                 translated_condtional = Conditional_z3.translate_from_existing(conditional)
                 translated_part.append(translated_condtional)
-            self.epistemic_state._partition.append(translated_part)
+            self.epistemic_state['partition'].append(translated_part)
     
     def _inference(self, query) -> bool:
-        #self._inference_start()
-        assert type(self.epistemic_state) == EpistemicStateZ, "Please use compatible epistemic state"
         #self._translation_start()
         query_z3 = Conditional_z3.translate_from_existing(query)
         #self._translation_end()
         opt = makeOptimizer()
-        opt.set(timeout=int(1000*(self.epistemic_state._kill_time - process_time())))
-        result = self._rec_inference(opt, len(self.epistemic_state._partition) -1, query_z3)
+        opt.set(timeout=int(1000*(self.epistemic_state['kill_time'] - process_time())))
+        result = self._rec_inference(opt, len(self.epistemic_state['partition']) -1, query_z3)
         #self._inference_end()
         return result
 
     def _rec_inference(self, opt, partition_index, query):
-        assert type(self.epistemic_state._partition) == list
-        part = self.epistemic_state._partition[partition_index]
+        assert type(self.epistemic_state['partition']) == list
+        part = self.epistemic_state['partition'][partition_index]
         opt.push()
         opt.add(query.make_A_then_B())
         xi_i_set = self.get_all_xi_i(opt, part)
@@ -73,7 +71,7 @@ class SystemWZ3(Inference):
         for conditional in part:
             opt.add_soft(conditional.make_A_then_not_B() == False)
         while True:
-            if process_time() > self.epistemic_state._kill_time:
+            if self.epistemic_state['kill_time'] and process_time() > self.epistemic_state['kill_time']:
                 raise TimeoutError
             check = opt.check()
             if check == unsat:

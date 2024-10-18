@@ -9,12 +9,12 @@ class PEntailment(Inference):
     
  
     def _preprocess_belief_base(self) -> None:
-        pass
+        self.epistemic_state['preprocessing_done'] = True
 
 
     def _inference(self, query: Conditional) -> bool:
-        belief_base = self.epistemic_state._belief_base
-        solver_name = self.epistemic_state.solver
+        belief_base = self.epistemic_state['belief_base']
+        solver_name = self.epistemic_state['solver']
         conditionals = belief_base.conditionals.copy() 
         falsified_query = Conditional(Not(query.consequence), query.antecedence, None)
         

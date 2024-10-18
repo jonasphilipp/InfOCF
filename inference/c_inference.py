@@ -7,6 +7,12 @@ from inference.tseitin_transformation import TseitinTransformation
 from inference.optimizer import create_optimizer
 
 class CInference(Inference):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'vMin' not in self.epistemic_state:
+            self.epistemic_state['vMin'] = dict()
+        if 'fMin' not in self.epistemic_state:
+            self.epistemic_state['fMin'] = dict()
 
 #replaces every items in the argument by it's sum representation
     def makeSummation(self, minima):
@@ -42,10 +48,10 @@ class CInference(Inference):
         return csp
 
     def translate(self):
-        eta = {i: Symbol(f'eta_{i}', INT) for i, _ in enumerate(self.epistemic_state._belief_base.conditionals, start=1)}
+        eta = {i: Symbol(f'eta_{i}', INT) for i, _ in enumerate(self.epistemic_state['belief_base'].conditionals, start=1)}
         gteZeros = [GE(e, Int(0)) for e in eta.values()]
-        vSums = self.makeSummation(self.epistemic_state._vMin)
-        fSums = self.makeSummation(self.epistemic_state._fMin)
+        vSums = self.makeSummation(self.epistemic_state['vMin'])
+        fSums = self.makeSummation(self.epistemic_state['fMin'])
         csp = self.encoding(eta, vSums, fSums)
         csp.extend(gteZeros)
         return csp
@@ -79,7 +85,7 @@ class CInference(Inference):
         #self._translation_start_query()
         #translated_query = Conditional_z3.translate_from_existing(query)
         #self._translation_end_query()
-        solver = Solver(name=self.epistemic_state.solver)
+        solver = Solver(name=self.epistemic_state['solver'])
         for constraint in self.base_csp:
             solver.add_assertion(constraint)
             #print(f"new base_csp constraint {constraint}")
@@ -107,20 +113,20 @@ class CInference(Inference):
     def compile_constraint(self) -> float:
         start_time = time_ns() / (1e+6)
 
-        for leading_conditional in [self.epistemic_state._ABs, self.epistemic_state._AnotBs]:
+        for leading_conditional in [self.epistemic_state['v_cnf_dict'], self.epistemic_state['f_cnf_dict']]:
             for i, conditional in leading_conditional.items():
                 xMins = []
                 wcnf = WCNF()
                 [wcnf.append(c) for c in conditional]
-                [wcnf.append(s, weight=1) for j, softc in self.epistemic_state._notAorBs.items() if i != j for s in softc]
+                [wcnf.append(s, weight=1) for j, softc in self.epistemic_state['nf_cnf_dict'].items() if i != j for s in softc]
                 
                 optimizer = create_optimizer(self.epistemic_state)
                 xMins_lst = optimizer.minimal_correction_subsets(wcnf, i)
 
-                if leading_conditional is self.epistemic_state._ABs:
-                    self.epistemic_state._vMin[i] = xMins_lst
+                if leading_conditional is self.epistemic_state['v_cnf_dict']:
+                    self.epistemic_state['vMin'][i] = xMins_lst
                 else: 
-                    self.epistemic_state._fMin[i] = xMins_lst
+                    self.epistemic_state['fMin'][i] = xMins_lst
 
         return (time_ns()/(1e+6))-start_time
     
@@ -148,7 +154,7 @@ class CInference(Inference):
             xMins = []
             wcnf = WCNF()
             [wcnf.append(c) for c in conditional]
-            [wcnf.append(s, weight=1) for j, softc in self.epistemic_state._notAorBs.items() for s in softc]
+            [wcnf.append(s, weight=1) for j, softc in self.epistemic_state['nf_cnf_dict'].items() for s in softc]
             
             optimizer = create_optimizer(self.epistemic_state)
             xMins_lst = optimizer.minimal_correction_subsets(wcnf)

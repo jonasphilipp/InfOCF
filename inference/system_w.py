@@ -11,34 +11,33 @@ from pysat.formula import WCNF
 class SystemW(Inference):
 
     def _preprocess_belief_base(self) -> None:
-        self.epistemic_state._partition, _ = consistency_indices(self.epistemic_state._belief_base, self.epistemic_state.solver)
-        if not self.epistemic_state._partition: warn('belief base inconsistent')
+        self.epistemic_state['partition'], _ = consistency_indices(self.epistemic_state['belief_base'], self.epistemic_state['solver'])
+        if not self.epistemic_state['partition']: warn('belief base inconsistent')
         tseitin_transformation = TseitinTransformation(self.epistemic_state)
         tseitin_transformation.belief_base_to_cnf(False, True, True)
     
     def _inference(self, query) -> bool:
         #self._inference_start()
-        assert type(self.epistemic_state) == EpistemicStateW, "Please use compatible epistemic state"
         #self._translation_start()
         tseitin_transformation = TseitinTransformation(self.epistemic_state)
         translated_query = tseitin_transformation.query_to_cnf(query)
-        self.epistemic_state._ABs[0] = translated_query[0]
-        self.epistemic_state._AnotBs[0] = translated_query[1]
+        self.epistemic_state['v_cnf_dict'][0] = translated_query[0]
+        self.epistemic_state['f_cnf_dict'][0] = translated_query[1]
         wcnf = WCNF()
-        result = self._rec_inference(wcnf ,len(self.epistemic_state._partition) -1)
+        result = self._rec_inference(wcnf ,len(self.epistemic_state['partition']) -1)
         #self._inference_end()
         return result
 
     def _rec_inference(self, hard_constraints, partition_index):
-        assert type(self.epistemic_state._partition) == list
-        part = self.epistemic_state._partition[partition_index]
+        assert type(self.epistemic_state['partition']) == list
+        part = self.epistemic_state['partition'][partition_index]
         wcnf = hard_constraints.copy()
         for index in part:
-            softc = self.epistemic_state._notAorBs[index]
+            softc = self.epistemic_state['nf_cnf_dict'][index]
             [wcnf.append(s, weight=1) for s in softc]
         wcnf_prime = wcnf.copy()
-        [wcnf.append(c) for c in self.epistemic_state._ABs[0]]
-        [wcnf_prime.append(c) for c in self.epistemic_state._AnotBs[0]]
+        [wcnf.append(c) for c in self.epistemic_state['v_cnf_dict'][0]]
+        [wcnf_prime.append(c) for c in self.epistemic_state['f_cnf_dict'][0]]
         optimizer = create_optimizer(self.epistemic_state)
         xi_i_list = optimizer.minimal_correction_subsets(wcnf)
         xi_i_prime_list = optimizer.minimal_correction_subsets(wcnf_prime)
@@ -51,9 +50,9 @@ class SystemW(Inference):
                 return False
             hard_constraints_new = hard_constraints.copy()
             for i in xi_i:
-                [hard_constraints_new.append(c) for c in self.epistemic_state._AnotBs[i]]
+                [hard_constraints_new.append(c) for c in self.epistemic_state['f_cnf_dict'][i]]
             for i in frozenset(part) - xi_i:
-                [hard_constraints_new.append(c) for c in self.epistemic_state._notAorBs[i]]
+                [hard_constraints_new.append(c) for c in self.epistemic_state['nf_cnf_dict'][i]]
             result = self._rec_inference(hard_constraints_new, partition_index -1)
             if result == False:
                 return False

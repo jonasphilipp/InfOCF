@@ -1,3 +1,4 @@
+from pysat.card import IDPool
 from z3 import z3
 from time import time_ns
 from pysmt.shortcuts import Solver
@@ -6,9 +7,18 @@ from inference.epistemic_state import EpistemicStateC
 
 
 class TseitinTransformation:
-    epistemic_state: EpistemicStateC
+    epistemic_state: dict
 
     def __init__(self, epistemic_state):
+        if 'pool' not in epistemic_state:
+            epistemic_state['pool'] = IDPool()
+        if 'v_cnf_dict' not in epistemic_state:
+            epistemic_state['v_cnf_dict'] = dict()
+        if 'f_cnf_dict' not in epistemic_state:
+            epistemic_state['f_cnf_dict'] = dict()
+        if 'nf_cnf_dict' not in epistemic_state:
+            epistemic_state['nf_cnf_dict'] = dict()
+        
         self.epistemic_state = epistemic_state
 
 
@@ -31,19 +41,19 @@ class TseitinTransformation:
         start_time = time_ns()
         t = z3.Tactic('tseitin-cnf')
         
-        for index, conditional in self.epistemic_state._belief_base.conditionals.items():
+        for index, conditional in self.epistemic_state['belief_base'].conditionals.items():
             with Solver(name="z3") as solver:
                 antecedence = solver.converter.convert(conditional.antecedence)
                 consequence = solver.converter.convert(conditional.consequence)
             if v:
                 g1 = t(z3.And(antecedence, consequence))
-                self.epistemic_state._ABs[index] = self.goal2intcnf(g1[0])
+                self.epistemic_state['v_cnf_dict'][index] = self.goal2intcnf(g1[0])
             if f:
                 g2 = t(z3.And(antecedence, z3.Not(consequence)))
-                self.epistemic_state._AnotBs[index] = self.goal2intcnf(g2[0])
+                self.epistemic_state['f_cnf_dict'][index] = self.goal2intcnf(g2[0])
             if nf:
                 g3 = t(z3.Or(z3.Not(antecedence), consequence))
-                self.epistemic_state._notAorBs[index] = self.goal2intcnf(g3[0])
+                self.epistemic_state['nf_cnf_dict'][index] = self.goal2intcnf(g3[0])
         return (time_ns() - start_time) / (1e+6) 
 
     def query_to_cnf(self, query: Conditional):
@@ -96,5 +106,5 @@ class TseitinTransformation:
         if z3.is_not(expr):
             sign = -1
             expr = expr.children()[0]
-        expr_id = self.epistemic_state._pool.id(expr)
+        expr_id = self.epistemic_state['pool'].id(expr)
         return sign * expr_id

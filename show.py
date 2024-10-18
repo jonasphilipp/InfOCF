@@ -16,7 +16,7 @@ inference_timeout = 0
 solver = 'z3'
 alt_solver = 'cvc5'
 
-optimizer = 'rc2'
+optimizer = 'rc2 g4'
 
 # parallel query inference
 multi_inference = False
@@ -65,7 +65,7 @@ for j in [60]:
 # print without verbose query column for space reasons
 
 print(f"\nmulti_inference {multi_inference}\n")
-print(all_results.drop(columns=['query']))
+print(all_results.drop(columns=['query', 'belief_base', 'queries']))
 
 # Optionally, save to a CSV file
 

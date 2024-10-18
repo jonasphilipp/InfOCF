@@ -2,6 +2,20 @@ from pysat.formula import IDPool
 from abc import ABC
 from inference.belief_base import BeliefBase
 
+def create_epistemic_state(belief_base: BeliefBase, inference_system: str, solver: str, optimizer: str) -> dict:
+    epistemic_state = dict()
+
+    epistemic_state['belief_base'] = belief_base
+    epistemic_state['solver'] = solver
+    epistemic_state['optimizer'] = optimizer
+    epistemic_state['result_dict'] = dict()
+    epistemic_state['preprocessing_done'] = False
+    epistemic_state['preprocessing_timed_out'] = False
+    epistemic_state['preprocessing_time'] = 0
+    epistemic_state['kill_time'] = 0
+
+    return epistemic_state
+
 
 class EpistemicState(ABC):
     preprocessing_done: bool

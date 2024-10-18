@@ -1,16 +1,25 @@
 from time import process_time
+from pysat.card import IDPool
 from pysat.formula import WCNF
 from pysat.examples.rc2 import RC2
-from inference.epistemic_state import EpistemicStateWCNF
 from abc import ABC, abstractmethod
 
     
 
 class Optimizer(ABC):
-    epistemic_state: EpistemicStateWCNF
+    epistemic_state: dict
 
 
-    def __init__(self, epistemic_state: EpistemicStateWCNF):
+    def __init__(self, epistemic_state: dict):
+        if 'pool' not in epistemic_state:
+            epistemic_state['pool'] = IDPool()
+        if 'v_cnf_dict' not in epistemic_state:
+            epistemic_state['v_cnf_dict'] = dict()
+        if 'f_cnf_dict' not in epistemic_state:
+            epistemic_state['f_cnf_dict'] = dict()
+        if 'nf_cnf_dict' not in epistemic_state:
+            epistemic_state['nf_cnf_dict'] = dict()
+
         self.epistemic_state = epistemic_state
 
     @abstractmethod
@@ -36,7 +45,7 @@ class Optimizer(ABC):
         violated = set()
         if cost > 0:
             counter = 0
-            for index, conditional in self.epistemic_state._notAorBs.items():
+            for index, conditional in self.epistemic_state['nf_cnf_dict'].items():
                 if index == ignore:
                     continue
                 for clause in conditional:
@@ -67,8 +76,8 @@ class Optimizer(ABC):
         helper_variables_clause = []
 
         for index in violated:
-            id = self.epistemic_state._pool.id(index)
-            for clause in self.epistemic_state._notAorBs[index]:
+            id = self.epistemic_state['pool'].id(index)
+            for clause in self.epistemic_state['nf_cnf_dict'][index]:
                 new_clause = clause[:]
                 new_clause.append(id * (-1))
                 return_constraints.append(new_clause)
@@ -109,11 +118,11 @@ def remove_supersets(lst_of_sets: list[set[int]]) -> list[list[int]]:
 class OptimizerRC2(Optimizer):
     def minimal_correction_subsets(self, wcnf: WCNF, ignore_index: int = 0):
         xMins = []
-        sat_solver = self.epistemic_state.optimizer[4:]
+        sat_solver = self.epistemic_state['optimizer'][4:]
         if not sat_solver: sat_solver = 'g3'
         with RC2(wcnf, solver=sat_solver) as rc2:
             while True:
-                if process_time() > self.epistemic_state._kill_time:
+                if process_time() > self.epistemic_state['kill_time']:
                     raise TimeoutError
 
                 model = rc2.compute()
@@ -138,8 +147,8 @@ class OptimizerRC2(Optimizer):
         return xMins_lst
 
 
-def create_optimizer(epistemic_state: EpistemicStateWCNF) -> Optimizer:
-    if epistemic_state.optimizer.startswith('rc2'):
+def create_optimizer(epistemic_state: dict) -> Optimizer:
+    if epistemic_state['optimizer'].startswith('rc2'):
         optimizer = OptimizerRC2(epistemic_state)
     else:
         Exception('no correct optimizer provided')

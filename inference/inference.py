@@ -3,38 +3,44 @@ from abc import ABC, abstractmethod
 from time import process_time_ns, process_time
 
 class Inference(ABC):
-    def __init__(self, epistemic_state) -> None:
+    def __init__(self, epistemic_state: dict) -> None:
         self.epistemic_state = epistemic_state
 
     def preprocess_belief_base(self, preprocessing_timeout): 
         #self._epistemic_state._preprocessing_timeout = preprocessing_timeout
-        self.epistemic_state._kill_time = preprocessing_timeout + process_time()
+        if preprocessing_timeout:    
+            self.epistemic_state['kill_time'] = preprocessing_timeout + process_time()
+        else:
+            self.epistemic_state['kill_time'] = 0
         try:
             preprocessing_start_time = process_time_ns() / 1e+6
             self._preprocess_belief_base()
-            self.epistemic_state.preprocessing_time += (process_time_ns() / 1e+6 - preprocessing_start_time)
-            self.epistemic_state.preprocessing_done = True
+            self.epistemic_state['preprocessing_time'] += (process_time_ns() / 1e+6 - preprocessing_start_time)
+            self.epistemic_state['preprocessing_done'] = True
         except TimeoutError:
-            self.epistemic_state.preprocessing_time = preprocessing_timeout * 1000
-            self.epistemic_state.preprocessing_timed_out = True
+            self.epistemic_state['preprocessing_time'] = preprocessing_timeout * 1000
+            self.epistemic_state['preprocessing_timed_out'] = True
         except Exception as e:
             raise e
 
 
     def inference(self, queries, timeout, multi_inference):
-        if not self.epistemic_state.preprocessing_done and not self.epistemic_state.preprocessing_timed_out:
+        if not self.epistemic_state['preprocessing_done'] and not self.epistemic_state['preprocessing_timed_out']:
             Exception("preprocess belief_base before running inference")
-        if self.epistemic_state.preprocessing_timed_out:
-            self.epistemic_state.result_dict.update({str(q): (i, False, False, 0)  for i, q in queries.items()})
+        if self.epistemic_state['preprocessing_timed_out']:
+            self.epistemic_state['result_dict'].update({str(q): (i, False, False, 0)  for i, q in queries.items()})
         elif multi_inference:
-            self.epistemic_state.result_dict.update(self.multi_inference(queries, timeout))
+            self.epistemic_state['result_dict'].update(self.multi_inference(queries, timeout))
         else:
-            self.epistemic_state.result_dict.update(self.single_inference(queries, timeout))
+            self.epistemic_state['result_dict'].update(self.single_inference(queries, timeout))
     
     def single_inference(self, queries, timeout):
         result_dict = dict()
         for index, query in queries.items():
-            self.epistemic_state._kill_time = timeout + process_time()
+            if timeout:
+                self.epistemic_state['kill_time'] = timeout + process_time()
+            else:
+                self.epistemic_state['kill_time'] = 0
             try:
                 start_time = process_time_ns() / 1e+6
                 result = self._inference(query)
@@ -73,7 +79,10 @@ class Inference(ABC):
 
 
     def _multi_inference_worker(self, index, query, mp_return_dict, timeout):
-        self.epistemic_state._kill_time = timeout + process_time()
+        if timeout:
+            self.epistemic_state['kill_time'] = timeout + process_time()
+        else:
+            self.epistemic_state['kill_time'] = 0
         try:
             start_time = process_time_ns() / 1e+6
             result = self._inference(query)
