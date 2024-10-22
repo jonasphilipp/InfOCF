@@ -3,9 +3,30 @@ from abc import ABC, abstractmethod
 from time import process_time_ns, process_time
 
 class Inference(ABC):
+    """
+    Context:
+        Abstract class intitialization inherited by implementing classes
+
+    Parameters:
+        Initialized epistemic_state
+    """
     def __init__(self, epistemic_state: dict) -> None:
         self.epistemic_state = epistemic_state
+    
 
+
+    """
+    Preprocessing wrapper method. Handles timeout and measures time.
+
+    Context:
+        Wraps abstract _preprocess_belief_base method.
+
+    Parameters: 
+        Timeout in seconds.
+
+    Side Effects:
+        kill_time, preprocessing_time and preprocessing_timed_out in epistemic_state
+    """
     def preprocess_belief_base(self, preprocessing_timeout): 
         #self._epistemic_state._preprocessing_timeout = preprocessing_timeout
         if preprocessing_timeout:    
@@ -24,6 +45,18 @@ class Inference(ABC):
             raise e
 
 
+    """
+    General inference wrapper method. Selects kind (single/multi) of inference to perform.
+
+    Context:
+        Wraps single/multi inference methods.
+
+    Parameters: 
+        Conditional dictionay, timeout in s and boolen indication if parallel inferences are to be performed.
+
+    Side Effects:
+        result_dict in epistemic_state
+    """
     def inference(self, queries, timeout, multi_inference):
         if not self.epistemic_state['preprocessing_done'] and not self.epistemic_state['preprocessing_timed_out']:
             Exception("preprocess belief_base before running inference")
@@ -34,6 +67,21 @@ class Inference(ABC):
         else:
             self.epistemic_state['result_dict'].update(self.single_inference(queries, timeout))
     
+    
+    """
+    Singular inference wrapper method. Handles timeout and measures time.
+
+
+    Context:
+        Wraps abstract _inference() method in a way that multiple inferences are performed sequentially only.
+        Called by inferene().
+
+    Parameters: 
+        Conditional dictionay, timeout in seconds.
+
+    Returns:
+        result dictionay
+    """ 
     def single_inference(self, queries, timeout):
         result_dict = dict()
         for index, query in queries.items():
@@ -52,6 +100,20 @@ class Inference(ABC):
                 raise e
         return result_dict
 
+
+    """
+    Parallel inference wrapper method.
+
+    Context:
+        Wraps _multi_inference_worker() method in a way that multiple inferences are performed in parallel
+        if possible and sequentially only in parallel capacity exhausted. Called by inference().
+
+    Parameters: 
+        Conditional dictionay, timeout in seconds.
+
+    Returns:
+        result dictionay
+    """ 
     def multi_inference(self, queries, timeout):
         
         indices = queries.keys()
@@ -77,7 +139,19 @@ class Inference(ABC):
             result_dict = {str(q): mp_return_dict[i] if i in mp_return_dict else (i, False, True, timeout)  for i, q in queries.items()}
             return result_dict
 
+    """
+    Inference wrapper method. Handles timeout and measures time.
 
+
+    Context:
+        Wraps abstract _inference() method. Called by multi_inference().
+
+    Parameters: 
+        Conditional dictionay, timeout in seconds.
+
+    Returns:
+        result dictionay
+    """ 
     def _multi_inference_worker(self, index, query, mp_return_dict, timeout):
         if timeout:
             self.epistemic_state['kill_time'] = timeout + process_time()

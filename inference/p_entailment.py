@@ -14,7 +14,7 @@ class PEntailment(Inference):
 
     def _inference(self, query: Conditional) -> bool:
         belief_base = self.epistemic_state['belief_base']
-        solver_name = self.epistemic_state['solver']
+        solver_name = self.epistemic_state['smt_solver']
         conditionals = belief_base.conditionals.copy() 
         falsified_query = Conditional(Not(query.consequence), query.antecedence, None)
         

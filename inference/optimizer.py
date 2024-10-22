@@ -118,7 +118,7 @@ def remove_supersets(lst_of_sets: list[set[int]]) -> list[list[int]]:
 class OptimizerRC2(Optimizer):
     def minimal_correction_subsets(self, wcnf: WCNF, ignore_index: int = 0):
         xMins = []
-        sat_solver = self.epistemic_state['optimizer'][4:]
+        sat_solver = self.epistemic_state['pmaxsat_solver'][4:]
         if not sat_solver: sat_solver = 'g3'
         with RC2(wcnf, solver=sat_solver) as rc2:
             while True:
@@ -148,7 +148,7 @@ class OptimizerRC2(Optimizer):
 
 
 def create_optimizer(epistemic_state: dict) -> Optimizer:
-    if epistemic_state['optimizer'].startswith('rc2'):
+    if epistemic_state['pmaxsat_solver'].startswith('rc2'):
         optimizer = OptimizerRC2(epistemic_state)
     else:
         Exception('no correct optimizer provided')

@@ -85,7 +85,7 @@ class CInference(Inference):
         #self._translation_start_query()
         #translated_query = Conditional_z3.translate_from_existing(query)
         #self._translation_end_query()
-        solver = Solver(name=self.epistemic_state['solver'])
+        solver = Solver(name=self.epistemic_state['smt_solver'])
         for constraint in self.base_csp:
             solver.add_assertion(constraint)
             #print(f"new base_csp constraint {constraint}")

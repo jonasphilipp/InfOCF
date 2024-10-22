@@ -7,7 +7,19 @@ from inference.conditional import Conditional
 
 class TseitinTransformation:
     epistemic_state: dict
+    
+    """
+    Initializes TseitinTransformation object and creates needed dict entries if not present.
 
+    Context:
+        Called before transformation to CNFs of conditionals is performed
+
+    Parameters:
+        epistemic_state dict
+
+    Side Effects:
+        pool, v_cnf_dict, f_cnf_dict, nf_cnf_dict entries in epistemic_state
+    """
     def __init__(self, epistemic_state):
         if 'pool' not in epistemic_state:
             epistemic_state['pool'] = IDPool()
@@ -20,9 +32,6 @@ class TseitinTransformation:
         
         self.epistemic_state = epistemic_state
 
-
-    def transform(self):
-        pass
         
     """
     Uses z3's logical operators, tseitin transformation and local helper methods to fill the dicts 
@@ -55,6 +64,19 @@ class TseitinTransformation:
                 self.epistemic_state['nf_cnf_dict'][index] = self.goal2intcnf(g3[0])
         return (time_ns() - start_time) / (1e+6) 
 
+    """
+    Transforms query conditional to CNF
+
+    Context:
+        Called before to create CNF forms of conditionals to create wcnf format files
+        for pmaxsat_solver
+
+    Parameters:
+        query conditionals
+
+    Returns:
+        Verification and falsification of query in CNF format
+    """
     def query_to_cnf(self, query: Conditional):
         t = z3.Tactic('tseitin-cnf')
         with Solver(name="z3") as solver:

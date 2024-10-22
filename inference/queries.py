@@ -1,6 +1,9 @@
 from inference.belief_base import BeliefBase
 
 class Queries(BeliefBase):
+    """
+    Initializes Queries object either from dict or from BeliefBase object
+    """
     def __init__(self, queries: dict | BeliefBase) -> None:
         if type(queries) == dict:
             self._from_dict(queries)

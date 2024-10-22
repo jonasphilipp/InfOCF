@@ -8,14 +8,26 @@ from inference.p_entailment import PEntailment
 from inference.c_inference import CInference
 from inference.queries import Queries
 
+"""
+Creates epistemic state dict. Everything we know or find out about a belief base and also some meta 
+information relevant to further operations is stored in the epistemic state dict.
 
-def create_epistemic_state(belief_base: BeliefBase, inference_system: str, solver: str, optimizer: str) -> dict:
+Context:
+    Called before any inference operations are performed to create data structure to store information.
+
+Parameters:
+    Parsed belief base, and strings declaring inference system, smt_solver and pmaxsat_solver.
+
+Returns:
+    Initialized epistemic state dict.
+""" 
+def create_epistemic_state(belief_base: BeliefBase, inference_system: str, smt_solver: str, pmaxsat_solver: str) -> dict:
     epistemic_state = dict()
 
     epistemic_state['belief_base'] = belief_base
     epistemic_state['inference_system'] = inference_system
-    epistemic_state['solver'] = solver
-    epistemic_state['optimizer'] = optimizer
+    epistemic_state['smt_solver'] = smt_solver
+    epistemic_state['pmaxsat_solver'] = pmaxsat_solver
     epistemic_state['result_dict'] = dict()
     epistemic_state['preprocessing_done'] = False
     epistemic_state['preprocessing_timed_out'] = False
@@ -24,6 +36,18 @@ def create_epistemic_state(belief_base: BeliefBase, inference_system: str, solve
 
     return epistemic_state
 
+"""
+Creates instance of an inference object specific to an inference system. 
+
+Context:
+    Called before inferene operations are performed. Required to perform inferences over queries later on.
+
+Parameters:
+    Initialized epistemic state dict.
+
+Returns:
+    Instanciated inference object.
+"""
 def create_inference_instance(epistemic_state):
     if epistemic_state['inference_system'] == 'p-entailment':
         epistemic_state['preprocessing_done'] = True
@@ -32,7 +56,7 @@ def create_inference_instance(epistemic_state):
         inference_instance = SystemZ(epistemic_state)
     elif epistemic_state['inference_system'] == 'system-w':
         # this optimizer selection method is a placeholed and will be replaced
-        if epistemic_state['optimizer'] == 'z3':
+        if epistemic_state['pmaxsat_solver'] == 'z3':
             inference_instance = SystemWZ3(epistemic_state)
         else:
             inference_instance = SystemW(epistemic_state)
@@ -47,24 +71,47 @@ def create_inference_instance(epistemic_state):
 class InferenceOperator:
     epistemic_state: dict
 
-    def __init__(self, belief_base: BeliefBase, inference_system: str='system-w',  solver: str='z3', optimizer: str = 'rc2') -> None:
+    """
+    Initializes InferenceOperator.
+
+    Context:
+        Called to automatically initialize and instanciate epistemic state and inference object.
+
+    Parameters:
+        Parsed belief base and stings declaring inference system, smt_solver and pmaxsat_solver.
+    """
+    def __init__(self, belief_base: BeliefBase, inference_system: str='',  smt_solver: str='', pmaxsat_solver: str = '') -> None:
         inference_system = inference_system.lower()
-        solver = solver.lower()
-        optimizer = optimizer.lower()
+        smt_solver = smt_solver.lower()
+        pmaxsat_solver = pmaxsat_solver.lower()
         available_solvers = get_env().factory.all_solvers().keys()
-        assert solver in available_solvers, f'only {available_solvers} are available as solver'
-        self.epistemic_state = create_epistemic_state(belief_base, inference_system, solver, optimizer)
+        assert smt_solver in available_solvers, f'only {available_solvers} are available as solver'
+        self.epistemic_state = create_epistemic_state(belief_base, inference_system, smt_solver, pmaxsat_solver)
             
 
 
+    """
+    Performs inference.
 
+    Context:
+        Called to find out if (collection of) queries can be inferred from belief base under 
+        specific inference system.
+
+    Parameters:
+        Parsed queries object. Optional: Timeouts, queries name, boolean idicating if multiple 
+        inferences should be performed in parallel, decimal points to which time measurement results
+        should be rounded to.
+
+    Returns:
+        Pandas data frame containing detailed information about the performed inference.
+    """
     def inference(self, queries: Queries, total_timeout=0, inference_timeout=0, preprocessing_timeout=0, queries_name=None, multi_inference=False, decimals=1) -> pd.DataFrame:
         if queries_name:
             queries.name = queries_name
         
         columns = ['index', 'result', 'signature_size', 'number_conditionals' ,'preprocessing_time',\
-                   'inference_time', 'preprocessing_timeout', 'inference_timeout', 'belief_base',\
-                   'queries', 'query', 'inference_system', 'solver', 'optimizer']
+                   'inference_time', 'preprocessing_timed_out', 'inference_timed_out', 'belief_base',\
+                   'queries', 'query', 'inference_system', 'smt_solver', 'pmaxsat_solver']
 
         df = pd.DataFrame(columns=columns) # type: ignore
         
@@ -94,8 +141,8 @@ class InferenceOperator:
             df.at[index, 'inference_timed_out'] = results[query][2]
             df.at[index, 'inference_time'] = round(results[query][3], decimals)
             df.at[index, 'inference_system'] = self.epistemic_state['inference_system']
-            df.at[index, 'solver'] = self.epistemic_state['solver']
-            df.at[index, 'optimizer'] = self.epistemic_state['optimizer']
+            df.at[index, 'smt_solver'] = self.epistemic_state['smt_solver']
+            df.at[index, 'pmaxsat_solver'] = self.epistemic_state['pmaxsat_solver']
             df.at[index, 'belief_base'] = self.epistemic_state['belief_base'].name
             df.at[index, 'queries'] = queries.name
             df.at[index, 'query'] = query

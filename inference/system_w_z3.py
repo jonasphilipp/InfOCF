@@ -5,21 +5,28 @@ from inference.consistency_sat import consistency
 from z3 import z3, unsat, Or, is_true, unknown
 from warnings import warn
 from time import process_time
-#from optimizer_z3 import Optimizer
+
 
 def makeOptimizer():
     opt = z3.Optimize()
     opt.set(priority='pareto')
     opt.add_soft(z3.BoolVal(True), id ="dummy1")
     opt.add_soft(z3.BoolVal(True), id ="dummy2")
-
-    #z3.set_param(verbose=1)
     return opt
 
 class SystemWZ3(Inference):
+    """
+    Implementation of _preprocess_belief_base() method of inference interface/abstract class. 
+    Calculates z partition.
 
+    Context:
+        Called before inference on queries can be performed.
+
+    Side Effects:
+        partition in epistemic_state
+    """
     def _preprocess_belief_base(self) -> None:
-        partition, _ = consistency(self.epistemic_state['belief_base'], self.epistemic_state['solver'])
+        partition, _ = consistency(self.epistemic_state['belief_base'], self.epistemic_state['smt_solver'])
         if not partition: warn('belief base inconsistent')
         self.epistemic_state['partition'] = []
         for part in partition: # type: ignore
@@ -29,6 +36,20 @@ class SystemWZ3(Inference):
                 translated_part.append(translated_condtional)
             self.epistemic_state['partition'].append(translated_part)
     
+    """
+    Implementation of _inference() method of inference interface/abstract class. 
+    Performs actual inference.
+
+    Context:
+        Called to perform inference after preprocessing has been done. Calls recursive part of 
+        inference algorithm.
+
+    Parameters:
+        Query conditional
+
+    Returns:
+        result boolean
+    """
     def _inference(self, query) -> bool:
         #self._translation_start()
         query_z3 = Conditional_z3.translate_from_existing(query)
@@ -38,7 +59,19 @@ class SystemWZ3(Inference):
         result = self._rec_inference(opt, len(self.epistemic_state['partition']) -1, query_z3)
         #self._inference_end()
         return result
+    
+    """
+    Recursive part of inference algorithm.
 
+    Context:
+        Called by _inference().
+
+    Parameters:
+        Optimizer (pmaxsat_solver) object, partition_index integer, query conditional_z3
+
+    Returns:
+        result of inference as bool 
+    """
     def _rec_inference(self, opt, partition_index, query):
         assert type(self.epistemic_state['partition']) == list
         part = self.epistemic_state['partition'][partition_index]
@@ -64,7 +97,21 @@ class SystemWZ3(Inference):
                 return False
         return True
 
-    # Function to extract 
+
+    """
+    Minimal Correction Subset Calculation
+
+    Context:
+        Called by _rec_inference()
+
+    Parameters:
+        Optimizer (pmaxsat_solver) object, part of partition as list
+
+    Returns:
+        Minimal Correction Subset of negated falsified conditionals in part of partition 
+        given hard constraint already contained in optimizer
+
+    """
     def get_all_xi_i(self, opt, part: list[Conditional]):
         xi_i_set = set() 
         for conditional in part:
@@ -81,6 +128,18 @@ class SystemWZ3(Inference):
             if xi_i == frozenset(): 
                 return xi_i_set
             opt.add(Or([c.make_A_then_not_B() == False for c in xi_i]))
- 
+
+"""
+Checks if any element of set A is subset of all elements in set B
+
+Context:
+    Called by _rec_inference to make decisions about expanding searchtree
+
+Parameters:
+    Two sets of sets
+
+Returns:
+    decision as bool
+"""
 def any_subset_of_all(A, B):
     return all(any(a.issubset(b) for a in A) for b in B)
