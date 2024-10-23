@@ -1,2 +1,2 @@
 # Ignore generated knowledge bases in language detection
-sum_bench/randomTest_*.cl linguist-generated
+sum_bench/*.cl linguist-generated
