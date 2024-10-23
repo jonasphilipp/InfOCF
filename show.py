@@ -1,3 +1,12 @@
+# In this file we demonstrate the use of the InfOCF library to perform multiple inferences according 
+# to a variety of inference systems with differing solvers while setting other optional parameters
+# iterating over belief base and query files and concatenating the results.
+#
+# This represented a common usecase while evaluating and comparing the different inference systems
+# and solvers. For a more minimalistic presentation please refer to show_minimal.py
+
+
+
 import os
 import pandas as pd
 from parser.Wrappers import parse_belief_base, parse_queries
@@ -28,7 +37,7 @@ alt_smt_solver = 'cvc5'
 # We can also select an partial maxsat solver. Currently only only z3 and rc2 are implemented. Other
 # partial maxsat solver using the wcnf format can be implemented rather easily. If rc2 is selected, 
 # the internal sat solver can also be chosen by providing sat solver name as string suffix delimited
-# by a space by prefix rc2. 
+# by a space from prefix rc2. 
 # Names can be found here https://pysathq.github.io/docs/html/api/solvers.html#pysat.solvers.SolverNames
 pmaxsat_solver = 'rc2'
 alt_pmaxsat_solver = 'rc2 g3'
@@ -44,15 +53,15 @@ all_results = pd.DataFrame()
 # dependend on actual naming of belief bases and queries
 for j in [60]:
     for i in [60]:
-        for l in range(13, 14):
+        for l in range(13, 16):
 
             # set belief_base/queries location
-            belief_base_string = os.path.join('sum_bench', f'randomTest_{i}_{j}_{l}.cl')
-            querystring = os.path.join('sum_bench', f'randomQueries_{i}_{j}_{l}.cl')
+            belief_base_filename = os.path.join('sum_bench', f'randomTest_{i}_{j}_{l}.cl')
+            queries_filename = os.path.join('sum_bench', f'randomQueries_{i}_{j}_{l}.cl')
 
             # parse belief_base/queries
-            belief_base = parse_belief_base(belief_base_string)
-            queries = parse_queries(querystring)
+            belief_base = parse_belief_base(belief_base_filename)
+            queries = parse_queries(queries_filename)
             
 
             # Below we will perform multiple inferenes according to different inference systems and parameter combinations
@@ -97,7 +106,8 @@ print(f"\nmulti_inference {multi_inference}\n")
 print(all_results.drop(columns=['query', 'belief_base', 'queries']))
 
 # Optionally, save to a CSV file
+# uncomment lines below to do so
 
-#filename = 'output/show_results.csv'
+#filename = os.path.join('output', 'show_results.csv')
 #all_results.to_csv(filename, index=False)
 

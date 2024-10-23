@@ -6,6 +6,9 @@ from inference.conditional import Conditional
 from inference.tseitin_transformation import TseitinTransformation
 from inference.optimizer import create_optimizer
 
+### some cleanup and some more documentation of class' funcitonalities pending
+
+
 class CInference(Inference):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

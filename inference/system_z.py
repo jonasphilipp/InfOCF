@@ -2,6 +2,7 @@ from inference.inference import Inference
 from inference.consistency_sat import consistency
 from warnings import warn
 from pysmt.shortcuts import Solver, Not, is_unsat
+from time import process_time
 
 
 class SystemZ(Inference):
@@ -57,6 +58,8 @@ class SystemZ(Inference):
         result of inference as bool 
     """
     def _rec_inference(self, solver, partition_index, query):
+        if self.epistemic_state['kill_time'] and process_time() > self.epistemic_state['kill_time']:
+            raise TimeoutError
         assert type(self.epistemic_state['partition']) == list
         part = self.epistemic_state['partition'][partition_index]
         [solver.add_assertion(Not(c.make_A_then_not_B())) for c in part]
@@ -71,8 +74,6 @@ class SystemZ(Inference):
 
         if not v:
             return False
-
-
 
         if f:
             if partition_index == 0:

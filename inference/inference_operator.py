@@ -80,10 +80,13 @@ class InferenceOperator:
     Parameters:
         Parsed belief base and stings declaring inference system, smt_solver and pmaxsat_solver.
     """
-    def __init__(self, belief_base: BeliefBase, inference_system: str='',  smt_solver: str='', pmaxsat_solver: str = '') -> None:
+    def __init__(self, belief_base: BeliefBase, inference_system: str,  smt_solver: str='z3', pmaxsat_solver: str = 'rc2') -> None:
         inference_system = inference_system.lower()
         smt_solver = smt_solver.lower()
-        pmaxsat_solver = pmaxsat_solver.lower()
+        if inference_system in ['p-entailment', 'system-z']:
+            pmaxsat_solver = ''
+        else:
+            pmaxsat_solver = pmaxsat_solver.lower()
         available_solvers = get_env().factory.all_solvers().keys()
         assert smt_solver in available_solvers, f'only {available_solvers} are available as solver'
         self.epistemic_state = create_epistemic_state(belief_base, inference_system, smt_solver, pmaxsat_solver)

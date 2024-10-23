@@ -1,0 +1,3 @@
+,index,result,signature_size,number_conditionals,preprocessing_time,inference_time,preprocessing_timed_out,inference_timed_out,belief_base,queries,query,inference_system,smt_solver,pmaxsat_solver
+0,1,False,4,4,9.3,13.4,False,False,birds_ecsqaru_23_paper_45,from_dict,(f|p),c-inference,z3,rc2
+1,2,True,4,4,9.3,11.7,False,False,birds_ecsqaru_23_paper_45,from_dict,(!f|p),c-inference,z3,rc2

@@ -9,7 +9,18 @@ from abc import ABC, abstractmethod
 class Optimizer(ABC):
     epistemic_state: dict
 
+    """
+    Initializes Optimizer (pmaxsat solver) object and creates needed dict entries if not present.
 
+    Context:
+        Called beforer pmaxsat solver delivers minimal corretion subsets
+
+    Parameters:
+        epistemic_state dict
+
+    Side Effects:
+        pool, v_cnf_dict, f_cnf_dict, nf_cnf_dict entries in epistemic_state
+    """   
     def __init__(self, epistemic_state: dict):
         if 'pool' not in epistemic_state:
             epistemic_state['pool'] = IDPool()
@@ -21,7 +32,22 @@ class Optimizer(ABC):
             epistemic_state['nf_cnf_dict'] = dict()
 
         self.epistemic_state = epistemic_state
+    
+    """
+    abstraction of method returning minimal correction subsets
 
+    Context:
+        called by system-w and c-inference to get minimal correction subsets by using 
+        pmaxsat solver
+
+    Parameters:
+        wcnf object (weighted partial maxsat; see pysat for details), and index of nf_cnf in 
+        nf_cnf_dict to be ignored if desired (typically desired for internals of c-inference)
+
+    Returns:
+        minimal correction subsets of indices negated falsifications of conditionals
+
+    """
     @abstractmethod
     def minimal_correction_subsets(self, wcnf: WCNF, ignore_index: int = 0):
         return list()
@@ -116,13 +142,16 @@ def remove_supersets(lst_of_sets: list[set[int]]) -> list[list[int]]:
 
 
 class OptimizerRC2(Optimizer):
+    """
+    RC2 based implementation of Optimizer (partial maxsat solver)
+    """
     def minimal_correction_subsets(self, wcnf: WCNF, ignore_index: int = 0):
         xMins = []
         sat_solver = self.epistemic_state['pmaxsat_solver'][4:]
         if not sat_solver: sat_solver = 'g3'
         with RC2(wcnf, solver=sat_solver) as rc2:
             while True:
-                if process_time() > self.epistemic_state['kill_time']:
+                if self.epistemic_state['kill_time'] and process_time() > self.epistemic_state['kill_time']:
                     raise TimeoutError
 
                 model = rc2.compute()
@@ -147,6 +176,19 @@ class OptimizerRC2(Optimizer):
         return xMins_lst
 
 
+""" 
+creates instanciation of optimizer. gratuitous since only one child class implements 'optimizer'
+right now but implementation of additional partial maxsat solvers planned
+
+Context:
+    called whenever (rc2) pmaxsat solver is needed (by system-w or c-inference)
+
+Parameters:
+    epistemic_state
+
+Returns:
+    the solver
+"""
 def create_optimizer(epistemic_state: dict) -> Optimizer:
     if epistemic_state['pmaxsat_solver'].startswith('rc2'):
         optimizer = OptimizerRC2(epistemic_state)
