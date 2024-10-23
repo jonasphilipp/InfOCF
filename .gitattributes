@@ -1,2 +1,3 @@
-# Ignore generated knowledge bases in language detection
-sum_bench/*.cl linguist-generated
+# Ignore knowledge bases and queries in language detection
+*.cl linguist-languagae=clKnowledgeBases
+*.clq linguist-languagae=clQueries
