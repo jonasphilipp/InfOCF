@@ -2,12 +2,12 @@ from inference.inference import Inference
 from inference.conditional import Conditional
 from inference.conditional_z3 import Conditional_z3
 from inference.consistency_sat import consistency
-from z3 import z3, unsat, Or, is_true, unknown
+from z3 import Optimize, z3, unsat, Or, is_true, unknown
 from warnings import warn
 from time import process_time
 
 
-def makeOptimizer():
+def makeOptimizer() -> Optimize:
     opt = z3.Optimize()
     opt.set(priority='pareto')
     opt.add_soft(z3.BoolVal(True), id ="dummy1")
@@ -50,7 +50,7 @@ class SystemWZ3(Inference):
     Returns:
         result boolean
     """
-    def _inference(self, query) -> bool:
+    def _inference(self, query: Conditional) -> bool:
         #self._translation_start()
         query_z3 = Conditional_z3.translate_from_existing(query)
         #self._translation_end()
@@ -72,7 +72,7 @@ class SystemWZ3(Inference):
     Returns:
         result of inference as bool 
     """
-    def _rec_inference(self, opt, partition_index, query):
+    def _rec_inference(self, opt: Optimize, partition_index: int, query: Conditional) -> bool:
         assert type(self.epistemic_state['partition']) == list
         part = self.epistemic_state['partition'][partition_index]
         opt.push()
@@ -112,7 +112,7 @@ class SystemWZ3(Inference):
         given hard constraint already contained in optimizer
 
     """
-    def get_all_xi_i(self, opt, part: list[Conditional]):
+    def get_all_xi_i(self, opt: Optimize, part: list[Conditional]) -> set:
         xi_i_set = set() 
         for conditional in part:
             opt.add_soft(conditional.make_A_then_not_B() == False)
@@ -141,5 +141,5 @@ Parameters:
 Returns:
     decision as bool
 """
-def any_subset_of_all(A, B):
+def any_subset_of_all(A: set , B: set) -> bool:
     return all(any(a.issubset(b) for a in A) for b in B)

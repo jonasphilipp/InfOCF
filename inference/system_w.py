@@ -39,7 +39,7 @@ class SystemW(Inference):
     Returns:
         result boolean
     """
-    def _inference(self, query) -> bool:
+    def _inference(self, query: Conditional) -> bool:
         #self._inference_start()
         #self._translation_start()
         tseitin_transformation = TseitinTransformation(self.epistemic_state)
@@ -64,7 +64,7 @@ class SystemW(Inference):
     Returns:
         result of inference as bool 
     """
-    def _rec_inference(self, hard_constraints, partition_index):
+    def _rec_inference(self, hard_constraints: WCNF, partition_index: int) -> bool:
         assert type(self.epistemic_state['partition']) == list
         part = self.epistemic_state['partition'][partition_index]
         wcnf = hard_constraints.copy()
@@ -107,5 +107,5 @@ Parameters:
 Returns:
     decision as bool
 """
-def any_subset_of_all(A, B):
+def any_subset_of_all(A: frozenset, B: frozenset) -> bool:
     return all(any(a.issubset(b) for a in A) for b in B)

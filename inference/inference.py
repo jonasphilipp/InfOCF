@@ -1,6 +1,7 @@
 import multiprocessing as mp
 from abc import ABC, abstractmethod
 from time import process_time_ns, process_time
+from inference.conditional import Conditional
 
 class Inference(ABC):
     """
@@ -27,7 +28,7 @@ class Inference(ABC):
     Side Effects:
         kill_time, preprocessing_time and preprocessing_timed_out in epistemic_state
     """
-    def preprocess_belief_base(self, preprocessing_timeout): 
+    def preprocess_belief_base(self, preprocessing_timeout: int) -> None: 
         #self._epistemic_state._preprocessing_timeout = preprocessing_timeout
         if preprocessing_timeout:    
             self.epistemic_state['kill_time'] = preprocessing_timeout + process_time()
@@ -57,7 +58,7 @@ class Inference(ABC):
     Side Effects:
         result_dict in epistemic_state
     """
-    def inference(self, queries, timeout, multi_inference):
+    def inference(self, queries: dict, timeout: int, multi_inference: bool) -> None:
         if not self.epistemic_state['preprocessing_done'] and not self.epistemic_state['preprocessing_timed_out']:
             Exception("preprocess belief_base before running inference")
         if self.epistemic_state['preprocessing_timed_out']:
@@ -82,7 +83,7 @@ class Inference(ABC):
     Returns:
         result dictionay
     """ 
-    def single_inference(self, queries, timeout):
+    def single_inference(self, queries: dict, timeout: int) -> dict:
         result_dict = dict()
         for index, query in queries.items():
             if timeout:
@@ -114,7 +115,7 @@ class Inference(ABC):
     Returns:
         result dictionay
     """ 
-    def multi_inference(self, queries, timeout):
+    def multi_inference(self, queries: dict, timeout: int) -> dict:
         
         indices = queries.keys()
 
@@ -149,10 +150,10 @@ class Inference(ABC):
     Parameters: 
         Conditional dictionay, timeout in seconds.
 
-    Returns:
+    Side Effects:
         result dictionay
     """ 
-    def _multi_inference_worker(self, index, query, mp_return_dict, timeout):
+    def _multi_inference_worker(self, index: int, query: Conditional, mp_return_dict: dict, timeout: int) -> None:
         if timeout:
             self.epistemic_state['kill_time'] = timeout + process_time()
         else:
@@ -168,11 +169,11 @@ class Inference(ABC):
             raise e
 
     @abstractmethod
-    def _inference(self, query) -> bool:
+    def _inference(self, query: Conditional) -> bool:
         pass
 
     @abstractmethod
-    def _preprocess_belief_base(self):
+    def _preprocess_belief_base(self) -> None:
         pass
 
 

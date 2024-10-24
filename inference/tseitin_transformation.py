@@ -20,7 +20,7 @@ class TseitinTransformation:
     Side Effects:
         pool, v_cnf_dict, f_cnf_dict, nf_cnf_dict entries in epistemic_state
     """
-    def __init__(self, epistemic_state):
+    def __init__(self, epistemic_state: dict) -> None:
         if 'pool' not in epistemic_state:
             epistemic_state['pool'] = IDPool()
         if 'v_cnf_dict' not in epistemic_state:
@@ -45,7 +45,7 @@ class TseitinTransformation:
     Returns:
         Execution time in ms
     """
-    def belief_base_to_cnf(self, v, f, nf ) -> float:
+    def belief_base_to_cnf(self, v: bool, f: bool, nf: bool) -> float:
         start_time = time_ns()
         t = z3.Tactic('tseitin-cnf')
         
@@ -77,7 +77,7 @@ class TseitinTransformation:
     Returns:
         Verification and falsification of query in CNF format
     """
-    def query_to_cnf(self, query: Conditional):
+    def query_to_cnf(self, query: Conditional) -> list[list[list[int]]]:
         t = z3.Tactic('tseitin-cnf')
         with Solver(name="z3") as solver:
             antecedence = solver.converter.convert(query.antecedence)

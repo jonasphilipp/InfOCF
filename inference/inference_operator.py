@@ -1,6 +1,7 @@
 import pandas as pd
 from pysmt.environment import get_env
 from inference.belief_base import BeliefBase
+from inference.inference import Inference
 from inference.system_w import  SystemW
 from inference.system_w_z3 import SystemWZ3
 from inference.system_z import SystemZ
@@ -48,7 +49,7 @@ Parameters:
 Returns:
     Instanciated inference object.
 """
-def create_inference_instance(epistemic_state):
+def create_inference_instance(epistemic_state) -> Inference:
     if epistemic_state['inference_system'] == 'p-entailment':
         epistemic_state['preprocessing_done'] = True
         inference_instance = PEntailment(epistemic_state)
@@ -108,7 +109,7 @@ class InferenceOperator:
     Returns:
         Pandas data frame containing detailed information about the performed inference.
     """
-    def inference(self, queries: Queries, total_timeout=0, inference_timeout=0, preprocessing_timeout=0, queries_name=None, multi_inference=False, decimals=1) -> pd.DataFrame:
+    def inference(self, queries: Queries, total_timeout: int=0, inference_timeout: int=0, preprocessing_timeout: int=0, queries_name: str='', multi_inference: bool=False, decimals: int=1) -> pd.DataFrame:
         if queries_name:
             queries.name = queries_name
         

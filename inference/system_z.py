@@ -1,3 +1,4 @@
+from inference.conditional import Conditional
 from inference.inference import Inference
 from inference.consistency_sat import consistency
 from warnings import warn
@@ -35,7 +36,7 @@ class SystemZ(Inference):
     Returns:
         result boolean
     """
-    def _inference(self, query) -> bool:
+    def _inference(self, query: Conditional) -> bool:
         assert self.epistemic_state['partition'], 'belief_base inconsistent' 
         solver = Solver(name=self.epistemic_state['smt_solver'])
         if is_unsat(query.antecedence): 
@@ -57,7 +58,7 @@ class SystemZ(Inference):
     Returns:
         result of inference as bool 
     """
-    def _rec_inference(self, solver, partition_index, query):
+    def _rec_inference(self, solver: Solver, partition_index: int, query: Conditional) -> bool: #type: ignore
         if self.epistemic_state['kill_time'] and process_time() > self.epistemic_state['kill_time']:
             raise TimeoutError
         assert type(self.epistemic_state['partition']) == list

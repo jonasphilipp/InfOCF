@@ -4,7 +4,7 @@ from inference.conditional import Conditional
 
 
 class Conditional_z3(Conditional):
-    def __init__(self,consequence, antecedence, textRepresentation, weak=False):
+    def __init__(self, consequence, antecedence, textRepresentation, weak=False):
 
         self.antecedence=antecedence
         self.consequence=consequence

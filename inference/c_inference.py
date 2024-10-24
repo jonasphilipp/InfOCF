@@ -17,8 +17,8 @@ class CInference(Inference):
         if 'fMin' not in self.epistemic_state:
             self.epistemic_state['fMin'] = dict()
 
-#replaces every items in the argument by it's sum representation
-    def makeSummation(self, minima):
+    #replaces every items in the argument by it's sum representation
+    def makeSummation(self, minima: dict) -> dict[int, list]:
         results = dict()
         for index, summ in minima.items():
             interim = []
@@ -30,16 +30,16 @@ class CInference(Inference):
             results[index] = interim
         return results
 
-    def freshVars(self, i):
+    def freshVars(self, i: int) -> tuple:
         return Symbol(f'mv_{i}', INT), Symbol(f'mf_{i}', INT)
 
-    def minima_encoding(self, mv, ssums):
+    def minima_encoding(self, mv: int, ssums: list) -> list:
         ands = [LE(mv, i) for i in ssums]
         ors = Not(And([LT(mv, i) for i in ssums]))
         ands.append(ors)
         return ands
 
-    def encoding(self, etas, vSums, fSums):
+    def encoding(self, etas: dict, vSums: dict, fSums: dict) -> list:
         csp = []
         for index, eta in etas.items():
             mv, mf = self.freshVars(index)
@@ -50,7 +50,7 @@ class CInference(Inference):
             csp.append(GT(eta, mv - mf))
         return csp
 
-    def translate(self):
+    def translate(self) -> list:
         eta = {i: Symbol(f'eta_{i}', INT) for i, _ in enumerate(self.epistemic_state['belief_base'].conditionals, start=1)}
         gteZeros = [GE(e, Int(0)) for e in eta.values()]
         vSums = self.makeSummation(self.epistemic_state['vMin'])
