@@ -40,7 +40,7 @@ alt_smt_solver = 'cvc5'
 # by a space from prefix rc2. 
 # Names can be found here https://pysathq.github.io/docs/html/api/solvers.html#pysat.solvers.SolverNames
 pmaxsat_solver = 'rc2'
-alt_pmaxsat_solver = 'rc2 g3'
+alt_pmaxsat_solver = 'rc2 g4'
 
 
 # parallel inference for multiple queries is possible. 
@@ -88,16 +88,25 @@ for j in [60]:
             print(f'system-w inf on {i} {j} {l}')
             results4 = sysw.inference(queries, total_timeout=total_timeout, preprocessing_timeout=preprocessing_timeout, inference_timeout=inference_timeout, multi_inference=multi_inference)                       
              
+            lexinf = InferenceOperator(belief_base, inference_system='lex_inf', smt_solver=smt_solver, pmaxsat_solver=pmaxsat_solver)
+            print(f'lex inf  on {i} {j} {l}')
+            results5 = lexinf.inference(queries, total_timeout=total_timeout, preprocessing_timeout=preprocessing_timeout, inference_timeout=inference_timeout, multi_inference=multi_inference)           
+            
+            lexinf = InferenceOperator(belief_base, inference_system='lex_inf', smt_solver=alt_smt_solver, pmaxsat_solver=alt_pmaxsat_solver)
+            print(f'lex inf  on {i} {j} {l}')
+            results6 = lexinf.inference(queries, total_timeout=total_timeout, preprocessing_timeout=preprocessing_timeout, inference_timeout=inference_timeout, multi_inference=multi_inference)
+           
             cinf = InferenceOperator(belief_base, inference_system='c-inference', smt_solver=smt_solver, pmaxsat_solver=pmaxsat_solver)
             print(f'c-inference  on {i} {j} {l}')
-            results5 = cinf.inference(queries, total_timeout=total_timeout, preprocessing_timeout=preprocessing_timeout, inference_timeout=inference_timeout, multi_inference=multi_inference)           
+            results7 = cinf.inference(queries, total_timeout=total_timeout, preprocessing_timeout=preprocessing_timeout, inference_timeout=inference_timeout, multi_inference=multi_inference)           
             
             cinf = InferenceOperator(belief_base, inference_system='c-inference', smt_solver=alt_smt_solver, pmaxsat_solver=alt_pmaxsat_solver)
             print(f'c-inference  on {i} {j} {l}')
-            results6 = cinf.inference(queries, total_timeout=total_timeout, preprocessing_timeout=preprocessing_timeout, inference_timeout=inference_timeout, multi_inference=multi_inference)
-            
+            results8 = cinf.inference(queries, total_timeout=total_timeout, preprocessing_timeout=preprocessing_timeout, inference_timeout=inference_timeout, multi_inference=multi_inference)
+
+
             # concat all results for current loop iteration
-            current_results = pd.concat([results0, results1, results2, results3, results4, results5, results6], ignore_index=True)
+            current_results = pd.concat([results0, results1, results2, results3, results4, results5, results6, results7, results8], ignore_index=True)
             # update result data frame with results from current iteration
             all_results = pd.concat([all_results, current_results], ignore_index=True)
 

@@ -16,8 +16,8 @@ queries = parse_queries(queries_string)
 
 
 # select the inference system according to which the inferences are to be performed
-# possible options at this time are 'p-entailment', 'system-z', 'system-w' and  'c-inference'
-inference_system = 'c-inference'
+# possible options at this time are 'p-entailment', 'system-z', 'system-w', 'c-inference' and 'lex_inf'
+inference_system = 'lex_inf'
 
 # instanciate inference operator parameterized by belief_base and inference_system
 inference_operator = InferenceOperator(belief_base, inference_system)

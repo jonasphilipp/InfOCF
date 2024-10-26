@@ -2,6 +2,7 @@ import pandas as pd
 from pysmt.environment import get_env
 from inference.belief_base import BeliefBase
 from inference.inference import Inference
+from inference.lex_inf import LexInf
 from inference.system_w import  SystemW
 from inference.system_w_z3 import SystemWZ3
 from inference.system_z import SystemZ
@@ -63,6 +64,8 @@ def create_inference_instance(epistemic_state) -> Inference:
             inference_instance = SystemW(epistemic_state)
     elif epistemic_state['inference_system'] == 'c-inference':
         inference_instance = CInference(epistemic_state)
+    elif epistemic_state['inference_system'] == 'lex_inf':
+        inference_instance = LexInf(epistemic_state)
     else:
         Exception('no correct inference system provideid')
     return inference_instance #type: ignore
