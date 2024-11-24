@@ -149,6 +149,7 @@ class OptimizerRC2(Optimizer):
         xMins = []
         sat_solver = self.epistemic_state['pmaxsat_solver'][4:]
         if not sat_solver: sat_solver = 'g3'
+        int = 0
         with RC2(wcnf, solver=sat_solver) as rc2:
             while True:
                 if self.epistemic_state['kill_time'] and process_time() > self.epistemic_state['kill_time']:
@@ -157,8 +158,9 @@ class OptimizerRC2(Optimizer):
                 model = rc2.compute()
                 
                 if model == None:
+                    #print(f"models found: {int}")
                     break
-                
+                int += 1 
                 cost = rc2.cost
                 
                 violated = self.get_violated_conditional(model, cost, ignore_index)

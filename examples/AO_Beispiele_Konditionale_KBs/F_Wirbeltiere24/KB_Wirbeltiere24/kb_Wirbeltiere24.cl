@@ -1,0 +1,31 @@
+signature
+ 	w,i,m,u,v,c,e,k,s,o,g,b,f,p,r,d,a,j,h,l,n
+
+conditionals
+WIRBELTIERE24{
+	(i|w),		
+	(w|m),		
+	(u|m),		
+	(v|m),		
+	(c|m),		
+	(m|e),		
+	(!c|e),		
+	(m|k),		
+	(!v,!c|k),	
+	(w|s),		
+	(o|s),		
+	(g|s),		
+	(s|b),		
+	(f|b),		
+	(b|p),		
+	(!f|p),		
+	(s|r),		
+	(d|r),		
+	(w|a),		
+	(j|a),		
+	(w|h),		
+	(l|h),		
+	(w|n),		
+	(!i|n)		
+}
+

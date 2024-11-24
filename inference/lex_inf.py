@@ -69,6 +69,7 @@ class LexInf(Inference):
     def _rec_inference(self, hard_constraints_v: WCNF, hard_constraints_f: WCNF,  partition_index: int) -> bool:
         assert type(self.epistemic_state['partition']) == list
         part = self.epistemic_state['partition'][partition_index]
+        #print(f'part: {part}')
         for index in part:
             softc = self.epistemic_state['nf_cnf_dict'][index]
             [hard_constraints_v.append(s, weight=1) for s in softc]
@@ -78,6 +79,10 @@ class LexInf(Inference):
         mcs_f = optimizer.minimal_correction_subsets(hard_constraints_f)
         #print(f'mcs_v: {mcs_v}')
         #print(f'mcs_f: {mcs_f}')
+        if not mcs_v:
+            return False
+        if not mcs_f:
+            return True
         min_len_v = min(len(xi) for xi in mcs_v)
         min_len_f = min(len(xi) for xi in mcs_f)
         min_mcs_v = [xi for xi in mcs_v if len(xi) == min_len_v]
