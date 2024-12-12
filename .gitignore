@@ -166,3 +166,6 @@ cython_debug/
 
 # local helper files
 *local_helper.py
+
+# local test files
+*local_test.py

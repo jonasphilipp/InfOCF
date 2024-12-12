@@ -1,8 +1,13 @@
 import os
+import sys
+
+# Define base directory relative to this file's location
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR)
+
 import pandas as pd
 from parser.Wrappers import parse_belief_base, parse_queries
 from inference.inference_operator import InferenceOperator
-from pathlib import Path
 
 # These setting are only to adjust the display options to show all columns and rows
 pd.set_option('display.max_columns', None)
@@ -36,7 +41,7 @@ pmaxsat_solver = 'rc2'
 multi_inference = False
 
 # read csv file with belief base, query pairs
-examples = os.path.join('unittests', 'example_testing.csv')
+examples = os.path.join(os.path.dirname(__file__), 'example_testing.csv')
 df = pd.read_csv(examples, header=None)
 # we instanciate a DataFrame to store results
 all_results = pd.DataFrame()  
@@ -48,9 +53,8 @@ for index, row in df.iterrows():
     print(row[0], row[1])
     belief_base_filepath = str(row[0])
     queries_filepath = str(row[1])
-    current_dir = os.getcwd()
-    belief_base_filepath_full = os.path.join(current_dir, belief_base_filepath)
-    queries_filepath_full = os.path.join(current_dir, queries_filepath)
+    belief_base_filepath_full = os.path.join(BASE_DIR, belief_base_filepath)
+    queries_filepath_full = os.path.join(BASE_DIR, queries_filepath)
     # parse belief_base/queries
     assert os.path.isfile(belief_base_filepath_full), f"{belief_base_filepath} is not a valid file"
     assert os.path.isfile(queries_filepath_full), f"{queries_filepath} is not a valid file"
@@ -107,6 +111,6 @@ print(all_results)
 # Optionally, save to a CSV file
 # uncomment lines below to do so
 
-filename = os.path.join('unittests', 'example_testing_results.csv')
-all_results.to_csv(filename, index=False)
+#filename = os.path.join('unittests', 'example_testing_results.csv')
+#all_results.to_csv(filename, index=False)
 
