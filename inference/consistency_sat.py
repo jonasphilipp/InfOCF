@@ -7,7 +7,7 @@ def toImplicit(conditionals):
     return [Implies(i.antecedence, i.consequence) for i in conditionals]
 
 
-def consistency(ckb, solver='z3'):
+def consistency(ckb, solver='z3', weakly=False):
     #print(solver)
     conditionals = [i for i in ckb.conditionals.values()]
     #partition is a list of lists
@@ -19,6 +19,8 @@ def consistency(ckb, solver='z3'):
         with Solver(name=solver) as s:
             #if no conditionals remain, the ckb is consistent 
             if len(conditionals) == 0:
+                if weakly:
+                    partition.append([])
                 #print(calls, levels, [len(i) for i in partition], 'consistent')
                 return partition, ([len(p) for p in partition],calls, levels)
             levels +=1
@@ -42,14 +44,18 @@ def consistency(ckb, solver='z3'):
                 #we found no parition, the ckb is inconsistent
                 #Maybe throw an error instead?
                 #print(calls, levels, 'False')
-                return False, ([len(p) for p in partition], calls, levels)
+                if weakly:
+                    partition.append(C)
+                    return partition, ([len(p) for p in partition],calls, levels)
+                else:
+                    return False, ([len(p) for p in partition], calls, levels)
             partition.append(R)
             conditionals = C
             #reset the solver sothat it wont consider the currently found partition anymore
             s.pop()
 
 
-def consistency_indices(ckb, solver):
+def consistency_indices(ckb, solver, weakly=False):
     conditionals = [i for i in ckb.conditionals]
     #partition is a list of lists
     partition = []
@@ -60,6 +66,8 @@ def consistency_indices(ckb, solver):
         with Solver(name=solver) as s:
             #if no conditionals remain, the ckb is consistent 
             if len(conditionals) == 0:
+                if weakly:
+                    partition.append([])
                 #print(calls, levels, [len(i) for i in partition], 'consistent')
                 return partition, ([len(p) for p in partition],calls, levels)
             levels +=1
@@ -80,10 +88,11 @@ def consistency_indices(ckb, solver):
                     C.append(i)
                 s.pop()
             if R == []:
-                #we found no parition, the ckb is inconsistent
-                #Maybe throw an error instead?
-                #print(calls, levels, 'False')
-                return False, ([len(p) for p in partition], calls, levels)
+                if weakly:
+                    partition.append(C)
+                    return partition, ([len(p) for p in partition],calls, levels)
+                else:
+                    return False, ([len(p) for p in partition], calls, levels)
             partition.append(R)
             conditionals = C
             #reset the solver sothat it wont consider the currently found partition anymore
