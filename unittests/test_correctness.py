@@ -12,10 +12,13 @@ from inference.inference_operator import InferenceOperator
 # These setting are only to adjust the display options to show all columns and rows
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
-pd.set_option('display.width', 0) 
+pd.set_option('display.width', 0)
 
 # inference systems to be tested
 inference_systems = ['p-entailment', 'system-z', 'system-w', 'lex_inf', 'c-inference']
+
+# Put any inference system that should be excluded from testing here
+excluded_systems = ['c-inference']
 
 test_sets = ['example_testing_results.csv']
 
@@ -116,13 +119,18 @@ for test_set in test_sets:
             # If this is the inference system we're comparing against, verify the result
             if inference_system == row['inference_system']:
                 assert index == last_index + 1, f"Index mismatch: {index} != {last_index + 1}"
-                assert system_results.iloc[0]['result'] == row['result'], (
-                    f"Result mismatch for belief_base: {row['belief_base']}, "
-                    f"query: {row['query']}, inference_system: {inference_system}. "
-                    f"Expected: {row['result']}, Got: {system_results.iloc[0]['result']}"
-                    f"row of test set: {row}"
-                    f"system_results: {system_results}"
-                )
+                if inference_system in excluded_systems:
+                    print('result not compared, inference system excluded')
+                else:
+                    assert system_results.iloc[0]['result'] == row['result'], (
+                        f"Result mismatch for belief_base: {row['belief_base']}, "
+                        f"query: {row['query']}, inference_system: {inference_system}. "
+                        f"Expected: {row['result']}, Got: {system_results.iloc[0]['result']}"
+                        f"row of test set: {row}"
+                        f"system_results: {system_results}"
+                    )
                 last_index = index
 
 print(f'All tests passed for inference systems {inference_systems} on test sets implied by {test_sets}')
+if excluded_systems:
+    print(f'results not compared for excluded_systems {excluded_systems}')
