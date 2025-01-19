@@ -1,10 +1,19 @@
-from pysmt.shortcuts import Solver, Implies
+from pysmt.shortcuts import Solver, Implies, is_sat
 
 def toImplicit(conditionals):
     """
     Accepts a list of conditionals and returns a list of implications.
     """
     return [Implies(i.antecedence, i.consequence) for i in conditionals]
+
+
+def checkTautologies(conditionals):
+    conditionals = [i for i in ckb.conditionals.values()]
+    with Solver(name='z3'):
+        for c in consistency:
+            case1 = is_sat(c.make_A_then_B())
+            case2 = is_sat(c.make_A_then_not_B())
+            if not case1 or not case2: return False
 
 
 def consistency(ckb, solver='z3', weakly=False):
