@@ -169,3 +169,6 @@ cython_debug/
 
 # local test files
 *local_test.py
+
+# local_folder
+local/
