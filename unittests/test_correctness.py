@@ -1,6 +1,7 @@
 import os
 import sys
 
+
 # Define base directory relative to this test file's location
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
@@ -94,8 +95,10 @@ for test_set in test_sets:
             # Inference is performed by instanciating InferenceOperator object and calling inference() method
 
             for inference_system in inference_systems:
-
-                inference_operator = InferenceOperator(belief_base, inference_system=inference_system, smt_solver=smt_solver, pmaxsat_solver=pmaxsat_solver)
+                if inference_system == 'lex_inf':
+                    inference_operator = InferenceOperator(belief_base, inference_system=inference_system, smt_solver=smt_solver, pmaxsat_solver='z3')
+                else:
+                    inference_operator = InferenceOperator(belief_base, inference_system=inference_system, smt_solver=smt_solver, pmaxsat_solver=pmaxsat_solver)
                 print(f'{inference_system:<20} on {belief_base_filepath}, {queries_filepath}')
                 results = inference_operator.inference(queries, total_timeout=total_timeout, preprocessing_timeout=preprocessing_timeout, inference_timeout=inference_timeout, multi_inference=multi_inference)          
                     
