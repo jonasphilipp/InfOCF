@@ -10,7 +10,7 @@ c-Inference is implemented by using its characterization by a system of inequati
 
 InfOCF supports parsing conditional belief bases from files in the `.cl`-format (see [cl syntax description](docs/CL_SYNTAX.md)).
 
-Some functions of InfOCF are available in the easy-to-use online reasoning plattform [InfOCF-Web 2.0](https://www.fernuni-hagen.de/wbs/research/infocf-web/).
+The main functions of InfOCF are available in the easy-to-use online reasoning plattform [InfOCF-Web 2.0](https://www.fernuni-hagen.de/wbs/research/infocf-web/).
 InfOCF-Web 2.0 is build on top of InfOCF and supports nonmonotonic reasoning from conditional belief bases with various inductive inference operators[^5].
 
 [^1]: Kraus, Lehmann, Magidor: *Nonmonotonic Reasoning, Preferential Models and Cumulative Logics*. Artificial Intelligence 44(1-2), 167–207 (1990)
