@@ -23,7 +23,7 @@ If no parentheses is used the precedence is as follows:
 
 Comments are also allowed in the file, following the Java comment syntax, i.e. `//` introduces single-line comments and `/*...*/` introduces block comments.
 
-The detailles of the grammar can be checked at the [CLKR-repository](https://www.fernuni-hagen.de/wbs/clkr/html/syntax.html). 
+The details of the grammar can be checked at the [CLKR-repository](https://www.fernuni-hagen.de/wbs/clkr/html/syntax.html). 
 
 ### Example belief base
 ```
