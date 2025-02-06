@@ -130,7 +130,7 @@ class Inference(ABC):
                 p.start()
 
             for p, i, query in processes:
-                p.join(timeout+1)
+                p.join(timeout+10)
                 if p.is_alive():
                     p.terminate()
                     p.join()  # Ensure the process has terminated
