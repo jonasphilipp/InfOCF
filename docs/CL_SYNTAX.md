@@ -13,17 +13,17 @@ conditionals
 ```
 A conditional is of the form `(B|A)` where `A` and `B` are propositional formulas. 
 A propositional formula is made up of variables and the connectors `!` (Negation), `,` (Conjunction) and `;` (Disjunction).
-Variables are strings only containing letters (upper- and lower-case allowed).
+Variables are strings containing letters and numbers starting with a letter (upper- and lower-case allowed).
 
-For ease of reading and expressivity, a formula may be in parentheses `(...)`.
+A formula may be in parentheses `(...)`.
 If no parentheses is used the precedence is as follows:
 1. `!` (Negation)
 2. `,` (Conjunction)
 3. `;` (Disjunction)
 
-Comments are also allowed in the file, following the Java comment syntax, i.e. `//` introduces single-line comments and `/*...*/` introduces block comments.
+Comments are also allowed in the file following the Java comment syntax, i.e., `//` introduces single-line comments and `/*...*/` introduces block comments.
 
-The details of the grammar can be checked at the [CLKR-repository](https://www.fernuni-hagen.de/wbs/clkr/html/syntax.html). 
+The details of the grammar and example belief bases can be found at the [CLKR-repository](https://www.fernuni-hagen.de/wbs/clkr/html/syntax.html). 
 
 ### Example belief base
 ```
