@@ -16,7 +16,7 @@ A propositional formula is made up of variables and the connectors `!` (Negation
 Variables are strings containing letters and numbers starting with a letter (upper- and lower-case allowed).
 
 A formula may be in parentheses `(...)`.
-If no parentheses is used the precedence is as follows:
+If no parentheses are used the precedence is as follows:
 1. `!` (Negation)
 2. `,` (Conjunction)
 3. `;` (Disjunction)
