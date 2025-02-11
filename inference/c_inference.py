@@ -86,7 +86,8 @@ class CInference(Inference):
 
 
     def _inference(self, query: Conditional) -> bool:
-        ql,qr=2 * [is_unsat(query.make_A_then_B())]
+        qr=is_unsat(query.consequence)
+        ql=is_unsat(query.antecedence)
         defeat = len(self.epistemic_state['belief_base'].conditionals)
         if defeat==0: return ql,qr
         if ql: return True
