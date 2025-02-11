@@ -5,6 +5,7 @@ from inference.inference import Inference
 from inference.conditional import Conditional
 from inference.tseitin_transformation import TseitinTransformation
 from inference.optimizer import create_optimizer
+from inference.consistency_sat import checkTautologies
 
 ### some cleanup and some more documentation of class' funcitonalities pending
 
@@ -52,6 +53,8 @@ class CInference(Inference):
 
     def translate(self) -> list:
         eta = {i: Symbol(f'eta_{i}', INT) for i, _ in enumerate(self.epistemic_state['belief_base'].conditionals, start=1)}
+        #defeat= = checkTautologies(self.epistemic_state['belief_base'].conditionals)
+        #if not defeat: return False
         gteZeros = [GE(e, Int(0)) for e in eta.values()]
         vSums = self.makeSummation(self.epistemic_state['vMin'])
         fSums = self.makeSummation(self.epistemic_state['fMin'])
@@ -83,8 +86,11 @@ class CInference(Inference):
 
 
     def _inference(self, query: Conditional) -> bool:
-        if is_unsat(query.antecedence): return True
-        if is_unsat(query.consequence): return False
+        ql,qr=2 * [is_unsat(query.antecedencexi,query.consequence)]
+        defeat = len(self.epistemic_state['belief_base'].conditionals)
+        if defeat==0: return ql,qr
+        if ql: return True
+        if qr: return False
         #self._translation_start_query()
         #translated_query = Conditional_z3.translate_from_existing(query)
         #self._translation_end_query()

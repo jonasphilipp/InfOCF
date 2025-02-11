@@ -71,6 +71,7 @@ def parseCKB(ckbs_string):
     stream = CommonTokenStream(lexer)
     parser = CKBParser(stream)
     """
+    print(ckbs_string)
     tree = getParseTree(ckbs_string)
     visitor = myVisitor()
     ckbs = visitor.visit(tree)
@@ -82,7 +83,7 @@ def parseCKB(ckbs_string):
 
 
 def parseQuery(querystring):
-    ckb_template=f"signature \n a,b,c,d,e,f \n conditionals \n dummy \n {{ \n {querystring}\n }}" 
+    ckb_template=f"signature \n a,b,c,d,e,f \n conditionals \n Querydummy \n {{ \n {querystring}\n }}" 
     ckbquery=parseCKB(ckb_template)
     #print(query)
     #query.__class__ = Queries

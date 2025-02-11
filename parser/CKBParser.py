@@ -10,18 +10,21 @@ else:
 
 def serializedATN():
     return [
-        4,1,15,128,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,1,0,1,
+        4,1,15,163,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,1,0,1,
         0,4,0,15,8,0,11,0,12,0,16,1,1,5,1,20,8,1,10,1,12,1,23,9,1,1,1,1,
         1,4,1,27,8,1,11,1,12,1,28,1,1,1,1,1,2,1,2,1,2,1,2,1,2,3,2,38,8,2,
         1,3,5,3,41,8,3,10,3,12,3,44,9,3,1,3,1,3,4,3,48,8,3,11,3,12,3,49,
         1,3,1,3,5,3,54,8,3,10,3,12,3,57,9,3,1,3,1,3,5,3,61,8,3,10,3,12,3,
-        64,9,3,1,3,1,3,1,3,5,3,69,8,3,10,3,12,3,72,9,3,1,3,5,3,75,8,3,10,
-        3,12,3,78,9,3,1,4,1,4,1,4,1,4,1,4,1,4,1,4,5,4,87,8,4,10,4,12,4,90,
-        9,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,5,4,100,8,4,10,4,12,4,103,9,
-        4,3,4,105,8,4,1,5,1,5,1,5,1,5,1,5,1,5,1,5,1,5,3,5,115,8,5,1,5,1,
-        5,1,5,1,5,1,5,1,5,5,5,123,8,5,10,5,12,5,126,9,5,1,5,0,1,10,6,0,2,
-        4,6,8,10,0,0,138,0,12,1,0,0,0,2,21,1,0,0,0,4,37,1,0,0,0,6,42,1,0,
-        0,0,8,104,1,0,0,0,10,114,1,0,0,0,12,14,3,2,1,0,13,15,3,6,3,0,14,
+        64,9,3,1,3,1,3,5,3,68,8,3,10,3,12,3,71,9,3,1,3,5,3,74,8,3,10,3,12,
+        3,77,9,3,1,3,1,3,4,3,81,8,3,11,3,12,3,82,1,3,1,3,5,3,87,8,3,10,3,
+        12,3,90,9,3,1,3,1,3,5,3,94,8,3,10,3,12,3,97,9,3,1,3,1,3,1,3,5,3,
+        102,8,3,10,3,12,3,105,9,3,1,3,5,3,108,8,3,10,3,12,3,111,9,3,3,3,
+        113,8,3,1,4,1,4,1,4,1,4,1,4,1,4,1,4,5,4,122,8,4,10,4,12,4,125,9,
+        4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,1,4,5,4,135,8,4,10,4,12,4,138,9,4,
+        3,4,140,8,4,1,5,1,5,1,5,1,5,1,5,1,5,1,5,1,5,3,5,150,8,5,1,5,1,5,
+        1,5,1,5,1,5,1,5,5,5,158,8,5,10,5,12,5,161,9,5,1,5,0,1,10,6,0,2,4,
+        6,8,10,0,0,179,0,12,1,0,0,0,2,21,1,0,0,0,4,37,1,0,0,0,6,112,1,0,
+        0,0,8,139,1,0,0,0,10,149,1,0,0,0,12,14,3,2,1,0,13,15,3,6,3,0,14,
         13,1,0,0,0,15,16,1,0,0,0,16,14,1,0,0,0,16,17,1,0,0,0,17,1,1,0,0,
         0,18,20,5,15,0,0,19,18,1,0,0,0,20,23,1,0,0,0,21,19,1,0,0,0,21,22,
         1,0,0,0,22,24,1,0,0,0,23,21,1,0,0,0,24,26,5,1,0,0,25,27,5,15,0,0,
@@ -34,25 +37,35 @@ def serializedATN():
         0,0,0,50,51,1,0,0,0,51,55,5,11,0,0,52,54,5,15,0,0,53,52,1,0,0,0,
         54,57,1,0,0,0,55,53,1,0,0,0,55,56,1,0,0,0,56,58,1,0,0,0,57,55,1,
         0,0,0,58,62,5,4,0,0,59,61,5,15,0,0,60,59,1,0,0,0,61,64,1,0,0,0,62,
-        60,1,0,0,0,62,63,1,0,0,0,63,65,1,0,0,0,64,62,1,0,0,0,65,66,3,8,4,
-        0,66,70,5,5,0,0,67,69,5,15,0,0,68,67,1,0,0,0,69,72,1,0,0,0,70,68,
-        1,0,0,0,70,71,1,0,0,0,71,76,1,0,0,0,72,70,1,0,0,0,73,75,3,6,3,0,
-        74,73,1,0,0,0,75,78,1,0,0,0,76,74,1,0,0,0,76,77,1,0,0,0,77,7,1,0,
-        0,0,78,76,1,0,0,0,79,80,5,6,0,0,80,81,3,10,5,0,81,82,5,7,0,0,82,
-        83,3,10,5,0,83,84,5,8,0,0,84,88,5,2,0,0,85,87,5,15,0,0,86,85,1,0,
-        0,0,87,90,1,0,0,0,88,86,1,0,0,0,88,89,1,0,0,0,89,91,1,0,0,0,90,88,
-        1,0,0,0,91,92,3,8,4,0,92,105,1,0,0,0,93,94,5,6,0,0,94,95,3,10,5,
-        0,95,96,5,7,0,0,96,97,3,10,5,0,97,101,5,8,0,0,98,100,5,15,0,0,99,
-        98,1,0,0,0,100,103,1,0,0,0,101,99,1,0,0,0,101,102,1,0,0,0,102,105,
-        1,0,0,0,103,101,1,0,0,0,104,79,1,0,0,0,104,93,1,0,0,0,105,9,1,0,
-        0,0,106,107,6,5,-1,0,107,108,5,9,0,0,108,115,3,10,5,5,109,110,5,
-        6,0,0,110,111,3,10,5,0,111,112,5,8,0,0,112,115,1,0,0,0,113,115,5,
-        11,0,0,114,106,1,0,0,0,114,109,1,0,0,0,114,113,1,0,0,0,115,124,1,
-        0,0,0,116,117,10,4,0,0,117,118,5,2,0,0,118,123,3,10,5,5,119,120,
-        10,3,0,0,120,121,5,10,0,0,121,123,3,10,5,4,122,116,1,0,0,0,122,119,
-        1,0,0,0,123,126,1,0,0,0,124,122,1,0,0,0,124,125,1,0,0,0,125,11,1,
-        0,0,0,126,124,1,0,0,0,16,16,21,28,37,42,49,55,62,70,76,88,101,104,
-        114,122,124
+        60,1,0,0,0,62,63,1,0,0,0,63,65,1,0,0,0,64,62,1,0,0,0,65,69,5,5,0,
+        0,66,68,5,15,0,0,67,66,1,0,0,0,68,71,1,0,0,0,69,67,1,0,0,0,69,70,
+        1,0,0,0,70,113,1,0,0,0,71,69,1,0,0,0,72,74,5,15,0,0,73,72,1,0,0,
+        0,74,77,1,0,0,0,75,73,1,0,0,0,75,76,1,0,0,0,76,78,1,0,0,0,77,75,
+        1,0,0,0,78,80,5,3,0,0,79,81,5,15,0,0,80,79,1,0,0,0,81,82,1,0,0,0,
+        82,80,1,0,0,0,82,83,1,0,0,0,83,84,1,0,0,0,84,88,5,11,0,0,85,87,5,
+        15,0,0,86,85,1,0,0,0,87,90,1,0,0,0,88,86,1,0,0,0,88,89,1,0,0,0,89,
+        91,1,0,0,0,90,88,1,0,0,0,91,95,5,4,0,0,92,94,5,15,0,0,93,92,1,0,
+        0,0,94,97,1,0,0,0,95,93,1,0,0,0,95,96,1,0,0,0,96,98,1,0,0,0,97,95,
+        1,0,0,0,98,99,3,8,4,0,99,103,5,5,0,0,100,102,5,15,0,0,101,100,1,
+        0,0,0,102,105,1,0,0,0,103,101,1,0,0,0,103,104,1,0,0,0,104,109,1,
+        0,0,0,105,103,1,0,0,0,106,108,3,6,3,0,107,106,1,0,0,0,108,111,1,
+        0,0,0,109,107,1,0,0,0,109,110,1,0,0,0,110,113,1,0,0,0,111,109,1,
+        0,0,0,112,42,1,0,0,0,112,75,1,0,0,0,113,7,1,0,0,0,114,115,5,6,0,
+        0,115,116,3,10,5,0,116,117,5,7,0,0,117,118,3,10,5,0,118,119,5,8,
+        0,0,119,123,5,2,0,0,120,122,5,15,0,0,121,120,1,0,0,0,122,125,1,0,
+        0,0,123,121,1,0,0,0,123,124,1,0,0,0,124,126,1,0,0,0,125,123,1,0,
+        0,0,126,127,3,8,4,0,127,140,1,0,0,0,128,129,5,6,0,0,129,130,3,10,
+        5,0,130,131,5,7,0,0,131,132,3,10,5,0,132,136,5,8,0,0,133,135,5,15,
+        0,0,134,133,1,0,0,0,135,138,1,0,0,0,136,134,1,0,0,0,136,137,1,0,
+        0,0,137,140,1,0,0,0,138,136,1,0,0,0,139,114,1,0,0,0,139,128,1,0,
+        0,0,140,9,1,0,0,0,141,142,6,5,-1,0,142,143,5,9,0,0,143,150,3,10,
+        5,5,144,145,5,6,0,0,145,146,3,10,5,0,146,147,5,8,0,0,147,150,1,0,
+        0,0,148,150,5,11,0,0,149,141,1,0,0,0,149,144,1,0,0,0,149,148,1,0,
+        0,0,150,159,1,0,0,0,151,152,10,4,0,0,152,153,5,2,0,0,153,158,3,10,
+        5,5,154,155,10,3,0,0,155,156,5,10,0,0,156,158,3,10,5,4,157,151,1,
+        0,0,0,157,154,1,0,0,0,158,161,1,0,0,0,159,157,1,0,0,0,159,160,1,
+        0,0,0,160,11,1,0,0,0,161,159,1,0,0,0,22,16,21,28,37,42,49,55,62,
+        69,75,82,88,95,103,109,112,123,136,139,149,157,159
     ]
 
 class CKBParser ( Parser ):
@@ -314,10 +327,6 @@ class CKBParser ( Parser ):
             self.parser = parser
             self.name = None # Token
 
-        def condition(self):
-            return self.getTypedRuleContext(CKBParser.ConditionContext,0)
-
-
         def ID(self):
             return self.getToken(CKBParser.ID, 0)
 
@@ -326,6 +335,10 @@ class CKBParser ( Parser ):
                 return self.getTokens(CKBParser.NEWLINE)
             else:
                 return self.getToken(CKBParser.NEWLINE, i)
+
+        def condition(self):
+            return self.getTypedRuleContext(CKBParser.ConditionContext,0)
+
 
         def conditionals(self, i:int=None):
             if i is None:
@@ -352,80 +365,152 @@ class CKBParser ( Parser ):
         self.enterRule(localctx, 6, self.RULE_conditionals)
         self._la = 0 # Token type
         try:
-            self.enterOuterAlt(localctx, 1)
-            self.state = 42
+            self.state = 112
             self._errHandler.sync(self)
-            _la = self._input.LA(1)
-            while _la==15:
-                self.state = 39
-                self.match(CKBParser.NEWLINE)
-                self.state = 44
+            la_ = self._interp.adaptivePredict(self._input,15,self._ctx)
+            if la_ == 1:
+                self.enterOuterAlt(localctx, 1)
+                self.state = 42
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
+                while _la==15:
+                    self.state = 39
+                    self.match(CKBParser.NEWLINE)
+                    self.state = 44
+                    self._errHandler.sync(self)
+                    _la = self._input.LA(1)
 
-            self.state = 45
-            self.match(CKBParser.T__2)
-            self.state = 47 
-            self._errHandler.sync(self)
-            _la = self._input.LA(1)
-            while True:
-                self.state = 46
-                self.match(CKBParser.NEWLINE)
-                self.state = 49 
+                self.state = 45
+                self.match(CKBParser.T__2)
+                self.state = 47 
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
-                if not (_la==15):
-                    break
+                while True:
+                    self.state = 46
+                    self.match(CKBParser.NEWLINE)
+                    self.state = 49 
+                    self._errHandler.sync(self)
+                    _la = self._input.LA(1)
+                    if not (_la==15):
+                        break
 
-            self.state = 51
-            localctx.name = self.match(CKBParser.ID)
-            self.state = 55
-            self._errHandler.sync(self)
-            _la = self._input.LA(1)
-            while _la==15:
-                self.state = 52
-                self.match(CKBParser.NEWLINE)
-                self.state = 57
+                self.state = 51
+                localctx.name = self.match(CKBParser.ID)
+                self.state = 55
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
+                while _la==15:
+                    self.state = 52
+                    self.match(CKBParser.NEWLINE)
+                    self.state = 57
+                    self._errHandler.sync(self)
+                    _la = self._input.LA(1)
 
-            self.state = 58
-            self.match(CKBParser.T__3)
-            self.state = 62
-            self._errHandler.sync(self)
-            _la = self._input.LA(1)
-            while _la==15:
-                self.state = 59
-                self.match(CKBParser.NEWLINE)
-                self.state = 64
+                self.state = 58
+                self.match(CKBParser.T__3)
+                self.state = 62
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
+                while _la==15:
+                    self.state = 59
+                    self.match(CKBParser.NEWLINE)
+                    self.state = 64
+                    self._errHandler.sync(self)
+                    _la = self._input.LA(1)
 
-            self.state = 65
-            self.condition()
-            self.state = 66
-            self.match(CKBParser.T__4)
-            self.state = 70
-            self._errHandler.sync(self)
-            _alt = self._interp.adaptivePredict(self._input,8,self._ctx)
-            while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
-                if _alt==1:
-                    self.state = 67
-                    self.match(CKBParser.NEWLINE) 
-                self.state = 72
+                self.state = 65
+                self.match(CKBParser.T__4)
+                self.state = 69
                 self._errHandler.sync(self)
                 _alt = self._interp.adaptivePredict(self._input,8,self._ctx)
+                while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
+                    if _alt==1:
+                        self.state = 66
+                        self.match(CKBParser.NEWLINE) 
+                    self.state = 71
+                    self._errHandler.sync(self)
+                    _alt = self._interp.adaptivePredict(self._input,8,self._ctx)
 
-            self.state = 76
-            self._errHandler.sync(self)
-            _alt = self._interp.adaptivePredict(self._input,9,self._ctx)
-            while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
-                if _alt==1:
-                    self.state = 73
-                    self.conditionals() 
-                self.state = 78
+                pass
+
+            elif la_ == 2:
+                self.enterOuterAlt(localctx, 2)
+                self.state = 75
                 self._errHandler.sync(self)
-                _alt = self._interp.adaptivePredict(self._input,9,self._ctx)
+                _la = self._input.LA(1)
+                while _la==15:
+                    self.state = 72
+                    self.match(CKBParser.NEWLINE)
+                    self.state = 77
+                    self._errHandler.sync(self)
+                    _la = self._input.LA(1)
+
+                self.state = 78
+                self.match(CKBParser.T__2)
+                self.state = 80 
+                self._errHandler.sync(self)
+                _la = self._input.LA(1)
+                while True:
+                    self.state = 79
+                    self.match(CKBParser.NEWLINE)
+                    self.state = 82 
+                    self._errHandler.sync(self)
+                    _la = self._input.LA(1)
+                    if not (_la==15):
+                        break
+
+                self.state = 84
+                localctx.name = self.match(CKBParser.ID)
+                self.state = 88
+                self._errHandler.sync(self)
+                _la = self._input.LA(1)
+                while _la==15:
+                    self.state = 85
+                    self.match(CKBParser.NEWLINE)
+                    self.state = 90
+                    self._errHandler.sync(self)
+                    _la = self._input.LA(1)
+
+                self.state = 91
+                self.match(CKBParser.T__3)
+                self.state = 95
+                self._errHandler.sync(self)
+                _la = self._input.LA(1)
+                while _la==15:
+                    self.state = 92
+                    self.match(CKBParser.NEWLINE)
+                    self.state = 97
+                    self._errHandler.sync(self)
+                    _la = self._input.LA(1)
+
+                self.state = 98
+                self.condition()
+                self.state = 99
+                self.match(CKBParser.T__4)
+                self.state = 103
+                self._errHandler.sync(self)
+                _alt = self._interp.adaptivePredict(self._input,13,self._ctx)
+                while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
+                    if _alt==1:
+                        self.state = 100
+                        self.match(CKBParser.NEWLINE) 
+                    self.state = 105
+                    self._errHandler.sync(self)
+                    _alt = self._interp.adaptivePredict(self._input,13,self._ctx)
+
+                self.state = 109
+                self._errHandler.sync(self)
+                _alt = self._interp.adaptivePredict(self._input,14,self._ctx)
+                while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
+                    if _alt==1:
+                        self.state = 106
+                        self.conditionals() 
+                    self.state = 111
+                    self._errHandler.sync(self)
+                    _alt = self._interp.adaptivePredict(self._input,14,self._ctx)
+
+                pass
+
 
         except RecognitionException as re:
             localctx.exception = re
@@ -480,56 +565,56 @@ class CKBParser ( Parser ):
         self.enterRule(localctx, 8, self.RULE_condition)
         self._la = 0 # Token type
         try:
-            self.state = 104
+            self.state = 139
             self._errHandler.sync(self)
-            la_ = self._interp.adaptivePredict(self._input,12,self._ctx)
+            la_ = self._interp.adaptivePredict(self._input,18,self._ctx)
             if la_ == 1:
                 self.enterOuterAlt(localctx, 1)
-                self.state = 79
+                self.state = 114
                 self.match(CKBParser.T__5)
-                self.state = 80
+                self.state = 115
                 localctx.consequent = self.formula(0)
-                self.state = 81
+                self.state = 116
                 self.match(CKBParser.T__6)
-                self.state = 82
+                self.state = 117
                 localctx.antecedent = self.formula(0)
-                self.state = 83
+                self.state = 118
                 self.match(CKBParser.T__7)
-                self.state = 84
+                self.state = 119
                 self.match(CKBParser.T__1)
-                self.state = 88
+                self.state = 123
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 while _la==15:
-                    self.state = 85
+                    self.state = 120
                     self.match(CKBParser.NEWLINE)
-                    self.state = 90
+                    self.state = 125
                     self._errHandler.sync(self)
                     _la = self._input.LA(1)
 
-                self.state = 91
+                self.state = 126
                 self.condition()
                 pass
 
             elif la_ == 2:
                 self.enterOuterAlt(localctx, 2)
-                self.state = 93
+                self.state = 128
                 self.match(CKBParser.T__5)
-                self.state = 94
+                self.state = 129
                 localctx.consequent = self.formula(0)
-                self.state = 95
+                self.state = 130
                 self.match(CKBParser.T__6)
-                self.state = 96
+                self.state = 131
                 localctx.antecedent = self.formula(0)
-                self.state = 97
+                self.state = 132
                 self.match(CKBParser.T__7)
-                self.state = 101
+                self.state = 136
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 while _la==15:
-                    self.state = 98
+                    self.state = 133
                     self.match(CKBParser.NEWLINE)
-                    self.state = 103
+                    self.state = 138
                     self._errHandler.sync(self)
                     _la = self._input.LA(1)
 
@@ -666,7 +751,7 @@ class CKBParser ( Parser ):
         self.enterRecursionRule(localctx, 10, self.RULE_formula, _p)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 114
+            self.state = 149
             self._errHandler.sync(self)
             token = self._input.LA(1)
             if token in [9]:
@@ -674,55 +759,55 @@ class CKBParser ( Parser ):
                 self._ctx = localctx
                 _prevctx = localctx
 
-                self.state = 107
+                self.state = 142
                 self.match(CKBParser.T__8)
-                self.state = 108
+                self.state = 143
                 self.formula(5)
                 pass
             elif token in [6]:
                 localctx = CKBParser.ParenContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 109
+                self.state = 144
                 self.match(CKBParser.T__5)
-                self.state = 110
+                self.state = 145
                 self.formula(0)
-                self.state = 111
+                self.state = 146
                 self.match(CKBParser.T__7)
                 pass
             elif token in [11]:
                 localctx = CKBParser.VarContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 113
+                self.state = 148
                 localctx.atom = self.match(CKBParser.ID)
                 pass
             else:
                 raise NoViableAltException(self)
 
             self._ctx.stop = self._input.LT(-1)
-            self.state = 124
+            self.state = 159
             self._errHandler.sync(self)
-            _alt = self._interp.adaptivePredict(self._input,15,self._ctx)
+            _alt = self._interp.adaptivePredict(self._input,21,self._ctx)
             while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
                 if _alt==1:
                     if self._parseListeners is not None:
                         self.triggerExitRuleEvent()
                     _prevctx = localctx
-                    self.state = 122
+                    self.state = 157
                     self._errHandler.sync(self)
-                    la_ = self._interp.adaptivePredict(self._input,14,self._ctx)
+                    la_ = self._interp.adaptivePredict(self._input,20,self._ctx)
                     if la_ == 1:
                         localctx = CKBParser.AndContext(self, CKBParser.FormulaContext(self, _parentctx, _parentState))
                         localctx.left = _prevctx
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_formula)
-                        self.state = 116
+                        self.state = 151
                         if not self.precpred(self._ctx, 4):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 4)")
-                        self.state = 117
+                        self.state = 152
                         self.match(CKBParser.T__1)
-                        self.state = 118
+                        self.state = 153
                         localctx.right = self.formula(5)
                         pass
 
@@ -730,20 +815,20 @@ class CKBParser ( Parser ):
                         localctx = CKBParser.OrContext(self, CKBParser.FormulaContext(self, _parentctx, _parentState))
                         localctx.left = _prevctx
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_formula)
-                        self.state = 119
+                        self.state = 154
                         if not self.precpred(self._ctx, 3):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 3)")
-                        self.state = 120
+                        self.state = 155
                         self.match(CKBParser.T__9)
-                        self.state = 121
+                        self.state = 156
                         localctx.right = self.formula(4)
                         pass
 
              
-                self.state = 126
+                self.state = 161
                 self._errHandler.sync(self)
-                _alt = self._interp.adaptivePredict(self._input,15,self._ctx)
+                _alt = self._interp.adaptivePredict(self._input,21,self._ctx)
 
         except RecognitionException as re:
             localctx.exception = re

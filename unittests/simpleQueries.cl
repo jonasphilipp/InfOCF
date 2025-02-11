@@ -1,9 +1,11 @@
-
+	(!a|a),
+	(a|!a),
+        (!f,Top|!a;Bottom),
         (!c|a,b),
         (kkk|e;abd),
-        	(e;d|d),
+       	(e;d|d),
         (f|e),
-        	(a|f),
+        (a|f),
         (!f|!a),
         (!f|!a,Top),
         (!f|!a;Bottom)

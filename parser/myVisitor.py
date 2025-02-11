@@ -38,7 +38,9 @@ class myVisitor(CKBVisitor):
         counter = Counter()
         order = OrderedDict()
         self.signature=self.visit(ctx.signature())
+        self.sigcheck = []
         ckbs = [self.visit(i) for i in ctx.conditionals()]
+        self.sigcheck=all([s in self.signature for s in self.sigcheck])
         for ckb in ckbs:
             counter.update([ckb.name])
             newid = counter[ckb.name]
@@ -61,10 +63,14 @@ class myVisitor(CKBVisitor):
     # Visit a parse tree produced by CKBParser#conditionals.
     def visitConditionals(self, ctx:CKBParser.ConditionalsContext):
         name = str(ctx.name.text)
-        conditionals = {i:c for i,c in enumerate(self.visit(ctx.condition()),start=1)}
+        conditionals=dict()
+        if (ctx.condition()!=None):
+            conditionals = {i:c for i,c in enumerate(self.visit(ctx.condition()),start=1)}
         #if len(conditionals) < 3:
         #    raise ValueError("Only CKB's with at least 3 conditionals are supported")
-        return BeliefBase(self.signature, conditionals, name)
+        bb=BeliefBase(self.signature, conditionals, name)
+        bb.sigcheck=self.sigcheck
+        return bb
 
 
     # Visit a parse tree produced by CKBParser#StrongConditional.
@@ -105,6 +111,7 @@ class myVisitor(CKBVisitor):
             return Bool(False)
         #if v not in self.signature:
         #    raise ValueError("variable %s not defined in signature" % v)
+        self.sigcheck.append(v)
         return Symbol(v, BOOL)
 
     # Visit a parse tree produced by CKBParser#And.

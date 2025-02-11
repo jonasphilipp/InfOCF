@@ -13,7 +13,8 @@ myid:
     
 
 conditionals:
-	 NEWLINE* 'conditionals' NEWLINE+ name=ID NEWLINE* '{' NEWLINE* condition '}'  NEWLINE* conditionals*
+	 NEWLINE* 'conditionals' NEWLINE+ name=ID NEWLINE*  '{' NEWLINE*  '}' NEWLINE* 
+	| NEWLINE* 'conditionals' NEWLINE+ name=ID NEWLINE*  '{' NEWLINE* condition '}'  NEWLINE* conditionals*
 	;
 
 condition:
