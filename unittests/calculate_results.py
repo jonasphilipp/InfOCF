@@ -86,7 +86,7 @@ for index, row in df.iterrows():
     results2 = sysw.inference(queries, total_timeout=total_timeout, preprocessing_timeout=preprocessing_timeout, inference_timeout=inference_timeout, multi_inference=multi_inference)
 
      
-    lexinf = InferenceOperator(belief_base, inference_system='lex_inf', smt_solver=smt_solver, pmaxsat_solver=pmaxsat_solver)
+    lexinf = InferenceOperator(belief_base, inference_system='lex_inf', smt_solver=smt_solver, pmaxsat_solver='z3')
     print(f'lex inf  on {belief_base_filepath}, {queries_filepath}')
     results3 = lexinf.inference(queries, total_timeout=total_timeout, preprocessing_timeout=preprocessing_timeout, inference_timeout=inference_timeout, multi_inference=multi_inference)           
     
@@ -111,6 +111,6 @@ print(all_results)
 # Optionally, save to a CSV file
 # uncomment lines below to do so
 
-#filename = os.path.join('unittests', 'example_testing_results.csv')
-#all_results.to_csv(filename, index=False)
+filename = os.path.join('unittests', 'example_testing_results.csv')
+all_results.to_csv(filename, index=False)
 
