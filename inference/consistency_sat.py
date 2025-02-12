@@ -10,7 +10,7 @@ def toImplicit(conditionals):
 def checkTautologies(conditionals):
     conditionals = [i for i in conditionals.values()]
     with Solver(name='z3'):
-        for c in consistency:
+        for c in conditionals:
             case1 = is_sat(c.make_A_then_B())
             case2 = is_sat(c.make_A_then_not_B())
             if not case1 or not case2: return True
@@ -54,7 +54,8 @@ def consistency(ckb, solver='z3', weakly=False):
                 #Maybe throw an error instead?
                 #print(calls, levels, 'False')
                 if weakly:
-                    ##doesnt even check whether the partition is weakly consistent 
+                    # if weakly flag set and returend list hast non-empty list as last element, 
+                    # then belief base is only weakly consistent
                     partition.append(C)
                     return partition, ([len(p) for p in partition],calls, levels)
                 else:
