@@ -1,5 +1,5 @@
 from time import time_ns
-from pysmt.shortcuts import Symbol, Int, LE, GE, And, Plus, Not,  is_unsat, Solver, LT, INT, GT
+from pysmt.shortcuts import Symbol, Int, LE, GE, And, Plus, Not, is_sat, is_unsat, Solver, LT, INT, GT
 from pysat.formula import WCNF
 from inference.inference import Inference
 from inference.conditional import Conditional
@@ -86,12 +86,15 @@ class CInference(Inference):
 
 
     def _inference(self, query: Conditional) -> bool:
-        qr=is_unsat(query.consequence)
-        ql=is_unsat(query.antecedence)
-        defeat = len(self.epistemic_state['belief_base'].conditionals)
-        if defeat==0: return ql,qr
-        if ql: return True
-        if qr: return False
+        selffullfilling = True
+        for conditional in self.epistemic_state['belief_base'].conditionals.values():
+            if is_sat (And(conditional.antecedence, Not(conditional.consequence))):
+                selffullfilling = False
+        if selffullfilling:
+            return False
+
+
+
         #self._translation_start_query()
         #translated_query = Conditional_z3.translate_from_existing(query)
         #self._translation_end_query()
