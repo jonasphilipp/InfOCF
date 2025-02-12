@@ -53,7 +53,6 @@ Returns:
 """
 def create_inference_instance(epistemic_state) -> Inference:
     if epistemic_state['inference_system'] == 'p-entailment':
-        epistemic_state['preprocessing_done'] = True
         inference_instance = PEntailment(epistemic_state)
     elif epistemic_state['inference_system'] == 'system-z':
         inference_instance = SystemZ(epistemic_state)

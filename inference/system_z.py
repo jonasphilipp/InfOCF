@@ -39,10 +39,7 @@ class SystemZ(Inference):
     def _inference(self, query: Conditional) -> bool:
         assert self.epistemic_state['partition'], 'belief_base inconsistent' 
         solver = Solver(name=self.epistemic_state['smt_solver'])
-        if is_unsat(query.antecedence) or is_unsat(And(query.antecedence, Not(query.consequence))): 
-            result = True
-        else:
-            result = self._rec_inference(solver, len(self.epistemic_state['partition']) -1, query) # type: ignore
+        result = self._rec_inference(solver, len(self.epistemic_state['partition']) -1, query) # type: ignore
         return result
    
 

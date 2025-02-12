@@ -2,6 +2,8 @@ import multiprocessing as mp
 from abc import ABC, abstractmethod
 from time import process_time_ns, process_time
 from inference.conditional import Conditional
+from inference.consistency_sat import consistency
+from pysmt.shortcuts import is_unsat, And, Not
 
 class Inference(ABC):
     """
@@ -30,6 +32,8 @@ class Inference(ABC):
     """
     def preprocess_belief_base(self, preprocessing_timeout: int) -> None: 
         #self._epistemic_state._preprocessing_timeout = preprocessing_timeout
+        cons, _ = consistency(self.epistemic_state['belief_base'], self.epistemic_state['smt_solver'])
+        assert cons != False, "belief base inconsistent"
         if preprocessing_timeout:    
             self.epistemic_state['kill_time'] = preprocessing_timeout + process_time()
         else:
@@ -92,7 +96,7 @@ class Inference(ABC):
                 self.epistemic_state['kill_time'] = 0
             try:
                 start_time = process_time_ns() / 1e+6
-                result = self._inference(query)
+                result = self.general_inference(query)
                 time = (process_time_ns() / 1e+6 - start_time)
                 result_dict[str(query)] = (index, result, False, time)
             except TimeoutError:
@@ -160,13 +164,24 @@ class Inference(ABC):
             self.epistemic_state['kill_time'] = 0
         try:
             start_time = process_time_ns() / 1e+6
-            result = self._inference(query)
+            result = self.general_inference(query)
             time = (process_time_ns() / 1e+6 - start_time)
             mp_return_dict[index] = (index, result, False, time)
         except TimeoutError:
             mp_return_dict[index] = (index, False, True, timeout * 1000)
         except Exception as e:
             raise e
+
+    def general_inference(self, query: Conditional):
+        if is_unsat(query.antecedence) or is_unsat(And(query.antecedence, Not(query.consequence))):
+            print('general_inference query selffullfilling')
+            return True
+        elif is_unsat(And(query.antecedence, query.consequence)): 
+            print("general_inference query inconsistent")
+            return False
+        else:
+            return self._inference(query)
+
 
     @abstractmethod
     def _inference(self, query: Conditional) -> bool:

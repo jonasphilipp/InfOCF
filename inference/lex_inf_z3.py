@@ -60,10 +60,7 @@ class LexInfZ3(Inference):
         opt_v.set(timeout=int(1000*(self.epistemic_state['kill_time'] - process_time())))
         opt_f = makeOptimizer()
         opt_f.set(timeout=int(1000*(self.epistemic_state['kill_time'] - process_time())))
-        if is_unsat(query.antecedence) or is_unsat(And(query.antecedence, Not(query.consequence))): 
-            result = True
-        else:
-            result = self._rec_inference(opt_v, opt_f, len(self.epistemic_state['partition']) -1, query_z3)
+        result = self._rec_inference(opt_v, opt_f, len(self.epistemic_state['partition']) -1, query_z3)
         #self._inference_end()
         return result
     
