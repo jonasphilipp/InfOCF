@@ -67,8 +67,8 @@ def create_inference_instance(epistemic_state) -> Inference:
     elif epistemic_state['inference_system'] == 'lex_inf':
         if epistemic_state['pmaxsat_solver'] == 'z3':
             inference_instance = LexInfZ3(epistemic_state)
-        else:
-            inference_instance = LexInf(epistemic_state)
+        #else:
+        #    inference_instance = LexInf(epistemic_state)
     else:
         Exception('no correct inference system provideid')
     return inference_instance #type: ignore
