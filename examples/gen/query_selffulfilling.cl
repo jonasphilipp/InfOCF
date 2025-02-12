@@ -15,4 +15,12 @@
 (!b | !a),
 (!a | !b),
 (a | c),
-(c | a)
+(c | a),
+(Top | a),
+(a | Top),
+(Bottom | a),
+(a | Bottom),
+(Top | Top),
+(Top | Bottom),
+(Bottom | Top),
+(Bottom | Bottom)
