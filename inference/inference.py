@@ -32,6 +32,8 @@ class Inference(ABC):
     """
     def preprocess_belief_base(self, preprocessing_timeout: int) -> None: 
         #self._epistemic_state._preprocessing_timeout = preprocessing_timeout
+        empty = len(self.epistemic_state['belief_base'].conditionals) == 0
+        assert not empty, "belief base empty"
         cons, _ = consistency(self.epistemic_state['belief_base'], self.epistemic_state['smt_solver'])
         assert cons != False, "belief base inconsistent"
         if preprocessing_timeout:    
