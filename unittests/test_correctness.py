@@ -19,7 +19,7 @@ pd.set_option('display.width', 0)
 inference_systems = ['p-entailment', 'system-z', 'system-w', 'lex_inf', 'c-inference']
 
 # Put any inference system that should be excluded from testing here
-excluded_systems = ['c-inference']
+excluded_systems = []
 
 test_sets = ['example_testing_results.csv']
 
