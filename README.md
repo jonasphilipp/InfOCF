@@ -29,6 +29,6 @@ To install InfOCF follow the steps in the [installation guide](docs/INSTALL.md).
 
 ### Usage
 
-The usage of InfOCF is demonstrated in [show.py](docs/show.py).
+The usage of InfOCF is demonstrated in [show.py](show.py).
 
-A small example showing how to get started can be found in [show_minimal.py](docs/show_minimal.py).
+A small example showing how to get started can be found in [show_minimal.py](show_minimal.py).
