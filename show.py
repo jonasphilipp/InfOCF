@@ -56,8 +56,8 @@ for j in [60]:
         for l in range(13, 16):
 
             # set belief_base/queries location
-            belief_base_filename = os.path.join('sum_bench', f'randomTest_{i}_{j}_{l}.cl')
-            queries_filename = os.path.join('sum_bench', f'randomQueries_{i}_{j}_{l}.cl')
+            belief_base_filename = os.path.join('examples', 'random_large', f'randomTest_{i}_{j}_{l}.cl')
+            queries_filename = os.path.join('examples', 'random_large', f'randomQueries_{i}_{j}_{l}.cl')
 
             # parse belief_base/queries
             belief_base = parse_belief_base(belief_base_filename)
