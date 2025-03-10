@@ -1,10 +1,11 @@
 ## Benchmarking results format
-Every benchmark instance of 'folks_longest_cqueries.csv' is indenified by 4 numbers: (signature size,amount of conditonals,index ckb,index query).
-'folks_tough_queries.zip' contains the corresponding CKB's and query files.
-For example: (signature size,amount of conditonals,index ckb,index query) = (60,60,46,3)
-means that this result refers to 'randomTest_60_60_46.cl' and the third query in 'randomQueries_60_60_46.cl'
+Every benchmark instance of 'folks_longest_cqueries.csv' is indenified by 4 numbers: \
+(signature size,amount of conditonals,index ckb,index query). \
+'folks_tough_queries.zip' contains the corresponding CKB's and query files.\
+For example: (signature size,amount of conditonals,index ckb,index query) = (60,60,46,3) \
+means that this result refers to 'randomTest_60_60_46.cl' and the third query in 'randomQueries_60_60_46.cl' 
 
-'cinf_sum_longest_queries.csv' and 'sum_archive.zip' are strucutred in a similiar way.
+'cinf_sum_longest_queries.csv' and 'sum_archive.zip' are strucutred in a similiar way. 
 
 
 ## Naming scheme
