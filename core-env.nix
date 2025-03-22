@@ -50,6 +50,8 @@
 		pip install func-timeout
 		pip install python-sat
 		pip install pysmt
+		pip install BitVector
+		pip install frozenlist
 
 		export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH
 		export Z3_LIBRARY_PATH=$(python -c "import z3; print(z3.__file__)")/lib
