@@ -33,12 +33,12 @@ class PreOCF():
         self.signature = tuple([s for s in epistemic_state['belief_base'].signature if s not in marginalization])
         if self.signature not in self.epistemic_state['preocfs']:
             #ranks : dict[int, None | int] = {i: None for i in range(len(self.signature)**2)}  
-            ranks = self.bitvec_worlds()
+            ranks = self.create_bitvec_world_dict()
             self.epistemic_state['preocfs'][self.signature] = ranks
 
 
-    def bitvec_worlds(self) -> dict[str, None]:
-        worlds = {str(BitVector(intVal=i, size=len(self.signature))) for i in range(len(self.signature)**2)}
+    def create_bitvec_world_dict(self) -> dict[str, None]:
+        worlds = {str(BitVector(intVal=i, size=len(self.signature))) for i in range(2 ** len(self.signature))}
         ranks = {w: None for w in worlds}
         return ranks
 
@@ -61,7 +61,7 @@ class PreOCF():
 
     def is_ocf(self) -> bool:
         for world in self.ranks.keys():
-            if self.ranks[world] is None or self.ranks[r] < 0: # type: ignore
+            if self.ranks[world] is None or self.ranks[world] < 0: # type: ignore
                 return False
         return True
    
@@ -72,7 +72,7 @@ class PreOCF():
 
     def conditionalization_accepts_world(self, world: str, conditionalization: dict[str, int]) -> bool:
         for key, value in conditionalization.items():
-            if world[self.signature.index(key)] != value:
+            if int(world[self.signature.index(key)]) != value:
                 return False
         return True
 
@@ -90,6 +90,9 @@ class PreOCF():
         worlds = self.filter_worlds_by_conditionalization(conditionalization)
         conditionalized_ranks = {w: self.ranks[w] for w in worlds}
         return conditionalized_ranks
+
+    def compute_all_ranks(self):
+        [self.rank_world(w) for w in self.ranks.keys() ]
 
 
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
