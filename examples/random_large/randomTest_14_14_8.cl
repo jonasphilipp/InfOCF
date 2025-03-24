@@ -1,0 +1,19 @@
+signature
+ygcgbq,dljhui,yhhtej,lkptgt,fywabm,szybdx,wwptuo,qfjfku,gzdeeg,bqlced,tcxthy,sstwdl,puexkj,zqvccq
+conditionals
+randomTest_14_14_8 {
+(((bqlced,(!(!zqvccq))),((puexkj;sstwdl);((!wwptuo),(!((gzdeeg,lkptgt),(yhhtej;szybdx))))))|qfjfku),
+(((gzdeeg,zqvccq);(dljhui;qfjfku))|((!bqlced),((yhhtej;tcxthy),((!puexkj),sstwdl)))),
+(sstwdl|(ygcgbq,((fywabm,zqvccq),puexkj))),
+((puexkj;(sstwdl,zqvccq))|((tcxthy,qfjfku),(dljhui;fywabm))),
+(((lkptgt;wwptuo);fywabm)|tcxthy),
+(((!lkptgt);(zqvccq,yhhtej))|wwptuo),
+((zqvccq;szybdx)|(bqlced;(((((!(sstwdl,puexkj));yhhtej);(!(!lkptgt))),(fywabm;ygcgbq)),gzdeeg))),
+(((tcxthy,(szybdx,qfjfku)),gzdeeg)|(zqvccq;((lkptgt;((yhhtej;sstwdl);ygcgbq));dljhui))),
+((((!dljhui);gzdeeg),((wwptuo;yhhtej);(!((ygcgbq;fywabm),lkptgt))))|bqlced),
+(((fywabm,ygcgbq);(!(!szybdx)))|puexkj),
+(((ygcgbq;zqvccq),(lkptgt,yhhtej))|(((qfjfku;puexkj),(!sstwdl));dljhui)),
+(((yhhtej;lkptgt);bqlced)|((!(zqvccq;((!puexkj),(!qfjfku)))),fywabm)),
+((dljhui;fywabm)|(sstwdl;bqlced)),
+(((bqlced;(!fywabm)),szybdx)|(((wwptuo;(lkptgt,((!qfjfku),gzdeeg)));(yhhtej;dljhui)),(!(!ygcgbq))))
+}
