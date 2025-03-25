@@ -42,8 +42,8 @@ class TestPreOCF(unittest.TestCase):
 
     def test_ranks_and_conditionalization(self):
         conditionalization = {'xxvhqj': 1, 'mwmsty': 1, 'cqosod': 1, 'euhfwd': 1, 'gqymvz': 1, 'vlpxza': 1, 'wcqayf': 1, 'jwrubk': 1}
-        assert self.preocf_z.conditionalization_accepts_world('1111111000', conditionalization) == False
-        assert self.preocf_z.conditionalization_accepts_world('1111111100', conditionalization) == True
+        assert self.preocf_z.conditionalization_permits_world('1111111000', conditionalization) == False
+        assert self.preocf_z.conditionalization_permits_world('1111111100', conditionalization) == True
         assert self.preocf_z.is_ocf() == False
         assert len(self.preocf_z.ranks.keys()) == 1024
         conditionalized_worlds = self.preocf_z.filter_worlds_by_conditionalization(conditionalization)
