@@ -1,6 +1,15 @@
 from binascii import Error
 import random
 from BitVector import BitVector
+import pysmt
+from pysmt.shortcuts import Symbol, Not, Solver
+from pysmt.typing import BOOL
+from inference import c_inference, system_z
+import inference
+import logging
+
+# Create a logger object
+logger = logging.getLogger(__name__)
 
 class PreOCF():
     epistemic_state: dict
@@ -98,18 +107,45 @@ class PreOCF():
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
         if force_calculation or self.ranks[world] is None:
             if self.epistemic_state['inference_system'] == 'system-z':
-                self.z_part2ocf(world)
+                self.ranks[world] = self.z_part2ocf(world)
             elif self.epistemic_state['inference_system'] == 'c-inference':
-                self.c_vec2ocf(world)
+                self.ranks[world] = self.c_vec2ocf(world)
             else:
-                Error('pls select "system-z" or "c-inference" as inference system')
+                logger.error('pls select "system-z" or "c-inference" as inference system')
         rank = self.ranks[world]
         assert rank is not None
         return rank 
+    
+
+    def symbolize_bitvec(self, bitvec: str):
+        sig = self.signature
+        symbols =[Symbol(sig[i], BOOL) if int(bitvec[i]) else Not(Symbol(sig[i], BOOL)) for i in range(len(sig))]
+        return symbols
 
 
-    def z_part2ocf(self, world: str) -> None:
-        self.ranks[world] = random.randint(0, 10)
+    def z_part2ocf(self, world: str) -> int:
+        assert not self.epistemic_state['preprocessing_timed_out']
+        if not self.epistemic_state['preprocessing_done']:
+            logger.info('calculating z partition') 
+            inference = system_z.SystemZ(self.epistemic_state)
+            inference.preprocess_belief_base(0)
+        signature_symbols = self.symbolize_bitvec(world)
+        solver = Solver(name=self.epistemic_state['smt_solver'])
+        [solver.add_assertion(s) for s in signature_symbols]
+        rank = self._rec_z_rank(solver, len(self.epistemic_state['partition']) - 1)
+        return rank 
+
+    def _rec_z_rank(self, solver, partition_index) -> int:
+        assert type(self.epistemic_state['partition']) == list
+        part = self.epistemic_state['partition'][partition_index]
+        [solver.add_assertion(Not(c.make_A_then_not_B())) for c in part]
+        if solver.solve():
+            if partition_index ==0:
+                return 0
+            else:
+                return self._rec_z_rank(solver, partition_index - 1)
+        else:
+            return partition_index + 1
 
 
     def c_vec2ocf(self, world: str) -> None:
