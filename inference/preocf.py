@@ -7,6 +7,8 @@ from pysmt.typing import BOOL
 from inference import c_inference, system_z
 import inference
 import logging
+from inference.conditional import Conditional
+
 
 # Create a logger object
 logger = logging.getLogger(__name__)
@@ -79,7 +81,7 @@ class PreOCF():
         return PreOCF(self.epistemic_state, marginalization)
 
 
-    def conditionalization_accepts_world(self, world: str, conditionalization: dict[str, int]) -> bool:
+    def conditionalization_permits_world(self, world: str, conditionalization: dict[str, int]) -> bool:
         for key, value in conditionalization.items():
             if int(world[self.signature.index(key)]) != value:
                 return False
@@ -87,7 +89,7 @@ class PreOCF():
 
 
     def filter_worlds_by_conditionalization(self, conditionalization: dict[str, int]) -> list[str]:
-        return [w for w in self.ranks.keys() if self.conditionalization_accepts_world(w, conditionalization)]
+        return [w for w in self.ranks.keys() if self.conditionalization_permits_world(w, conditionalization)]
 
 
     def compute_conditionalization(self, conditionalization: dict[str, int]):
@@ -146,7 +148,41 @@ class PreOCF():
                 return self._rec_z_rank(solver, partition_index - 1)
         else:
             return partition_index + 1
-
+    # smallest rank of any world that satisfies formula
+    def formula_rank(self, formula: pysmt.fnode.FNode) -> int:
+        solver = Solver(name=self.epistemic_state['smt_solver'])
+        min_rank = -1
+        
+        # Check each world
+        for world in self.ranks.keys():
+            # Create a new solver instance for each world
+            world_solver = Solver(name=self.epistemic_state['smt_solver'])
+            
+            # Add the world's constraints
+            world_symbols = self.symbolize_bitvec(world)
+            [world_solver.add_assertion(s) for s in world_symbols]
+            
+            # Add the formula to check
+            world_solver.add_assertion(formula)
+            
+            # If this world satisfies the formula, check its rank
+            if world_solver.solve():
+                rank = self.rank_world(world)
+                if min_rank == -1 or rank < min_rank:
+                    min_rank = rank
+        
+        return min_rank
+    
+    # true if formula_rank of verification is smaller than formula_rank of negation
+    def conditional_acceptance(self, conditional: Conditional) -> bool:
+        v = conditional.make_A_then_B()
+        n = conditional.make_A_then_not_B()
+        return self.formula_rank(v) < self.formula_rank(n)
+    
+    # convert ranks to total preorder
+    def ranks2tpo(self, ranks: dict[str, None | int]) -> list[list[str]]:
+        #todo: implement
+        return []
 
     def c_vec2ocf(self, world: str) -> None:
         self.ranks[world] = random.randint(0, 10)
