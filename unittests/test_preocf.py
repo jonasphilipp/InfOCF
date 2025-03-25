@@ -1,8 +1,11 @@
 import unittest
 import os
+from inference import conditional
 from inference.preocf import PreOCF
 from inference.inference_operator import create_epistemic_state
 from parser.Wrappers import parse_belief_base, parse_queries
+from pysmt.shortcuts import Symbol, Equals, Bool, Solver, Iff, Not
+from pysmt.typing import BOOL
 
 class TestPreOCF(unittest.TestCase):
     @classmethod
@@ -48,6 +51,35 @@ class TestPreOCF(unittest.TestCase):
         conditionalized_dict = self.preocf_z.conditionalize_ranks(conditionalization)
         assert len(conditionalized_dict.keys()) == 4
         assert list(conditionalized_dict.keys()) == conditionalized_worlds
+
+    def test_signature_and_conditionals(self):
+        signature = self.preocf_z.signature
+        print(f'signature {signature}')
+        print(f'signature[1] {signature[0]}')
+        print(f'type(signature[1]) {type(signature[0])}')
+        conditionals = self.epistemic_state_z['belief_base'].conditionals
+        print(f'conditionals {conditionals}')
+        print(f'conditionals[1].antecedence {conditionals[1].antecedence}')
+        print(f'type(conditionals[1].antecedence) {type(conditionals[1].antecedence)}')
+        print(f'type(conditionals[1].consequence) {type(conditionals[1].consequence)}')
+        solver = Solver(name=self.epistemic_state_z['smt_solver'])
+        sig_1 = Symbol(signature[0], BOOL)
+        not_sig_1 = Not(sig_1)
+        sig_7 = Symbol(signature[0], BOOL)
+        print(f'sig_1 {sig_1}')
+        print(f'type(sig_1) {type(sig_1)}')
+        solver.add_assertion(conditionals[1].make_A_then_B())
+        solver.add_assertion(sig_7)
+        assert solver.solve() == True
+        solver.push()
+        solver.add_assertion(sig_1)
+        assert solver.solve() == True
+        solver.pop()
+        solver.add_assertion(not_sig_1)
+        assert solver.solve() == False
+        print(f'not_sig_1 {not_sig_1}')
+
+
 
         
 
