@@ -20,11 +20,16 @@ class TestPreOCF(unittest.TestCase):
             raise FileNotFoundError(f"Test file not found at: {filepath}")
             
         bb = parse_belief_base(filepath)
+        str_birds = "signature\nb,p,f,w\n\nconditionals\nbirds{\n(f|b),\n(!f|p),\n(b|p),(w|b)\n}"
+        bb_birds = parse_belief_base(str_birds)
         smt_solver = 'z3'
         pmaxsat_solver = 'z3'
         cls.epistemic_state_z = create_epistemic_state(bb, inference_system= 'system-z', smt_solver=smt_solver, pmaxsat_solver=pmaxsat_solver)
         cls.epistemic_state_z['preocfs'] = dict()
         cls.preocf_z = PreOCF(cls.epistemic_state_z)
+        cls.epistemic_state_z_birds = create_epistemic_state(bb_birds, inference_system= 'system-z', smt_solver=smt_solver, pmaxsat_solver=pmaxsat_solver)
+        cls.epistemic_state_z_birds['preocfs'] = dict()
+        cls.preocf_z_birds = PreOCF(cls.epistemic_state_z_birds)
 
     def test_bitvec_world_ranks(self):
         ranks = self.preocf_z.ranks
@@ -51,6 +56,12 @@ class TestPreOCF(unittest.TestCase):
         conditionalized_dict = self.preocf_z.conditionalize_ranks(conditionalization)
         assert len(conditionalized_dict.keys()) == 4
         assert list(conditionalized_dict.keys()) == conditionalized_worlds
+
+        self.preocf_z_birds.compute_all_ranks()
+        assert self.preocf_z_birds.ranks['1111'] == 2
+        assert self.preocf_z_birds.ranks['0000'] == 0
+        assert self.preocf_z_birds.ranks['1011'] == 0
+        assert self.preocf_z_birds.ranks['1001'] == 1
 
     def test_signature_and_conditionals(self):
         signature = self.preocf_z.signature
