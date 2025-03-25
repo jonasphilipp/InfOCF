@@ -102,6 +102,7 @@ class PreOCF():
         conditionalized_ranks = {w: self.ranks[w] for w in worlds}
         return conditionalized_ranks
 
+
     def compute_all_ranks(self):
         [self.rank_world(w) for w in self.ranks.keys() ]
 
@@ -137,6 +138,7 @@ class PreOCF():
         rank = self._rec_z_rank(solver, len(self.epistemic_state['partition']) - 1)
         return rank 
 
+
     def _rec_z_rank(self, solver, partition_index) -> int:
         assert type(self.epistemic_state['partition']) == list
         part = self.epistemic_state['partition'][partition_index]
@@ -148,10 +150,12 @@ class PreOCF():
                 return self._rec_z_rank(solver, partition_index - 1)
         else:
             return partition_index + 1
+        
+
     # smallest rank of any world that satisfies formula
-    def formula_rank(self, formula: pysmt.fnode.FNode) -> int:
+    def formula_rank(self, formula: pysmt.fnode.FNode) -> int | None:
         solver = Solver(name=self.epistemic_state['smt_solver'])
-        min_rank = -1
+        min_rank = None
         
         # Check each world
         for world in self.ranks.keys():
@@ -168,21 +172,54 @@ class PreOCF():
             # If this world satisfies the formula, check its rank
             if world_solver.solve():
                 rank = self.rank_world(world)
-                if min_rank == -1 or rank < min_rank:
+                if min_rank is None or rank < min_rank:
                     min_rank = rank
         
         return min_rank
     
+
     # true if formula_rank of verification is smaller than formula_rank of negation
     def conditional_acceptance(self, conditional: Conditional) -> bool:
         v = conditional.make_A_then_B()
         n = conditional.make_A_then_not_B()
-        return self.formula_rank(v) < self.formula_rank(n)
+        v_rank = self.formula_rank(v)
+        n_rank = self.formula_rank(n)
+        
+        if v_rank is None:
+            return False
+        
+        if n_rank is None:
+            return True
+        
+        return v_rank < n_rank
     
+
     # convert ranks to total preorder
     def ranks2tpo(self, ranks: dict[str, None | int]) -> list[list[str]]:
-        #todo: implement
-        return []
+        # Group worlds by their rank
+        rank_groups: dict[int, list[str]] = {}
+        for world, rank in ranks.items():
+            if rank is not None:
+                if rank not in rank_groups:
+                    rank_groups[rank] = []
+                rank_groups[rank].append(world)
+        
+        # Sort groups by rank and return as list of lists
+        return [rank_groups[rank] for rank in sorted(rank_groups.keys())]
+    
+    # convert total preorder to ranks
+    # explanation: dict(layer num: diff to rank of next higher layer)
+    def tpo2ranks(tpo: list[list[str]], multiplier: int, layer_diffs: dict[int, int]) -> dict[str, None | int]:
+        ranks = {}
+        for layer_num, layer in enumerate(tpo):
+            for world in layer:
+                if world not in ranks:
+                    ranks[world] = 0
+                if layer_num > 0:
+                    ranks[world] += sum(layer_diffs[i] * multiplier for i in range(layer_num))
+        return ranks
+        
+
 
     def c_vec2ocf(self, world: str) -> None:
         self.ranks[world] = random.randint(0, 10)
