@@ -1,11 +1,14 @@
+from enum import verify
 import unittest
 import os
-from inference import conditional
+from inference.system_z import SystemZ
+from inference.conditional import Conditional
 from inference.preocf import PreOCF
 from inference.inference_operator import create_epistemic_state
 from parser.Wrappers import parse_belief_base, parse_queries
-from pysmt.shortcuts import Symbol, Equals, Bool, Solver, Iff, Not
+from pysmt.shortcuts import Symbol, Equals, Bool, Solver, Iff, Not, And
 from pysmt.typing import BOOL
+from inference.inference_operator import InferenceOperator
 
 class TestPreOCF(unittest.TestCase):
     @classmethod
@@ -39,30 +42,6 @@ class TestPreOCF(unittest.TestCase):
             assert key in worlds
             assert self.preocf_z.ranks[key] == None
 
-
-    def test_ranks_and_conditionalization(self):
-        conditionalization = {'xxvhqj': 1, 'mwmsty': 1, 'cqosod': 1, 'euhfwd': 1, 'gqymvz': 1, 'vlpxza': 1, 'wcqayf': 1, 'jwrubk': 1}
-        assert self.preocf_z.conditionalization_permits_world('1111111000', conditionalization) == False
-        assert self.preocf_z.conditionalization_permits_world('1111111100', conditionalization) == True
-        assert self.preocf_z.is_ocf() == False
-        assert len(self.preocf_z.ranks.keys()) == 1024
-        conditionalized_worlds = self.preocf_z.filter_worlds_by_conditionalization(conditionalization)
-        assert len(conditionalized_worlds) == 4
-        self.preocf_z.compute_conditionalization(conditionalization)
-        assert self.preocf_z.is_ocf() == False
-        assert len({key for key in self.preocf_z.ranks.keys() if self.preocf_z.ranks[key] != None}) == 4
-        self.preocf_z.compute_all_ranks()
-        assert self.preocf_z.is_ocf() == True
-        conditionalized_dict = self.preocf_z.conditionalize_ranks(conditionalization)
-        assert len(conditionalized_dict.keys()) == 4
-        assert list(conditionalized_dict.keys()) == conditionalized_worlds
-
-        self.preocf_z_birds.compute_all_ranks()
-        assert self.preocf_z_birds.ranks['1111'] == 2
-        assert self.preocf_z_birds.ranks['0000'] == 0
-        assert self.preocf_z_birds.ranks['1011'] == 0
-        assert self.preocf_z_birds.ranks['1001'] == 1
-
     def test_signature_and_conditionals(self):
         signature = self.preocf_z.signature
         print(f'signature {signature}')
@@ -89,6 +68,58 @@ class TestPreOCF(unittest.TestCase):
         solver.add_assertion(not_sig_1)
         assert solver.solve() == False
         print(f'not_sig_1 {not_sig_1}')
+
+
+    def test_ranks_and_conditionalization(self):
+        conditionalization = {'xxvhqj': 1, 'mwmsty': 1, 'cqosod': 1, 'euhfwd': 1, 'gqymvz': 1, 'vlpxza': 1, 'wcqayf': 1, 'jwrubk': 1}
+        assert self.preocf_z.conditionalization_permits_world('1111111000', conditionalization) == False
+        assert self.preocf_z.conditionalization_permits_world('1111111100', conditionalization) == True
+        assert self.preocf_z.is_ocf() == False
+        assert len(self.preocf_z.ranks.keys()) == 1024
+        conditionalized_worlds = self.preocf_z.filter_worlds_by_conditionalization(conditionalization)
+        assert len(conditionalized_worlds) == 4
+        self.preocf_z.compute_conditionalization(conditionalization)
+        assert self.preocf_z.is_ocf() == False
+        assert len({key for key in self.preocf_z.ranks.keys() if self.preocf_z.ranks[key] != None}) == 4
+        self.preocf_z.compute_all_ranks()
+        assert self.preocf_z.is_ocf() == True
+        conditionalized_dict = self.preocf_z.conditionalize_ranks(conditionalization)
+        assert len(conditionalized_dict.keys()) == 4
+        assert list(conditionalized_dict.keys()) == conditionalized_worlds
+
+        self.preocf_z_birds.compute_all_ranks()
+        assert self.preocf_z_birds.ranks['1111'] == 2
+        assert self.preocf_z_birds.ranks['0000'] == 0
+        assert self.preocf_z_birds.ranks['1011'] == 0
+        assert self.preocf_z_birds.ranks['1001'] == 1
+        
+        b = Symbol('b', BOOL)
+        p = Symbol('p', BOOL)
+        f = Symbol('f', BOOL)
+        w = Symbol('w', BOOL)
+
+
+        assert self.preocf_z_birds.formula_rank(And(Not(p), p)) == None
+        assert self.preocf_z_birds.formula_rank(And(b, b)) == 0
+        assert self.preocf_z_birds.formula_rank(And(p, p)) == 1
+
+        assert self.preocf_z_birds.conditional_acceptance(Conditional(p, f, '(f|p)')) == False
+        cond = Conditional(b, p, '(b|p)')
+        verify = cond.make_A_then_B()
+        falsify = cond.make_A_then_not_B()
+        rv = self.preocf_z_birds.formula_rank(verify)
+        rf = self.preocf_z_birds.formula_rank(falsify)
+        assert rv == 1
+        assert rf == 2
+        assert self.preocf_z_birds.conditional_acceptance(Conditional(b, w, '(w|b)')) == False
+
+        sys_z = SystemZ(self.epistemic_state_z_birds)
+        sys_z.preprocess_belief_base(0)
+        for antecedence in [b, p, f, w, Not(b), Not(p), Not(f), Not(w)]:
+            for consequence in [b, p, f, w, Not(b), Not(p), Not(f), Not(w)]:
+                conditional = Conditional(consequence, antecedence, f'({consequence}|{antecedence})')
+                assert sys_z.general_inference(conditional) == self.preocf_z_birds.conditional_acceptance(conditional) 
+                
 
 
 

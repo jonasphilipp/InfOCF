@@ -4,6 +4,7 @@ from BitVector import BitVector
 import pysmt
 from pysmt.shortcuts import Symbol, Not, Solver
 from pysmt.typing import BOOL
+from pysmt.fnode import FNode
 from inference import c_inference, system_z
 import inference
 import logging
@@ -153,7 +154,7 @@ class PreOCF():
         
 
     # smallest rank of any world that satisfies formula
-    def formula_rank(self, formula: pysmt.fnode.FNode) -> int | None:
+    def formula_rank(self, formula: FNode) -> int | None:
         solver = Solver(name=self.epistemic_state['smt_solver'])
         min_rank = None
         
@@ -209,7 +210,7 @@ class PreOCF():
     
     # convert total preorder to ranks
     # explanation: dict(layer num: diff to rank of next higher layer)
-    def tpo2ranks(tpo: list[list[str]], multiplier: int, layer_diffs: dict[int, int]) -> dict[str, None | int]:
+    def tpo2ranks(self, tpo: list[list[str]], multiplier: int, layer_diffs: dict[int, int]) -> dict[str, None | int]:
         ranks = {}
         for layer_num, layer in enumerate(tpo):
             for world in layer:
