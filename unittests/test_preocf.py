@@ -3,12 +3,13 @@ import unittest
 import os
 from inference.system_z import SystemZ
 from inference.conditional import Conditional
-from inference.preocf import PreOCF
+from inference.preocf import PreOCF, ranks2tpo, tpo2ranks
 from inference.inference_operator import create_epistemic_state
 from parser.Wrappers import parse_belief_base, parse_queries
 from pysmt.shortcuts import Symbol, Equals, Bool, Solver, Iff, Not, And
 from pysmt.typing import BOOL
 from inference.inference_operator import InferenceOperator
+import random
 
 class TestPreOCF(unittest.TestCase):
     @classmethod
@@ -118,9 +119,18 @@ class TestPreOCF(unittest.TestCase):
         for antecedence in [b, p, f, w, Not(b), Not(p), Not(f), Not(w)]:
             for consequence in [b, p, f, w, Not(b), Not(p), Not(f), Not(w)]:
                 conditional = Conditional(consequence, antecedence, f'({consequence}|{antecedence})')
-                assert sys_z.general_inference(conditional) == self.preocf_z_birds.conditional_acceptance(conditional) 
-                
+                assert sys_z.general_inference(conditional) == self.preocf_z_birds.conditional_acceptance(conditional)
 
+    def test_tpo(self):
+        tpo_in = [{'1011', '0011', '0010', '0001', '0000'},{'1101', '1100', '1010', '1001', '1000'},{'1111', '1110', '0111', '0110', '0101', '0100'}]
+        tpo_out = ranks2tpo(self.preocf_z_birds.ranks)
+        assert tpo_in == tpo_out
+
+        layer_diffs = {i: random.randint(2, 20) for i in range(len(tpo_in))}
+        multiplier = random.randint(2, 20)
+        ranks_new = tpo2ranks(tpo_in, multiplier, layer_diffs)
+        assert ranks_new != self.preocf_z_birds.ranks
+        assert tpo_in == tpo_out == ranks2tpo(ranks_new)
 
 
         

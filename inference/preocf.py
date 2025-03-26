@@ -195,33 +195,35 @@ class PreOCF():
         return v_rank < n_rank
     
 
-    # convert ranks to total preorder
-    def ranks2tpo(self, ranks: dict[str, None | int]) -> list[list[str]]:
-        # Group worlds by their rank
-        rank_groups: dict[int, list[str]] = {}
-        for world, rank in ranks.items():
-            if rank is not None:
-                if rank not in rank_groups:
-                    rank_groups[rank] = []
-                rank_groups[rank].append(world)
-        
-        # Sort groups by rank and return as list of lists
-        return [rank_groups[rank] for rank in sorted(rank_groups.keys())]
-    
-    # convert total preorder to ranks
-    # explanation: dict(layer num: diff to rank of next higher layer)
-    def tpo2ranks(self, tpo: list[list[str]], multiplier: int, layer_diffs: dict[int, int]) -> dict[str, None | int]:
-        ranks = {}
-        for layer_num, layer in enumerate(tpo):
-            for world in layer:
-                if world not in ranks:
-                    ranks[world] = 0
-                if layer_num > 0:
-                    ranks[world] += sum(layer_diffs[i] * multiplier for i in range(layer_num))
-        return ranks
+
         
 
 
     def c_vec2ocf(self, world: str) -> None:
         self.ranks[world] = random.randint(0, 10)
 
+
+# convert ranks to total preorder
+def ranks2tpo(ranks: dict[str, None | int]) -> list[set[str]]:
+    # Group worlds by their rank
+    rank_groups: dict[int, set[str]] = {}
+    for world, rank in ranks.items():
+        if rank is not None:
+            if rank not in rank_groups:
+                rank_groups[rank] = set()
+            rank_groups[rank].add(world)
+    
+    # Sort groups by rank and return as list of lists
+    return [rank_groups[rank] for rank in sorted(rank_groups.keys())]
+
+# convert total preorder to ranks
+# explanation: dict(layer num: diff to rank of next higher layer)
+def tpo2ranks(tpo: list[set[str]], multiplier: int, layer_diffs: dict[int, int]) -> dict[str, None | int]:
+    ranks = {}
+    for layer_num, layer in enumerate(tpo):
+        for world in layer:
+            if world not in ranks:
+                ranks[world] = 0
+            if layer_num > 0:
+                ranks[world] += sum(layer_diffs[i] * multiplier for i in range(layer_num))
+    return ranks
