@@ -81,31 +81,41 @@ class PreOCF():
     def marginalize(self, marginalization: set):
         return PreOCF(self.epistemic_state, marginalization)
 
-
+    '''
+    # not only sig elems
     def conditionalization_permits_world(self, world: str, conditionalization: dict[str, int]) -> bool:
         for key, value in conditionalization.items():
             if int(world[self.signature.index(key)]) != value:
                 return False
         return True
+    '''
+
+    # world satisfies formula
+    def world_satisfies_conditionalization(self, world: str, conditionalization: FNode) -> bool:
+        solver = Solver(name=self.epistemic_state['smt_solver'])
+        world_symbols = self.symbolize_bitvec(world)
+        [solver.add_assertion(s) for s in world_symbols]
+        solver.add_assertion(conditionalization)
+        return solver.solve()
 
 
-    def filter_worlds_by_conditionalization(self, conditionalization: dict[str, int]) -> list[str]:
-        return [w for w in self.ranks.keys() if self.conditionalization_permits_world(w, conditionalization)]
+    def filter_worlds_by_conditionalization(self, conditionalization: FNode) -> list[str]:
+        return [w for w in self.ranks.keys() if self.world_satisfies_conditionalization(w, conditionalization)]
 
 
-    def compute_conditionalization(self, conditionalization: dict[str, int]):
+    def compute_conditionalization(self, conditionalization: FNode) -> dict[str, None | int]:
         worlds = self.filter_worlds_by_conditionalization(conditionalization)
-        {self.rank_world(w) for w in worlds if self.ranks[w] is None}
+        return {w: self.rank_world(w) for w in worlds if self.ranks[w] is None}
 
 
-    def conditionalize_ranks(self, conditionalization: dict[str, int]) -> dict[str, None | int]:
+    def conditionalize_existing_ranks(self, conditionalization: FNode) -> dict[str, None | int]:
         worlds = self.filter_worlds_by_conditionalization(conditionalization)
         conditionalized_ranks = {w: self.ranks[w] for w in worlds}
         return conditionalized_ranks
 
 
-    def compute_all_ranks(self):
-        [self.rank_world(w) for w in self.ranks.keys() ]
+    def compute_all_ranks(self) -> dict[str, None | int]:
+        return {w: self.rank_world(w) for w in self.ranks.keys() if self.ranks[w] is None}
 
 
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
@@ -123,7 +133,7 @@ class PreOCF():
 
     def symbolize_bitvec(self, bitvec: str):
         sig = self.signature
-        symbols =[Symbol(sig[i], BOOL) if int(bitvec[i]) else Not(Symbol(sig[i], BOOL)) for i in range(len(sig))]
+        symbols = [Symbol(sig[i], BOOL) if int(bitvec[i]) else Not(Symbol(sig[i], BOOL)) for i in range(len(sig))]
         return symbols
 
 
@@ -155,26 +165,29 @@ class PreOCF():
 
     # smallest rank of any world that satisfies formula
     def formula_rank(self, formula: FNode) -> int | None:
-        solver = Solver(name=self.epistemic_state['smt_solver'])
         min_rank = None
+        solver = Solver(name=self.epistemic_state['smt_solver'])
         
         # Check each world
         for world in self.ranks.keys():
-            # Create a new solver instance for each world
-            world_solver = Solver(name=self.epistemic_state['smt_solver'])
+            # Push a new scope
+            solver.push()
             
             # Add the world's constraints
             world_symbols = self.symbolize_bitvec(world)
-            [world_solver.add_assertion(s) for s in world_symbols]
+            [solver.add_assertion(s) for s in world_symbols]
             
             # Add the formula to check
-            world_solver.add_assertion(formula)
+            solver.add_assertion(formula)
             
             # If this world satisfies the formula, check its rank
-            if world_solver.solve():
+            if solver.solve():
                 rank = self.rank_world(world)
                 if min_rank is None or rank < min_rank:
                     min_rank = rank
+            
+            # Pop the scope to remove world-specific constraints
+            solver.pop()
         
         return min_rank
     
@@ -216,14 +229,14 @@ def ranks2tpo(ranks: dict[str, None | int]) -> list[set[str]]:
     # Sort groups by rank and return as list of lists
     return [rank_groups[rank] for rank in sorted(rank_groups.keys())]
 
+
+# func as input
+
 # convert total preorder to ranks
-# explanation: dict(layer num: diff to rank of next higher layer)
-def tpo2ranks(tpo: list[set[str]], multiplier: int, layer_diffs: dict[int, int]) -> dict[str, None | int]:
+# The rank_function takes a layer number and returns the rank for that layer
+def tpo2ranks(tpo: list[set[str]], rank_function: callable) -> dict[str, None | int]:
     ranks = {}
     for layer_num, layer in enumerate(tpo):
         for world in layer:
-            if world not in ranks:
-                ranks[world] = 0
-            if layer_num > 0:
-                ranks[world] += sum(layer_diffs[i] * multiplier for i in range(layer_num))
+            ranks[world] = rank_function(layer_num)
     return ranks
