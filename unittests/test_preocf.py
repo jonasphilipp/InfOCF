@@ -6,14 +6,17 @@ from inference.conditional import Conditional
 from inference.preocf import PreOCF, ranks2tpo, tpo2ranks
 from inference.inference_operator import create_epistemic_state
 from parser.Wrappers import parse_belief_base, parse_queries
-from pysmt.shortcuts import Symbol, Equals, Bool, Solver, Iff, Not, And
+from pysmt.shortcuts import Symbol, Equals, Bool, Solver, Iff, Not, And, Or
 from pysmt.typing import BOOL
 from inference.inference_operator import InferenceOperator
 import random
 
 class TestPreOCF(unittest.TestCase):
+    """Tests for the PreOCF class and related functions."""
+    
     @classmethod
     def setUpClass(cls):
+        """Set up test environment with two belief bases - a large random one and a small birds one."""
         # Get the absolute path to the project root directory
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         # Construct the path to the example file
@@ -23,88 +26,164 @@ class TestPreOCF(unittest.TestCase):
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"Test file not found at: {filepath}")
             
+        # Load the large random belief base
         bb = parse_belief_base(filepath)
+        
+        # Create a small birds belief base for more targeted testing
         str_birds = "signature\nb,p,f,w\n\nconditionals\nbirds{\n(f|b),\n(!f|p),\n(b|p),(w|b)\n}"
         bb_birds = parse_belief_base(str_birds)
+        
+        # Configure solvers
         smt_solver = 'z3'
         pmaxsat_solver = 'z3'
-        cls.epistemic_state_z = create_epistemic_state(bb, inference_system= 'system-z', smt_solver=smt_solver, pmaxsat_solver=pmaxsat_solver)
+        
+        # Create epistemic states for both belief bases
+        cls.epistemic_state_z = create_epistemic_state(bb, inference_system='system-z', smt_solver=smt_solver, pmaxsat_solver=pmaxsat_solver)
         cls.epistemic_state_z['preocfs'] = dict()
         cls.preocf_z = PreOCF(cls.epistemic_state_z)
-        cls.epistemic_state_z_birds = create_epistemic_state(bb_birds, inference_system= 'system-z', smt_solver=smt_solver, pmaxsat_solver=pmaxsat_solver)
+        
+        cls.epistemic_state_z_birds = create_epistemic_state(bb_birds, inference_system='system-z', smt_solver=smt_solver, pmaxsat_solver=pmaxsat_solver)
         cls.epistemic_state_z_birds['preocfs'] = dict()
         cls.preocf_z_birds = PreOCF(cls.epistemic_state_z_birds)
 
     def test_bitvec_world_ranks(self):
+        """Test the creation of bitvector world dictionary and initial rank assignment."""
         ranks = self.preocf_z.ranks
         worlds = ranks.keys()
+        # Verify we have the correct number of worlds (2^signature_size)
         assert len(worlds) == 2 ** len(self.preocf_z.signature)
+        
+        # Verify each world exists in the ranks and has None as initial rank
         for key in self.preocf_z.create_bitvec_world_dict().keys():
             assert key in worlds
             assert self.preocf_z.ranks[key] == None
 
     def test_signature_and_conditionals(self):
+        """Test basic solver operations with signatures and conditionals."""
         signature = self.preocf_z.signature
-        print(f'signature {signature}')
-        print(f'signature[1] {signature[0]}')
-        print(f'type(signature[1]) {type(signature[0])}')
         conditionals = self.epistemic_state_z['belief_base'].conditionals
-        print(f'conditionals {conditionals}')
-        print(f'conditionals[1].antecedence {conditionals[1].antecedence}')
-        print(f'type(conditionals[1].antecedence) {type(conditionals[1].antecedence)}')
-        print(f'type(conditionals[1].consequence) {type(conditionals[1].consequence)}')
+        
+        # Test solver operations using push/pop
         solver = Solver(name=self.epistemic_state_z['smt_solver'])
         sig_1 = Symbol(signature[0], BOOL)
         not_sig_1 = Not(sig_1)
         sig_7 = Symbol(signature[0], BOOL)
-        print(f'sig_1 {sig_1}')
-        print(f'type(sig_1) {type(sig_1)}')
+        
+        # Add conditional and verify solvability
         solver.add_assertion(conditionals[1].make_A_then_B())
         solver.add_assertion(sig_7)
         assert solver.solve() == True
+        
+        # Test push/pop with additional constraint
         solver.push()
         solver.add_assertion(sig_1)
         assert solver.solve() == True
         solver.pop()
+        
+        # Test with negated constraint (should be unsatisfiable)
         solver.add_assertion(not_sig_1)
         assert solver.solve() == False
-        print(f'not_sig_1 {not_sig_1}')
-
 
     def test_ranks_and_conditionalization(self):
-        conditionalization = {'xxvhqj': 1, 'mwmsty': 1, 'cqosod': 1, 'euhfwd': 1, 'gqymvz': 1, 'vlpxza': 1, 'wcqayf': 1, 'jwrubk': 1}
-        assert self.preocf_z.conditionalization_permits_world('1111111000', conditionalization) == False
-        assert self.preocf_z.conditionalization_permits_world('1111111100', conditionalization) == True
+        """Test conditionalization operations on the large random belief base."""
+        # Test preocf_z with its own signature
+        signature_symbols = [Symbol(s, BOOL) for s in self.preocf_z.signature[:8]]  # Take first 8 symbols
+        conditionalization_z = And(*signature_symbols)
+        
+        # Test specific worlds for preocf_z
+        assert not self.preocf_z.world_satisfies_conditionalization('1111111000', conditionalization_z)
+        assert self.preocf_z.world_satisfies_conditionalization('1111111100', conditionalization_z)
         assert self.preocf_z.is_ocf() == False
         assert len(self.preocf_z.ranks.keys()) == 1024
-        conditionalized_worlds = self.preocf_z.filter_worlds_by_conditionalization(conditionalization)
+        
+        # Test filtering worlds by conditionalization
+        conditionalized_worlds = self.preocf_z.filter_worlds_by_conditionalization(conditionalization_z)
         assert len(conditionalized_worlds) == 4
-        self.preocf_z.compute_conditionalization(conditionalization)
+        
+        # Test computing ranks for conditionalized worlds
+        self.preocf_z.compute_conditionalization(conditionalization_z)
         assert self.preocf_z.is_ocf() == False
         assert len({key for key in self.preocf_z.ranks.keys() if self.preocf_z.ranks[key] != None}) == 4
+        
+        # Test computing all ranks
         self.preocf_z.compute_all_ranks()
         assert self.preocf_z.is_ocf() == True
-        conditionalized_dict = self.preocf_z.conditionalize_ranks(conditionalization)
+        
+        # Test conditionalizing existing ranks
+        conditionalized_dict = self.preocf_z.conditionalize_existing_ranks(conditionalization_z)
         assert len(conditionalized_dict.keys()) == 4
         assert list(conditionalized_dict.keys()) == conditionalized_worlds
 
-        self.preocf_z_birds.compute_all_ranks()
-        assert self.preocf_z_birds.ranks['1111'] == 2
-        assert self.preocf_z_birds.ranks['0000'] == 0
-        assert self.preocf_z_birds.ranks['1011'] == 0
-        assert self.preocf_z_birds.ranks['1001'] == 1
-        
+    def test_birds_ranks_and_conditionalization(self):
+        """Test conditionalization and rank operations on the birds belief base."""
+        # Set up bird-specific symbols
         b = Symbol('b', BOOL)
         p = Symbol('p', BOOL)
         f = Symbol('f', BOOL)
         w = Symbol('w', BOOL)
+        
+        # Test world_satisfies_conditionalization for birds
+        # Test simple cases
+        assert self.preocf_z_birds.world_satisfies_conditionalization('1111', b)  # All true
+        assert not self.preocf_z_birds.world_satisfies_conditionalization('0000', b)  # All false
+        assert self.preocf_z_birds.world_satisfies_conditionalization('1010', b)  # b and f true, p and w false
+        
+        # Test compound formulas
+        assert self.preocf_z_birds.world_satisfies_conditionalization('1111', And(b, p))  # Both true
+        assert not self.preocf_z_birds.world_satisfies_conditionalization('1010', And(b, p))  # b true, p false
+        assert not self.preocf_z_birds.world_satisfies_conditionalization('0101', And(b, p))  # b false, p true
+        
+        # Test with negations
+        assert self.preocf_z_birds.world_satisfies_conditionalization('0000', Not(And(b, p)))  # Both false
+        assert self.preocf_z_birds.world_satisfies_conditionalization('1010', Not(And(b, p)))  # b true, p false
+        assert self.preocf_z_birds.world_satisfies_conditionalization('0101', Not(And(b, p)))  # b false, p true
+        assert not self.preocf_z_birds.world_satisfies_conditionalization('1111', Not(And(b, p)))  # Both true
+        
+        # Test with conjunction
+        assert self.preocf_z_birds.world_satisfies_conditionalization('1111', And(b, p, f, w))  # All true
+        assert not self.preocf_z_birds.world_satisfies_conditionalization('0000', And(b, p, f, w))  # All false
+        assert not self.preocf_z_birds.world_satisfies_conditionalization('1010', And(b, p, f, w))  # b and f true, p and w false
+        
+        # Test with OR operations
+        # Simple OR
+        assert self.preocf_z_birds.world_satisfies_conditionalization('1111', Or(b, p))  # Both true
+        assert self.preocf_z_birds.world_satisfies_conditionalization('1010', Or(b, p))  # b true, p false
+        assert self.preocf_z_birds.world_satisfies_conditionalization('0101', Or(b, p))  # b false, p true
+        assert not self.preocf_z_birds.world_satisfies_conditionalization('0000', Or(b, p))  # Both false
+        
+        # OR with negation (De Morgan's law: !(b && p) = !b || !p)
+        assert not self.preocf_z_birds.world_satisfies_conditionalization('1111', Or(Not(b), Not(p)))  # Both true -> both negated false
+        assert self.preocf_z_birds.world_satisfies_conditionalization('1010', Or(Not(b), Not(p)))  # b true, p false -> !p is true
+        assert self.preocf_z_birds.world_satisfies_conditionalization('0101', Or(Not(b), Not(p)))  # b false, p true -> !b is true
+        assert self.preocf_z_birds.world_satisfies_conditionalization('0000', Or(Not(b), Not(p)))  # Both false -> both negated true
+        
+        # Complex OR with multiple symbols
+        assert self.preocf_z_birds.world_satisfies_conditionalization('1111', Or(b, p, f, w))  # All true
+        assert self.preocf_z_birds.world_satisfies_conditionalization('1010', Or(b, p, f, w))  # b and f true, p and w false
+        assert self.preocf_z_birds.world_satisfies_conditionalization('0101', Or(b, p, f, w))  # b and f false, p and w true
+        assert not self.preocf_z_birds.world_satisfies_conditionalization('0000', Or(b, p, f, w))  # All false
+        
+        # Mixed AND/OR
+        assert self.preocf_z_birds.world_satisfies_conditionalization('1111', And(Or(b, p), Or(f, w)))  # All true
+        assert self.preocf_z_birds.world_satisfies_conditionalization('1010', And(Or(b, p), Or(f, w)))  # b and f true, p and w false
+        assert not self.preocf_z_birds.world_satisfies_conditionalization('0000', And(Or(b, p), Or(f, w)))  # All false
+        
+        # Test rank computations
+        self.preocf_z_birds.compute_all_ranks()
+        assert self.preocf_z_birds.ranks['1111'] == 2  # Verify specific world ranks
+        assert self.preocf_z_birds.ranks['0000'] == 0
+        assert self.preocf_z_birds.ranks['1011'] == 0
+        assert self.preocf_z_birds.ranks['1001'] == 1
 
+        # Test formula rank calculations
+        assert self.preocf_z_birds.formula_rank(And(Not(p), p)) == None  # Contradictions should have no rank
+        assert self.preocf_z_birds.formula_rank(And(b, b)) == 0  # Tautological with respect to b
+        assert self.preocf_z_birds.formula_rank(And(p, p)) == 1  # Standard formula
 
-        assert self.preocf_z_birds.formula_rank(And(Not(p), p)) == None
-        assert self.preocf_z_birds.formula_rank(And(b, b)) == 0
-        assert self.preocf_z_birds.formula_rank(And(p, p)) == 1
-
+        # Test conditional acceptance
         assert self.preocf_z_birds.conditional_acceptance(Conditional(p, f, '(f|p)')) == False
+        
+        # Test with specific conditional and verify ranks
         cond = Conditional(b, p, '(b|p)')
         verify = cond.make_A_then_B()
         falsify = cond.make_A_then_not_B()
@@ -114,6 +193,7 @@ class TestPreOCF(unittest.TestCase):
         assert rf == 2
         assert self.preocf_z_birds.conditional_acceptance(Conditional(b, w, '(w|b)')) == False
 
+        # Verify that PreOCF matches System Z on all possible conditionals
         sys_z = SystemZ(self.epistemic_state_z_birds)
         sys_z.preprocess_belief_base(0)
         for antecedence in [b, p, f, w, Not(b), Not(p), Not(f), Not(w)]:
@@ -122,18 +202,40 @@ class TestPreOCF(unittest.TestCase):
                 assert sys_z.general_inference(conditional) == self.preocf_z_birds.conditional_acceptance(conditional)
 
     def test_tpo(self):
-        tpo_in = [{'1011', '0011', '0010', '0001', '0000'},{'1101', '1100', '1010', '1001', '1000'},{'1111', '1110', '0111', '0110', '0101', '0100'}]
+        """Test total preorder conversions using the function-based tpo2ranks."""
+        # First compute all ranks
+        self.preocf_z_birds.compute_all_ranks()
+        
+        # Expected total preorder for the birds belief base
+        tpo_in = [{'1011', '0011', '0010', '0001', '0000'},  # rank 0
+                  {'1101', '1100', '1010', '1001', '1000'},  # rank 1
+                  {'1111', '1110', '0111', '0110', '0101', '0100'}]  # rank 2
+        
+        # Convert ranks to TPO and verify against expected
         tpo_out = ranks2tpo(self.preocf_z_birds.ranks)
         assert tpo_in == tpo_out
-
+        
+        # Test function-based ranking: complex calculation
+        # Create layer differences and multiplier for testing
         layer_diffs = {i: random.randint(2, 20) for i in range(len(tpo_in))}
         multiplier = random.randint(2, 20)
-        ranks_new = tpo2ranks(tpo_in, multiplier, layer_diffs)
-        assert ranks_new != self.preocf_z_birds.ranks
-        assert tpo_in == tpo_out == ranks2tpo(ranks_new)
-
-
         
+        # Define a ranking function that reproduces the old behavior
+        def rank_function(layer_num):
+            if layer_num == 0:
+                return 0
+            else:
+                return sum(layer_diffs[i] * multiplier for i in range(layer_num))
+        
+        # Test with function-based ranking
+        ranks_new = tpo2ranks(tpo_in, rank_function)
+        assert ranks_new != self.preocf_z_birds.ranks  # Different rank values
+        assert tpo_in == tpo_out == ranks2tpo(ranks_new)  # Same TPO structure
+        
+        # Test with a simple linear function
+        ranks_linear = tpo2ranks(tpo_in, lambda layer: layer * 10)
+        assert tpo_in == ranks2tpo(ranks_linear)  # Structure preserved
+
 
 if __name__ == '__main__':
     unittest.main()
