@@ -9,18 +9,35 @@ from inference import c_inference, system_z
 import inference
 import logging
 from inference.conditional import Conditional
-
+from inference.belief_base import BeliefBase
+from inference.inference_operator import Inference
+from inference.consistency_sat import consistency
 
 # Create a logger object
 logger = logging.getLogger(__name__)
 
-class PreOCF():
-    epistemic_state: dict
-    signature: tuple
+# parms: bb, ranks
 
-    @property 
-    def ranks(self) -> dict[str, None | int]:
-        return self.epistemic_state['preocfs'][self.signature]
+# signature, bb, systemz
+# signature, bb, random_min_c_rep
+class PreOCF():
+    #epistemic_state: dict
+    ranks: dict[str, None | int]
+    signature: list[str]
+    conditionals: dict[int, Conditional]
+    ranking_system: str
+    _z_partition: list[Conditional]
+
+    # return ranks dict with verbose world names
+    # str len == 5
+    #         strlist =[sig[i] if bv[i] == 1 else '!'+sig[i] for i in range(len(sig))]
+    # like above but 
+    @property
+    def ranks_verbose(self) -> dict[str, None | int]:
+        return {self.bv2strtuple(r): self.ranks[r] for r in self.ranks.keys()}
+    
+    def bv2strtuple(self, bv: BitVector) -> tuple[str, ...]:
+        return tuple([self.signature[i] if bv[i] == '1' else '!'+self.signature[i] for i in range(len(self.signature))])
 
 
     # probably not needed, not gonna throw away now
@@ -40,17 +57,57 @@ class PreOCF():
         return {self.int2strlist(r): ranks[r] for r in ranks}
     '''
 
-    def __init__(self, epistemic_state: dict, marginalization: set = set()):
-        self.epistemic_state = epistemic_state
-        self.signature = tuple([s for s in epistemic_state['belief_base'].signature if s not in marginalization])
-        if self.signature not in self.epistemic_state['preocfs']:
-            #ranks : dict[int, None | int] = {i: None for i in range(len(self.signature)**2)}  
-            ranks = self.create_bitvec_world_dict()
-            self.epistemic_state['preocfs'][self.signature] = ranks
+    def __init__(self, ranks: dict[str, None | int], signature: list, conditionals: dict[int, Conditional], ranking_system: str):
+        self.ranks = ranks
+        self.signature = signature
+        self.conditionals = conditionals
+        self.ranking_system = ranking_system
 
 
-    def create_bitvec_world_dict(self) -> dict[str, None]:
-        worlds = {str(BitVector(intVal=i, size=len(self.signature))) for i in range(2 ** len(self.signature))}
+    @classmethod
+    def init_system_z(cls, belief_base: BeliefBase, signature: list = None) -> 'PreOCF':
+        if signature is None:
+            signature = belief_base.signature
+        else:
+            signature = tuple(signature)
+        ranks = cls.create_bitvec_world_dict(signature)
+        conditionals = belief_base.conditionals
+        cls = cls(ranks, signature, conditionals, 'system-z')
+        cls._z_partition, _ = consistency(BeliefBase(signature, conditionals, 'z-partition'))
+        return cls
+
+
+    @classmethod
+    def init_random_min_c_rep(cls, belief_base: BeliefBase, signature: list = None):
+        if signature is None:
+            signature = belief_base.signature
+        else:
+            signature = signature
+        ranks = cls.create_bitvec_world_dict(signature)
+        conditionals = belief_base.conditionals
+        return cls(ranks, signature, conditionals, 'random_min_c_rep')
+    
+    @classmethod
+    def init_custom(cls, ranks: dict[str, None | int], belief_base: BeliefBase = None, signature: list = None):
+        if belief_base is None and signature is None:
+            raise ValueError('belief_base or signature is required for custom ranking system')
+        elif signature is None:
+            signature = belief_base.signature
+        else:
+            signature = signature   
+        conditionals = belief_base.conditionals
+        return cls(ranks, signature, conditionals, 'custom')
+    
+    
+    @classmethod
+    def create_bitvec_world_dict(cls, signature=None) -> dict[str, None]:
+        if signature is None:
+            # Called as instance method
+            if not hasattr(cls, 'signature'):
+                raise ValueError("Signature not provided and not available as instance attribute")
+            signature = cls.signature
+            
+        worlds = {str(BitVector(intVal=i, size=len(signature))) for i in range(2 ** len(signature))}
         ranks = {w: None for w in worlds}
         return ranks
 
@@ -77,9 +134,9 @@ class PreOCF():
                 return False
         return True
    
-
-    def marginalize(self, marginalization: set):
-        return PreOCF(self.epistemic_state, marginalization)
+    # returns new PreOCF with marginalized signature and same ranks minus marginalized signature    
+    def marginalize(self, marginalization: set[str]) -> 'PreOCF':
+        return PreOCF(self.ranks, self.signature - marginalization, self.conditionals, self.ranking_system)
 
     '''
     # not only sig elems
@@ -92,7 +149,7 @@ class PreOCF():
 
     # world satisfies formula
     def world_satisfies_conditionalization(self, world: str, conditionalization: FNode) -> bool:
-        solver = Solver(name=self.epistemic_state['smt_solver'])
+        solver = Solver(name='z3')
         world_symbols = self.symbolize_bitvec(world)
         [solver.add_assertion(s) for s in world_symbols]
         solver.add_assertion(conditionalization)
@@ -120,12 +177,14 @@ class PreOCF():
 
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
         if force_calculation or self.ranks[world] is None:
-            if self.epistemic_state['inference_system'] == 'system-z':
+            if self.ranking_system == 'system-z':
                 self.ranks[world] = self.z_part2ocf(world)
-            elif self.epistemic_state['inference_system'] == 'c-inference':
+            elif self.ranking_system == 'random_min_c_rep':
                 self.ranks[world] = self.c_vec2ocf(world)
+            elif self.ranking_system == 'custom':
+                raise ValueError(f'provide custom ranking function for world: {world}')
             else:
-                logger.error('pls select "system-z" or "c-inference" as inference system')
+                raise ValueError(f'pls select "system-z" or "random_min_c_rep" or "custom" as ranking system')
         rank = self.ranks[world]
         assert rank is not None
         return rank 
@@ -138,21 +197,15 @@ class PreOCF():
 
 
     def z_part2ocf(self, world: str) -> int:
-        assert not self.epistemic_state['preprocessing_timed_out']
-        if not self.epistemic_state['preprocessing_done']:
-            logger.info('calculating z partition') 
-            inference = system_z.SystemZ(self.epistemic_state)
-            inference.preprocess_belief_base(0)
         signature_symbols = self.symbolize_bitvec(world)
-        solver = Solver(name=self.epistemic_state['smt_solver'])
+        solver = Solver(name='z3')
         [solver.add_assertion(s) for s in signature_symbols]
-        rank = self._rec_z_rank(solver, len(self.epistemic_state['partition']) - 1)
+        rank = self._rec_z_rank(solver, len(self._z_partition) - 1)
         return rank 
 
 
     def _rec_z_rank(self, solver, partition_index) -> int:
-        assert type(self.epistemic_state['partition']) == list
-        part = self.epistemic_state['partition'][partition_index]
+        part = self._z_partition[partition_index]
         [solver.add_assertion(Not(c.make_A_then_not_B())) for c in part]
         if solver.solve():
             if partition_index ==0:
@@ -166,7 +219,7 @@ class PreOCF():
     # smallest rank of any world that satisfies formula
     def formula_rank(self, formula: FNode) -> int | None:
         min_rank = None
-        solver = Solver(name=self.epistemic_state['smt_solver'])
+        solver = Solver(name='z3')
         
         # Check each world
         for world in self.ranks.keys():
@@ -211,27 +264,16 @@ class PreOCF():
 
         
 
-
+    # vector: dict[int, int] -> index: conditional index (currently starts at 1)
     def impacts2ocf(self, world: str, vector: dict[int, int]) -> int:
-        assert not self.epistemic_state['preprocessing_timed_out']
-        if not self.epistemic_state['preprocessing_done']:
-            logger.info('calculating c-vec via pmaxsat') 
-            inference = c_inference.CInference(self.epistemic_state)
-            inference.preprocess_belief_base(0)
-
-        # not implemented yet
-        # c_vec: dict[str, int]
-        c_vec = {} 
-
-
         rank = 0
         signature_symbols = self.symbolize_bitvec(world)
-        solver = Solver(name=self.epistemic_state['smt_solver'])
+        solver = Solver(name='z3')
         [solver.add_assertion(s) for s in signature_symbols]
-        for index, conditional in self.epistemic_state['belief_base'].conditionals.items():
+        for index, conditional in self.conditionals.items():
             solver.add_assertion(Not(conditional.make_A_then_not_B()))
         if not solver.solve():
-            rank += c_vec[index]
+            rank += vector[index]
         return rank
         
         
