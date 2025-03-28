@@ -4,11 +4,11 @@ import os
 from inference.system_z import SystemZ
 from inference.conditional import Conditional
 from inference.preocf import PreOCF, ranks2tpo, tpo2ranks
-from inference.inference_operator import create_epistemic_state
+from inference.belief_base import BeliefBase
 from parser.Wrappers import parse_belief_base, parse_queries
 from pysmt.shortcuts import Symbol, Equals, Bool, Solver, Iff, Not, And, Or
 from pysmt.typing import BOOL
-from inference.inference_operator import InferenceOperator
+from inference.inference_operator import InferenceOperator, create_epistemic_state
 import random
 
 class TestPreOCF(unittest.TestCase):
@@ -35,16 +35,14 @@ class TestPreOCF(unittest.TestCase):
         
         # Configure solvers
         smt_solver = 'z3'
-        pmaxsat_solver = 'z3'
         
-        # Create epistemic states for both belief bases
-        cls.epistemic_state_z = create_epistemic_state(bb, inference_system='system-z', smt_solver=smt_solver, pmaxsat_solver=pmaxsat_solver)
-        cls.epistemic_state_z['preocfs'] = dict()
-        cls.preocf_z = PreOCF(cls.epistemic_state_z)
+        # Store belief bases for tests
+        cls.belief_base = BeliefBase(bb.signature, bb.conditionals, 'random_Test_10_10_0')
+        cls.belief_base_birds = BeliefBase(bb_birds.signature, bb_birds.conditionals, 'birds')
         
-        cls.epistemic_state_z_birds = create_epistemic_state(bb_birds, inference_system='system-z', smt_solver=smt_solver, pmaxsat_solver=pmaxsat_solver)
-        cls.epistemic_state_z_birds['preocfs'] = dict()
-        cls.preocf_z_birds = PreOCF(cls.epistemic_state_z_birds)
+        # Create PreOCF instances
+        cls.preocf_z = PreOCF.init_system_z(cls.belief_base)
+        cls.preocf_z_birds = PreOCF.init_system_z(cls.belief_base_birds)
 
     def test_bitvec_world_ranks(self):
         """Test the creation of bitvector world dictionary and initial rank assignment."""
@@ -54,17 +52,17 @@ class TestPreOCF(unittest.TestCase):
         assert len(worlds) == 2 ** len(self.preocf_z.signature)
         
         # Verify each world exists in the ranks and has None as initial rank
-        for key in self.preocf_z.create_bitvec_world_dict().keys():
+        for key in self.preocf_z.create_bitvec_world_dict(self.preocf_z.signature).keys():
             assert key in worlds
             assert self.preocf_z.ranks[key] == None
 
     def test_signature_and_conditionals(self):
         """Test basic solver operations with signatures and conditionals."""
         signature = self.preocf_z.signature
-        conditionals = self.epistemic_state_z['belief_base'].conditionals
+        conditionals = self.preocf_z.conditionals
         
         # Test solver operations using push/pop
-        solver = Solver(name=self.epistemic_state_z['smt_solver'])
+        solver = Solver(name='z3')
         sig_1 = Symbol(signature[0], BOOL)
         not_sig_1 = Not(sig_1)
         sig_7 = Symbol(signature[0], BOOL)
@@ -194,8 +192,13 @@ class TestPreOCF(unittest.TestCase):
         assert self.preocf_z_birds.conditional_acceptance(Conditional(b, w, '(w|b)')) == False
 
         # Verify that PreOCF matches System Z on all possible conditionals
-        sys_z = SystemZ(self.epistemic_state_z_birds)
-        sys_z.preprocess_belief_base(0)
+        from inference.inference_operator import create_epistemic_state
+        
+        # Create epistemic state dictionary for SystemZ
+        epistemic_state = create_epistemic_state(self.belief_base_birds, 'system-z', 'z3', '')
+        sys_z = SystemZ(epistemic_state)
+        sys_z.preprocess_belief_base(0)  # Preprocess without timeout
+        
         for antecedence in [b, p, f, w, Not(b), Not(p), Not(f), Not(w)]:
             for consequence in [b, p, f, w, Not(b), Not(p), Not(f), Not(w)]:
                 conditional = Conditional(consequence, antecedence, f'({consequence}|{antecedence})')
@@ -235,6 +238,44 @@ class TestPreOCF(unittest.TestCase):
         # Test with a simple linear function
         ranks_linear = tpo2ranks(tpo_in, lambda layer: layer * 10)
         assert tpo_in == ranks2tpo(ranks_linear)  # Structure preserved
+    
+    def test_ranks_verbose(self):
+        """Test the ranks_verbose property which provides human-readable world descriptions."""
+        # Compute all ranks first
+        self.preocf_z_birds.compute_all_ranks()
+        
+        # Get the verbose ranks
+        verbose_ranks = self.preocf_z_birds.ranks_verbose
+        
+        # Verify that the dictionary keys are properly formatted
+        for world_desc in verbose_ranks.keys():
+            # Each world description should be a tuple of strings representing variable assignments
+            assert isinstance(world_desc, tuple)
+            assert len(world_desc) == len(self.preocf_z_birds.signature)
+            
+            # Check format of each variable assignment
+            for assignment in world_desc:
+                # Each assignment should either be a variable name or its negation (!var)
+                assert assignment in self.preocf_z_birds.signature or \
+                       (assignment.startswith('!') and assignment[1:] in self.preocf_z_birds.signature)
+        
+        # Verify that values match the original ranks
+        for bitvec_world, rank in self.preocf_z_birds.ranks.items():
+            verbose_world = self.preocf_z_birds.bv2strtuple(bitvec_world)
+            assert verbose_ranks[verbose_world] == rank
+        
+        # Test specific examples
+        # For the birds KB, the signature is ['b', 'p', 'f', 'w']
+        # Check a few specific worlds
+        world_1111 = self.preocf_z_birds.bv2strtuple('1111')  # All variables true
+        world_0000 = self.preocf_z_birds.bv2strtuple('0000')  # All variables false
+        
+        assert world_1111 == ('b', 'p', 'f', 'w')
+        assert world_0000 == ('!b', '!p', '!f', '!w')
+        
+        # Verify ranks match
+        assert verbose_ranks[world_1111] == self.preocf_z_birds.ranks['1111']
+        assert verbose_ranks[world_0000] == self.preocf_z_birds.ranks['0000']
 
 
 if __name__ == '__main__':
