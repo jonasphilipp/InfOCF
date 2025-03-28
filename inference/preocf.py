@@ -212,8 +212,29 @@ class PreOCF():
         
 
 
-    def c_vec2ocf(self, world: str) -> None:
-        self.ranks[world] = random.randint(0, 10)
+    def impacts2ocf(self, world: str, vector: dict[int, int]) -> int:
+        assert not self.epistemic_state['preprocessing_timed_out']
+        if not self.epistemic_state['preprocessing_done']:
+            logger.info('calculating c-vec via pmaxsat') 
+            inference = c_inference.CInference(self.epistemic_state)
+            inference.preprocess_belief_base(0)
+
+        # not implemented yet
+        # c_vec: dict[str, int]
+        c_vec = {} 
+
+
+        rank = 0
+        signature_symbols = self.symbolize_bitvec(world)
+        solver = Solver(name=self.epistemic_state['smt_solver'])
+        [solver.add_assertion(s) for s in signature_symbols]
+        for index, conditional in self.epistemic_state['belief_base'].conditionals.items():
+            solver.add_assertion(Not(conditional.make_A_then_not_B()))
+        if not solver.solve():
+            rank += c_vec[index]
+        return rank
+        
+        
 
 
 # convert ranks to total preorder
