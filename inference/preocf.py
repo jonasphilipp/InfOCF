@@ -134,9 +134,18 @@ class PreOCF():
                 return False
         return True
    
-    # returns new PreOCF with marginalized signature and same ranks minus marginalized signature    
-    def marginalize(self, marginalization: set[str]) -> 'PreOCF':
-        return PreOCF(self.ranks, self.signature - marginalization, self.conditionals, self.ranking_system)
+    # returns new PreOCF with marginalized signature and ranks that are the minimum of the ranks of the worlds with the same marginalized signature
+    def marginalize(self, marginalization: list[str]) -> 'PreOCF':
+        ranks = {}
+        for world in self.ranks.keys():
+            # remove all bits whose index matches the one of the signature elements in marginalization
+            new_world = ''.join([world[i] for i in range(len(world)) if self.signature[i] not in marginalization])
+            if self.ranks[world] is not None:
+                if ranks.get(new_world) is None:
+                    ranks[new_world] = self.ranks[world]
+                else:
+                    ranks[new_world] = min(ranks[new_world], self.ranks[world])
+        return PreOCF(ranks, list(set(self.signature) - set(marginalization)), self.conditionals, self.ranking_system)
 
     '''
     # not only sig elems
@@ -162,7 +171,7 @@ class PreOCF():
 
     def compute_conditionalization(self, conditionalization: FNode) -> dict[str, None | int]:
         worlds = self.filter_worlds_by_conditionalization(conditionalization)
-        return {w: self.rank_world(w) for w in worlds if self.ranks[w] is None}
+        return {w: self.rank_world(w) for w in worlds}
 
 
     def conditionalize_existing_ranks(self, conditionalization: FNode) -> dict[str, None | int]:
@@ -172,7 +181,7 @@ class PreOCF():
 
 
     def compute_all_ranks(self) -> dict[str, None | int]:
-        return {w: self.rank_world(w) for w in self.ranks.keys() if self.ranks[w] is None}
+        return {w: self.rank_world(w) for w in self.ranks.keys()}
 
 
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
