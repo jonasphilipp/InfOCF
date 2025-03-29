@@ -71,7 +71,7 @@ def parseCKB(ckbs_string):
     stream = CommonTokenStream(lexer)
     parser = CKBParser(stream)
     """
-    print(ckbs_string)
+    #print(ckbs_string)
     tree = getParseTree(ckbs_string)
     visitor = myVisitor()
     ckbs = visitor.visit(tree)
