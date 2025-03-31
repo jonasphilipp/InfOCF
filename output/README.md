@@ -54,3 +54,20 @@ Contains queries compatibale with 'randomTest_a_b_c.cl'
 
 # Benchmarking results format cinf_sum_longest_queries.csv' and 'sum_archive.zip'
 'cinf_sum_longest_queries.csv' and 'sum_archive.zip' are strucutred in a similiar way. 
+
+
+
+## Naming legend for 'cinf_sum_longest_queries.csv'
+
+### preprocessing_time	
+Refers to the combined time of 'compiling the CKB' and 'optimizing the CKB' using a maxsat-solver.
+### inference_time	
+Refers to the time it took to solve the CSP that corresponds to the query and the CKB.
+### translation_time	
+Refers to the time it took to transate the internal representation of the CSP into an file in the smt2 format
+### preprocessing_timeout	
+indicates whether preprocessing ('compilation and optimization') hitted the timeout limit
+### inference_timeout	
+indicates whether solving the CSP hitted the timeout limit
+### belief_base
+Filename of the belief base 
