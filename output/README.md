@@ -52,5 +52,5 @@ Contains queries compatibale with 'randomTest_a_b_c.cl'
 
 
 
-
+# Benchmarking results format cinf_sum_longest_queries.csv' and 'sum_archive.zip'
 'cinf_sum_longest_queries.csv' and 'sum_archive.zip' are strucutred in a similiar way. 
