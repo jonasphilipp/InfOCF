@@ -11,30 +11,30 @@ the times for those system were not measured.
 
 
 ## Naming legend for 'foiks_longest_cqueries.csv'
-#compile time ckb (ms) 
+### compile time ckb (ms) 
 Refers to the combined time of 'compiling the CKB' and 'optimizing the CKB' using a maxsat-solver.
 Time in miliseconds, indicated with 'ms' in parenthesis.
 
-#compile time query (ms)	
+### compile time query (ms)	
 Refers to the combined time of 'compiling the query' and 'optimizing the query' using a maxsat-solver.
 Time in miliseconds, indicated with 'ms' in parenthesis.
 
-#solve time query (ms)	
+### solve time query (ms)	
 Refers to the time it took to solve the CSP that corresponds to the query and the CKB.
 Time in miliseconds, indicated with 'ms' in parenthesis.
 
-#result c representation	
+### result c representation	
 Result of the c-inference that corresponds to the query and the CKB, obtained by solving the CSP.
 'sat' means the query does not follow.
 'unsat' means the query does follow.
 
-#result system z	
+### result system z	
 Result of the 'System Z'-inference that corresponds to the query and the CKB.
 'False' means the query does not follow.
 'True' means the query does follow.
 Timing was not measured for this inference, as it was so fast we did not consider it relevant/interesting enough.
 
-#result system p
+### result system p
 Result of the 'System P'-inference that corresponds to the query and the CKB.
 'False' means the query does not follow.
 'True' means the query does follow.
