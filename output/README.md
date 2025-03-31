@@ -64,7 +64,7 @@ Refers to the combined time of 'compiling the CKB' and 'optimizing the CKB' usin
 ### inference_time	
 Refers to the time it took to solve the CSP that corresponds to the query and the CKB.
 ### translation_time	
-Refers to the time it took to transate the internal representation of the CSP into an file in the smt2 format
+Refers to the time it took to translate the internal representation of the CSP into an file in the smt2 format
 ### preprocessing_timeout	
 indicates whether preprocessing ('compilation and optimization') hitted the timeout limit
 ### inference_timeout	
