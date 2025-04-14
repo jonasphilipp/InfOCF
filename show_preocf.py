@@ -250,8 +250,7 @@ print("Creating a PreOCF with custom ranks")
 
 # Create a new belief base
 custom_kb_string = "signature\na,b\n\nconditionals\ncustom{\n(a|b),\n(!a|!b)\n}"
-custom_bb = parse_belief_base(custom_kb_string)
-custom_belief_base = BeliefBase(custom_bb.signature, custom_bb.conditionals, 'custom')
+custom_belief_base = parse_belief_base(custom_kb_string)
 
 print(f"Custom belief base signature: {custom_belief_base.signature}")
 print("Custom belief base conditionals:")
