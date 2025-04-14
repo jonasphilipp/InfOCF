@@ -68,6 +68,12 @@ worlds_to_check = ['1111', '0000', '1010', '0101']
 worlds_descriptions = [preocf_birds.bv2strtuple(w) for w in worlds_to_check]
 
 print("Before computing ranks:")
+print('With internal representation:')
+for i, world in enumerate(worlds_to_check):
+    print(f'{world}: {preocf_birds.ranks[world]}')
+print()
+
+print('With verbose representation (bitvec -> strtuple):')
 for i, world in enumerate(worlds_to_check):
     print(f"  World {world} {worlds_descriptions[i]}: Rank = {preocf_birds.ranks[world]}")
 
@@ -76,15 +82,24 @@ for world in worlds_to_check:
     preocf_birds.rank_world(world)
 
 print("\nAfter computing ranks:")
+print('With internal representation:')
+for world in worlds_to_check:
+    print(f'{world}: {preocf_birds.ranks[world]}')
+print()
+
+print('With verbose representation (bitvec -> strtuple):')
+
 for i, world in enumerate(worlds_to_check):
     print(f"  World {world} {worlds_descriptions[i]}: Rank = {preocf_birds.ranks[world]}")
 print()
-
+print(f"Is OCF (all worlds ranked): {preocf_birds.is_ocf()}")
+print()
 # 4. Compute all ranks
 print("=== Computing All Ranks ===")
 preocf_birds.compute_all_ranks()
+print()
 print(f"Is OCF (all worlds ranked): {preocf_birds.is_ocf()}")
-
+print()
 # Group worlds by rank for readability
 ranks_by_value = {}
 for world, rank in preocf_birds.ranks.items():
@@ -98,7 +113,7 @@ for rank, worlds in sorted(ranks_by_value.items()):
     print(f"  Rank {rank}: {len(worlds)} worlds (e.g., {worlds_desc})")
 print()
 
-# 5. Show ranks in original and verbose format  
+# 5. Show ranks in original and verbose format for whole dictionary 
 print("=== Original Representation ===")
 for world, rank in preocf_birds.ranks.items():
     print(world, rank)
@@ -143,7 +158,7 @@ conditionals = [
     Conditional(b, p, "(b|p)"),           # Penguins are birds
     Conditional(w, b, "(w|b)"),           # Birds have wings
     Conditional(f, p, "(f|p)"),           # Penguins fly (should be rejected)
-    Conditional(w, p, "(w|p)"),           # Penguins have wings
+    Conditional(w, p, "(w|p)"),           # Penguins have wings (drowning)
 ]
 
 print("Testing conditional acceptance:")
@@ -164,8 +179,8 @@ print(f"Number of worlds satisfying condition: {len(filtered_worlds)}")
 
 # Get conditionalized ranks
 conditionalized_ranks = preocf_birds.conditionalize_existing_ranks(conditionalization)
-print("Conditionalized ranks (subset of worlds satisfying the condition):")
-for world, rank in list(conditionalized_ranks.items())[:5]:
+print("Conditionalized ranks (worlds satisfying the condition):")
+for world, rank in list(conditionalized_ranks.items()):
     world_desc = preocf_birds.bv2strtuple(world)
     print(f"  World {world} {world_desc}: Rank = {rank}")
 print()
@@ -218,7 +233,7 @@ marginalized_preocf.compute_all_ranks()
 
 # Show example of marginalized worlds
 print("\nExamples of marginalized worlds and their ranks:")
-for world, rank in list(marginalized_preocf.ranks.items())[:5]:
+for world, rank in list(marginalized_preocf.ranks.items()):
     world_desc = marginalized_preocf.bv2strtuple(world)
     print(f"  World {world} {world_desc}: Rank = {rank}")
 
@@ -227,7 +242,7 @@ for world, rank in list(marginalized_preocf.ranks.items())[:5]:
 print("\nTesting marginalization properties:")
 
 # Take a marginalized world and find all original worlds that map to it
-test_marginalized_world = list(marginalized_preocf.ranks.keys())[0]
+test_marginalized_world = list(marginalized_preocf.ranks.keys())[5]
 print(f"Testing marginalized world: {test_marginalized_world}")
 
 # Find original worlds that would map to this marginalized world
@@ -293,10 +308,10 @@ b = Symbol('b', BOOL)
 # Test acceptance of conditionals in our custom OCF
 print("\nConditional acceptance in custom OCF:")
 custom_conditionals = [
-    Conditional(a, b, "(a|b)"),           # Original conditional: a given b
-    Conditional(Not(a), Not(b), "(!a|!b)"),  # Original conditional: not a given not b
-    Conditional(b, a, "(b|a)"),           # New conditional to test: b given a
-    Conditional(Not(b), Not(a), "(!b|!a)")   # New conditional to test: not b given not a
+    Conditional(b, a, "(b|a)"),
+    Conditional(b, Not(a), "(b|!a)"),
+    Conditional(Not(b), a, "(!b|a)"),
+    Conditional(Not(b), Not(a), "(!b|!a)")
 ]
 
 for cond in custom_conditionals:
