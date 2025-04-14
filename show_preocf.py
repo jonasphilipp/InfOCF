@@ -43,6 +43,7 @@ print("=== Creating Belief Base ===")
 birds_kb_string = "signature\nb,p,f,w\n\nconditionals\nbirds{\n(f|b),\n(!f|p),\n(b|p),(w|b)\n}"
 
 # Parse the belief base string
+# Note: Filepaths (.cl files) can also be parsed
 belief_base_birds = parse_belief_base(birds_kb_string)
 
 # Print information about the belief base
