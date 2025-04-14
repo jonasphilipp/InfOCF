@@ -43,15 +43,9 @@ preocf.compute_all_ranks()
 print("All world ranks computed")
 
 # Display ranks by value
-ranks_by_value = {}
+print(f"Ranks:")
 for world, rank in preocf.ranks.items():
-    if rank not in ranks_by_value:
-        ranks_by_value[rank] = []
-    ranks_by_value[rank].append(world)
-
-print("\nRank distribution:")
-for rank, worlds in sorted(ranks_by_value.items()):
-    print(f"  Rank {rank}: {len(worlds)} worlds")
+    print(world, rank)
 
 # Create symbols for checking conditional acceptance
 b = Symbol('b', BOOL)  # bird
@@ -63,7 +57,7 @@ w = Symbol('w', BOOL)  # has wings
 print("\nConditional acceptance:")
 conditionals_to_check = [
     Conditional(f, b, "(f|b)"),           # Birds fly
-    Conditional(Not(f), b, "(!f|b)"),     # Birds don't fly
+    Conditional(Not(f), b, "(!f|b)"),     # Birds don't fly (should be rejected)
     Conditional(Not(f), p, "(!f|p)"),     # Penguins don't fly
     Conditional(b, p, "(b|p)"),           # Penguins are birds
     Conditional(w, b, "(w|b)"),           # Birds have wings
