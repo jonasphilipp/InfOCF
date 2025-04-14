@@ -25,6 +25,7 @@ birds{
 }"""
 
 # Parse the belief base and create a BeliefBase object
+# Note: Filepaths (.cl files) can also be parsed
 belief_base = parse_belief_base(kb_string)
 
 # Print the loaded belief base
