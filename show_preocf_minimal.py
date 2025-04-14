@@ -29,10 +29,10 @@ birds{
 belief_base = parse_belief_base(kb_string)
 
 # Print the loaded belief base
-print(f"  Signature: {belief_base.signature}")
-print("  Conditionals:")
+print(f"Signature: {belief_base.signature}")
+print("Conditionals:")
 for idx, cond in belief_base.conditionals.items():
-    print(f"    {idx}: {cond}")
+    print(f"  {idx}: {cond}")
 print()
 
 # Create a PreOCF using System Z
@@ -46,7 +46,7 @@ print("All world ranks computed")
 # Display ranks by value
 print(f"Ranks:")
 for world, rank in preocf.ranks.items():
-    print(world, rank)
+    print(f'  {world, rank}')
 
 # Create symbols for checking conditional acceptance
 b = Symbol('b', BOOL)  # bird
