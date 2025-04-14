@@ -28,6 +28,7 @@ This showcase demonstrates all these features using the classic birds/penguins e
 """
 
 import os
+from inference import belief_base
 from parser.Wrappers import parse_belief_base
 from inference.belief_base import BeliefBase
 from inference.preocf import PreOCF, ranks2tpo, tpo2ranks
@@ -42,8 +43,7 @@ print("=== Creating Belief Base ===")
 birds_kb_string = "signature\nb,p,f,w\n\nconditionals\nbirds{\n(f|b),\n(!f|p),\n(b|p),(w|b)\n}"
 
 # Parse the belief base string
-bb_birds = parse_belief_base(birds_kb_string)
-belief_base_birds = BeliefBase(bb_birds.signature, bb_birds.conditionals, 'birds')
+belief_base_birds = parse_belief_base(birds_kb_string)
 
 # Print information about the belief base
 print(f"Signature: {belief_base_birds.signature}")

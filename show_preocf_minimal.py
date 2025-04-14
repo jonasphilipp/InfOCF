@@ -25,8 +25,7 @@ birds{
 }"""
 
 # Parse the belief base and create a BeliefBase object
-bb = parse_belief_base(kb_string)
-belief_base = BeliefBase(bb.signature, bb.conditionals, 'birds')
+belief_base = parse_belief_base(kb_string)
 
 # Print the loaded belief base
 print(f"  Signature: {belief_base.signature}")
