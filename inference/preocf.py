@@ -107,7 +107,7 @@ class PreOCF():
                 raise ValueError("Signature not provided and not available as instance attribute")
             signature = cls.signature
             
-        worlds = {str(BitVector(intVal=i, size=len(signature))) for i in range(2 ** len(signature))}
+        worlds = [str(BitVector(intVal=i, size=len(signature))) for i in range(2 ** len(signature))]
         ranks = {w: None for w in worlds}
         return ranks
 
