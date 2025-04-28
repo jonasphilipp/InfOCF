@@ -12,6 +12,8 @@ from inference.conditional import Conditional
 from inference.belief_base import BeliefBase
 from inference.inference_operator import Inference
 from inference.consistency_sat import consistency
+# std-lib imports for persistence helpers
+import json, pickle, pathlib, warnings
 
 # Create a logger object
 logger = logging.getLogger(__name__)
@@ -27,6 +29,7 @@ class PreOCF():
     conditionals: dict[int, Conditional]
     ranking_system: str
     _z_partition: list[Conditional]
+    _persistence: dict[str, object]
 
     # return ranks dict with verbose world names
     # str len == 5
@@ -57,38 +60,105 @@ class PreOCF():
         return {self.int2strlist(r): ranks[r] for r in ranks}
     '''
 
-    def __init__(self, ranks: dict[str, None | int], signature: list | None, conditionals: dict[int, Conditional] | None, ranking_system: str):
+    def __init__(self, ranks: dict[str, None | int], signature: list | None, conditionals: dict[int, Conditional] | None, ranking_system: str, persistence: dict[str, object] | None = None):
         self.ranks = ranks
         self.signature = signature
         self.conditionals = conditionals
         self.ranking_system = ranking_system
+        # Initialise persistence storage
+        if persistence is None:
+            self._persistence = {}
+        elif isinstance(persistence, dict):
+            self._persistence = persistence
+        else:
+            raise TypeError("persistence must be a dict[str, object] or None")
 
+    # ------------------------------------------------------------------
+    # Persistence convenience API
+    # ------------------------------------------------------------------
+    def save(self, key: str, value: object) -> None:
+        """Store arbitrary data under the given key inside the OCF instance."""
+        self._persistence[key] = value
+
+    def load(self, key: str, default: object = None) -> object:
+        """Retrieve data previously stored with save(); returns *default* if key absent."""
+        return self._persistence.get(key, default)
+
+    @property
+    def persistence(self) -> dict[str, object]:
+        """Direct access to the persistence store (read-write)."""
+        return self._persistence
+
+    # ------------------------------------------------------------------
+    # Disk-level persistence helpers (JSON / pickle)
+    # ------------------------------------------------------------------
+    def save_persistence(self, path: str | pathlib.Path, fmt: str = "pickle") -> None:
+        """Dump the internal persistence dict to *path*.
+
+        Parameters
+        ----------
+        path : str | pathlib.Path
+            Destination file.
+        fmt : {"pickle", "json"}
+            Serialisation format.  Pickle supports arbitrary Python objects; JSON
+            is human-readable but only works for JSON-serialisable values.
+        """
+        path = pathlib.Path(path)
+        if fmt == "pickle":
+            with path.open("wb") as fd:
+                pickle.dump(self._persistence, fd)
+        elif fmt == "json":
+            try:
+                with path.open("w") as fd:
+                    json.dump(self._persistence, fd, indent=2, default=str)
+            except TypeError as e:
+                raise TypeError("Some persistence values are not JSON-serialisable") from e
+        else:
+            raise ValueError("fmt must be 'pickle' or 'json'")
+
+    def load_persistence(self, path: str | pathlib.Path) -> None:
+        """Load a persistence file (pickle or JSON). Existing keys are overwritten."""
+        path = pathlib.Path(path)
+        if not path.exists():
+            warnings.warn(f"No persistence file at {path} – nothing loaded", RuntimeWarning)
+            return
+
+        if path.suffix == ".json":
+            data = json.loads(path.read_text())
+        else:  # assume pickle by default
+            with path.open("rb") as fd:
+                data = pickle.load(fd)
+
+        if not isinstance(data, dict):
+            raise ValueError("Persistence file did not contain a dict")
+
+        self._persistence.update(data)
 
     @classmethod
-    def init_system_z(cls, belief_base: BeliefBase, signature: list = None) -> 'PreOCF':
+    def init_system_z(cls, belief_base: BeliefBase, signature: list = None, persistence: dict[str, object] = None) -> 'PreOCF':
         if signature is None:
             signature = belief_base.signature
         else:
             signature = tuple(signature)
         ranks = cls.create_bitvec_world_dict(signature)
         conditionals = belief_base.conditionals
-        cls = cls(ranks, signature, conditionals, 'system-z')
+        cls = cls(ranks, signature, conditionals, 'system-z', persistence)
         cls._z_partition, _ = consistency(BeliefBase(signature, conditionals, 'z-partition'))
         return cls
 
 
     @classmethod
-    def init_random_min_c_rep(cls, belief_base: BeliefBase, signature: list = None):
+    def init_random_min_c_rep(cls, belief_base: BeliefBase, signature: list = None, persistence: dict[str, object] = None):
         if signature is None:
             signature = belief_base.signature
         else:
             signature = signature
         ranks = cls.create_bitvec_world_dict(signature)
         conditionals = belief_base.conditionals
-        return cls(ranks, signature, conditionals, 'random_min_c_rep')
+        return cls(ranks, signature, conditionals, 'random_min_c_rep', persistence)
     
     @classmethod
-    def init_custom(cls, ranks: dict[str, None | int], belief_base: BeliefBase = None, signature: list = None):
+    def init_custom(cls, ranks: dict[str, None | int], belief_base: BeliefBase = None, signature: list = None, persistence: dict[str, object] = None):
         """
         Create a custom PreOCF initialized with a ranks dict.
         - If belief_base is provided, use its signature and conditionals unless overridden by signature param.
@@ -101,7 +171,7 @@ class PreOCF():
         else:
             sig = signature if signature is not None else (belief_base.signature if belief_base is not None else None)
             conds = belief_base.conditionals if belief_base is not None else None
-        return cls(ranks, sig, conds, 'custom')
+        return cls(ranks, sig, conds, 'custom', persistence)
     
     
     @classmethod
@@ -150,7 +220,7 @@ class PreOCF():
                     ranks[new_world] = self.ranks[world]
                 else:
                     ranks[new_world] = min(ranks[new_world], self.ranks[world])
-        return PreOCF(ranks, list(set(self.signature) - set(marginalization)), self.conditionals, self.ranking_system)
+        return PreOCF(ranks, list(set(self.signature) - set(marginalization)), self.conditionals, self.ranking_system, self._persistence)
 
     '''
     # not only sig elems
