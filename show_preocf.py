@@ -179,6 +179,20 @@ for i, layer in enumerate(tpo):
     print(f"  Layer {i} (rank {i}): {len(layer)} worlds")
 print(tpo)
 
+# Persisting data in the PreOCF instance
+preocf_birds.save("tpo_layers", tpo)
+print("Stored total preorder layers in persistence. Retrieved:", preocf_birds.load("tpo_layers"))
+
+missing = preocf_birds.load("non_existing_key", default="<no data>")
+print("Attempt to load non-existing key gives:", missing)
+
+# Save persistence to disk and reload
+preocf_birds.save_persistence("birds_state.json", fmt="json")
+# Reset store to show reload works
+preocf_birds._persistence.clear()
+preocf_birds.load_persistence("birds_state.json")
+print("Reloaded from disk, tpo_layers len:", len(preocf_birds.load("tpo_layers")))
+
 # Convert back to ranks with a different ranking function
 def custom_rank_function(layer_num):
     return layer_num * 10  # Multiply rank by 10
@@ -327,4 +341,8 @@ print("Computed all ranks:", bare_ocf.compute_all_ranks())
 bare_tpo = ranks2tpo(bare_ocf.ranks)
 print("Total preorder layers:", bare_tpo)
 recomputed = tpo2ranks(bare_tpo, lambda layer: layer)
-print("Recomputed ranks from TPO (identity function):", recomputed) 
+print("Recomputed ranks from TPO (identity function):", recomputed)
+
+# Demonstrate persistence with bare_ocf
+bare_ocf.save("comment", "Bare OCF created for demo")
+print("Bare OCF comment:", bare_ocf.load("comment")) 
