@@ -309,4 +309,22 @@ custom_tpo = ranks2tpo(custom_preocf.ranks)
 print("\nCustom OCF total preorder layers:")
 for i, layer in enumerate(custom_tpo):
     layer_worlds = [custom_preocf.bv2strtuple(w) for w in layer]
-    print(f"  Layer {i} (rank {i}): {layer_worlds}") 
+    print(f"  Layer {i} (rank {i}): {layer_worlds}")
+
+# 12. Bare Custom OCF Demo (no belief base or signature)
+print("\n=== Bare Custom OCF Demo ===")
+# Manually define a ranks dict
+bare_ranks = {'00': 2, '01': 0, '10': 1, '11': 3}
+# Initialize a custom PreOCF directly from ranks only
+bare_ocf = PreOCF.init_custom(bare_ranks)
+print("Signature:", bare_ocf.signature)
+print("Conditionals:", bare_ocf.conditionals)
+print("Is valid OCF:", bare_ocf.is_ocf())
+print("Raw ranks:", bare_ocf.ranks)
+# compute_all_ranks on custom should simply return the preset ranks
+print("Computed all ranks:", bare_ocf.compute_all_ranks())
+# Convert to total preorder and back
+bare_tpo = ranks2tpo(bare_ocf.ranks)
+print("Total preorder layers:", bare_tpo)
+recomputed = tpo2ranks(bare_tpo, lambda layer: layer)
+print("Recomputed ranks from TPO (identity function):", recomputed) 
