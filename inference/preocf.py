@@ -57,7 +57,7 @@ class PreOCF():
         return {self.int2strlist(r): ranks[r] for r in ranks}
     '''
 
-    def __init__(self, ranks: dict[str, None | int], signature: list, conditionals: dict[int, Conditional], ranking_system: str):
+    def __init__(self, ranks: dict[str, None | int], signature: list | None, conditionals: dict[int, Conditional] | None, ranking_system: str):
         self.ranks = ranks
         self.signature = signature
         self.conditionals = conditionals
@@ -89,14 +89,19 @@ class PreOCF():
     
     @classmethod
     def init_custom(cls, ranks: dict[str, None | int], belief_base: BeliefBase = None, signature: list = None):
+        """
+        Create a custom PreOCF initialized with a ranks dict.
+        - If belief_base is provided, use its signature and conditionals unless overridden by signature param.
+        - If signature is provided but no belief_base, use that signature with no conditionals.
+        - If neither is provided, both signature and conditionals will be None.
+        """
         if belief_base is None and signature is None:
-            raise ValueError('belief_base or signature is required for custom ranking system')
-        elif signature is None:
-            signature = belief_base.signature
+            sig = None
+            conds = None
         else:
-            signature = signature   
-        conditionals = belief_base.conditionals
-        return cls(ranks, signature, conditionals, 'custom')
+            sig = signature if signature is not None else (belief_base.signature if belief_base is not None else None)
+            conds = belief_base.conditionals if belief_base is not None else None
+        return cls(ranks, sig, conds, 'custom')
     
     
     @classmethod
