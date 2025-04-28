@@ -92,10 +92,10 @@ def parseQuery(querystring):
 def parse_formula(string: str):
     """
     Parse a propositional formula using the CKB grammar and return a pysmt formula.
-    Supports ! for negation, comma for AND, semicolon for OR; also maps 'NOT', 'AND', 'OR' keywords.
+    Supports ! for negation, comma for AND, and semicolon for OR using the native grammar syntax.
     """
-    # Preprocess human-friendly operators to grammar symbols
-    s = string.replace('AND', ',').replace('OR', ';').replace('NOT', '!')
+    # Use the grammar's native syntax directly
+    s = string
     from antlr4 import InputStream, CommonTokenStream
     from .CKBLexer import CKBLexer
     from .CKBParser import CKBParser

@@ -5,7 +5,7 @@ Minimal example of PreOCF usage, focused on the core functionality:
 3. Testing conditional acceptance
 """
 
-from parser.Wrappers import parse_belief_base
+from parser.Wrappers import parse_belief_base, parse_queries
 from inference.belief_base import BeliefBase
 from inference.preocf import PreOCF
 from inference.conditional import Conditional
@@ -48,23 +48,14 @@ print(f"Ranks:")
 for world, rank in preocf.ranks.items():
     print(f'  {world, rank}')
 
-# Create symbols for checking conditional acceptance
-b = Symbol('b', BOOL)  # bird
-p = Symbol('p', BOOL)  # penguin
-f = Symbol('f', BOOL)  # flies
-w = Symbol('w', BOOL)  # has wings
-
 # Test acceptance of some conditionals
 print("\nConditional acceptance:")
-conditionals_to_check = [
-    Conditional(f, b, "(f|b)"),           # Birds fly
-    Conditional(Not(f), b, "(!f|b)"),     # Birds don't fly (should be rejected)
-    Conditional(Not(f), p, "(!f|p)"),     # Penguins don't fly
-    Conditional(b, p, "(b|p)"),           # Penguins are birds
-    Conditional(w, b, "(w|b)"),           # Birds have wings
-    Conditional(f, p, "(f|p)"),           # Penguins fly (should be rejected)
-]
+conditional_string = "(f|b),(!f|b),(!f|p),(b|p),(w|b),(f|p)"
+# Initialize conditionals using the parser
+queries = parse_queries(conditional_string)
+print(queries.conditionals)
+conditionals = queries.conditionals
 
-for cond in conditionals_to_check:
+for cond in conditionals.values():
     accepted = preocf.conditional_acceptance(cond)
     print(f"  {cond}: {'Accepted' if accepted else 'Rejected'}") 

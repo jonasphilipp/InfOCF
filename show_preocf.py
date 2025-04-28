@@ -130,7 +130,7 @@ print()
 # 6. Working with formulas and conditionals
 print("=== Formula Evaluation ===")
 # Parse formulas using parser
-formulas_str = ["b", "p", "b AND p", "b OR p", "NOT b", "b AND NOT p"]
+formulas_str = ["b", "p", "b,p", "b;p", "!b", "b,!p"]
 formulas = {desc: parse_formula(desc) for desc in formulas_str}
 
 print("Formula ranks (minimum rank of any world satisfying the formula):")
