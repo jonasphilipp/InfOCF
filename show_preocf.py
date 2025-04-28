@@ -29,7 +29,7 @@ This showcase demonstrates all these features using the classic birds/penguins e
 
 import os
 from inference import belief_base
-from parser.Wrappers import parse_belief_base
+from parser.Wrappers import parse_belief_base, parse_queries, parse_formula
 from inference.belief_base import BeliefBase
 from inference.preocf import PreOCF, ranks2tpo, tpo2ranks
 from inference.conditional import Conditional
@@ -129,21 +129,9 @@ print()
 
 # 6. Working with formulas and conditionals
 print("=== Formula Evaluation ===")
-# Create symbols for propositional variables
-b = Symbol('b', BOOL)
-p = Symbol('p', BOOL)
-f = Symbol('f', BOOL)
-w = Symbol('w', BOOL)
-
-# Create formulas to evaluate
-formulas = {
-    "b": b,
-    "p": p,
-    "b AND p": And(b, p),
-    "b OR p": Or(b, p),
-    "NOT b": Not(b),
-    "b AND NOT p": And(b, Not(p)),
-}
+# Parse formulas using parser
+formulas_str = ["b", "p", "b AND p", "b OR p", "NOT b", "b AND NOT p"]
+formulas = {desc: parse_formula(desc) for desc in formulas_str}
 
 print("Formula ranks (minimum rank of any world satisfying the formula):")
 for desc, formula in formulas.items():
@@ -153,25 +141,21 @@ print()
 
 # 7. Conditional acceptance
 print("=== Conditional Acceptance ===")
-conditionals = [
-    Conditional(f, b, "(f|b)"),           # Birds fly
-    Conditional(Not(f), p, "(!f|p)"),     # Penguins don't fly
-    Conditional(b, p, "(b|p)"),           # Penguins are birds
-    Conditional(w, b, "(w|b)"),           # Birds have wings
-    Conditional(f, p, "(f|p)"),           # Penguins fly (should be rejected)
-    Conditional(w, p, "(w|p)"),           # Penguins have wings (drowning)
-]
+conditional_string = "(f|b),(!f|p),(b|p),(w|b),(f|p),(w|p)"
+# Initialize conditionals using the parser
+queries = parse_queries(conditional_string)
+print(queries.conditionals)
 
 print("Testing conditional acceptance:")
-for cond in conditionals:
+for cond in queries.conditionals.values():
     acceptance = preocf_birds.conditional_acceptance(cond)
     print(f"  {cond}: {'Accepted' if acceptance else 'Rejected'}")
 print()
 
 # 8. Conditionalization
 print("=== Conditionalization ===")
-# Conditionalize on 'b' (bird)
-conditionalization = b
+# Conditionalize on 'b' (bird) using parsed formula
+conditionalization = formulas["b"]
 print(f"Conditionalizing on formula: b")
 
 # Filter worlds satisfying the conditionalization
@@ -193,6 +177,7 @@ tpo = ranks2tpo(preocf_birds.ranks)
 print("Total preorder layers (worlds grouped by rank):")
 for i, layer in enumerate(tpo):
     print(f"  Layer {i} (rank {i}): {len(layer)} worlds")
+print(tpo)
 
 # Convert back to ranks with a different ranking function
 def custom_rank_function(layer_num):
