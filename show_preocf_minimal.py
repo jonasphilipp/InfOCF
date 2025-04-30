@@ -46,7 +46,7 @@ print("All world ranks computed")
 # Display ranks by value
 print(f"Ranks:")
 for world, rank in preocf.ranks.items():
-    print(f'  {world, rank}')
+    print(f'  {world, rank}')           
 
 # Test acceptance of some conditionals
 print("\nConditional acceptance:")

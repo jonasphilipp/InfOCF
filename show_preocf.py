@@ -95,12 +95,28 @@ for i, world in enumerate(worlds_to_check):
 print()
 print(f"Is OCF (all worlds ranked): {preocf_birds.is_ocf()}")
 print()
+
+# Partial TPO demonstration on a non-OCF instance
+print("=== Partial PreOCF → TPO (manual ranks only) ===")
+# Fresh instance to avoid full ranking side-effects
+partial_ocf = PreOCF.init_system_z(belief_base_birds)
+# Compute ranks for some worlds only
+for w in ['0000', '1111', '0101']:
+    partial_ocf.rank_world(w)
+print(f"Is OCF now? {partial_ocf.is_ocf()}")
+partial_tpo2 = ranks2tpo(partial_ocf.ranks)
+print("Partial total-preorder layers:")
+for i, layer in enumerate(partial_tpo2):
+    print(f"  Layer {i}: {layer}")
+print()
+
 # 4. Compute all ranks
 print("=== Computing All Ranks ===")
 preocf_birds.compute_all_ranks()
 print()
 print(f"Is OCF (all worlds ranked): {preocf_birds.is_ocf()}")
 print()
+
 # Group worlds by rank for readability
 ranks_by_value = {}
 for world, rank in preocf_birds.ranks.items():
@@ -345,4 +361,4 @@ print("Recomputed ranks from TPO (identity function):", recomputed)
 
 # Demonstrate persistence with bare_ocf
 bare_ocf.save("comment", "Bare OCF created for demo")
-print("Bare OCF comment:", bare_ocf.load("comment")) 
+print("Bare OCF comment:", bare_ocf.load("comment"))
