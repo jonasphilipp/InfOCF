@@ -2,7 +2,7 @@ from binascii import Error
 import random
 from BitVector import BitVector
 import pysmt
-from pysmt.shortcuts import Symbol, Not, Solver
+from pysmt.shortcuts import Symbol, Not, Solver, And, is_sat
 from pysmt.typing import BOOL
 from pysmt.fnode import FNode
 from inference import c_inference, system_z
@@ -12,6 +12,8 @@ from inference.conditional import Conditional
 from inference.belief_base import BeliefBase
 from inference.inference_operator import Inference
 from inference.consistency_sat import consistency
+from inference.inference_operator import create_epistemic_state
+from z3 import Optimize, z3, And, sat
 # std-lib imports for persistence helpers
 import json, pickle, pathlib, warnings
 
@@ -30,6 +32,9 @@ class PreOCF():
     ranking_system: str
     _z_partition: list[Conditional]
     _persistence: dict[str, object]
+    _csp: list[FNode]
+    _optimizer: Optimize
+    _impacts: list[int]
 
     # return ranks dict with verbose world names
     # str len == 5
@@ -155,7 +160,22 @@ class PreOCF():
             signature = signature
         ranks = cls.create_bitvec_world_dict(signature)
         conditionals = belief_base.conditionals
-        return cls(ranks, signature, conditionals, 'random_min_c_rep', persistence)
+        cls = cls(ranks, signature, conditionals, 'random_min_c_rep', persistence)
+        epistemic_state = create_epistemic_state(belief_base, 'c-inference', 'z3', 'rc2')
+        c_inf = c_inference.CInference(epistemic_state)
+        c_inf.preprocess_belief_base(0)
+        cls._csp = c_inf.base_csp
+        # Convert pysmt formulas in _csp to z3 expressions
+        pysmt_solver = Solver(name='z3')
+        cls._csp = [pysmt_solver.converter.convert(expr) for expr in cls._csp]
+        cls._optimizer = Optimize()
+        cls._optimizer.set(priority='pareto')
+        cls._optimizer.add(*cls._csp)
+        [cls._optimizer.minimize(z3.Int('eta_%i' % i)) for i in range(1, len(cls.conditionals)+1)]
+        cls._optimizer.check()
+        m = cls._optimizer.model()
+        cls._impacts = [int(str(m.eval(z3.Int('eta_%i' % i)))) for i in range(1, len(cls.conditionals)+1)]
+        return cls
     
     @classmethod
     def init_custom(cls, ranks: dict[str, None | int], belief_base: BeliefBase = None, signature: list = None, persistence: dict[str, object] = None):
@@ -298,6 +318,23 @@ class PreOCF():
                 return self._rec_z_rank(solver, partition_index - 1)
         else:
             return partition_index + 1
+        
+    def c_vec2ocf(self, world: str) -> int:
+        # Compute rank by counting conditionals violated in the world using pysmt
+        rank = 0
+        # Convert world bitstring into pysmt boolean assertions
+        world_symbols = self.symbolize_bitvec(world)
+        # Check each conditional for violation: antecedence ∧ ¬consequence
+        for idx, cond in self.conditionals.items():
+            solver = Solver(name='z3')
+            # Add world constraints
+            for sym in world_symbols:
+                solver.add_assertion(sym)
+            # Add violation constraint
+            solver.add_assertion(cond.make_A_then_not_B())
+            if solver.solve():
+                rank += self._impacts[idx-1]
+        return rank
         
 
     # smallest rank of any world that satisfies formula

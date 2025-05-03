@@ -10,6 +10,7 @@ from pysmt.shortcuts import Symbol, Equals, Bool, Solver, Iff, Not, And, Or
 from pysmt.typing import BOOL
 from inference.inference_operator import InferenceOperator, create_epistemic_state
 import random
+from z3 import Optimize, AstRef
 
 class TestPreOCF(unittest.TestCase):
     """Tests for the PreOCF class and related functions."""
@@ -277,6 +278,54 @@ class TestPreOCF(unittest.TestCase):
         assert verbose_ranks[world_1111] == self.preocf_z_birds.ranks['1111']
         assert verbose_ranks[world_0000] == self.preocf_z_birds.ranks['0000']
 
+    def test_init_random_min_c_rep_csp_z3_and_optimizer(self):
+        """Test that init_random_min_c_rep converts CSP to z3 expressions and sets optimizer."""
+        # Initialize with random_min_c_rep on birds belief base
+        preocf_r = PreOCF.init_random_min_c_rep(self.belief_base_birds)
+        # Optimizer should be present and of correct type
+        assert hasattr(preocf_r, '_optimizer')
+        assert isinstance(preocf_r._optimizer, Optimize)
+        # CSP should be a non-empty list of Z3 ASTs
+        assert isinstance(preocf_r._csp, list)
+        assert len(preocf_r._csp) > 0
+        for constraint in preocf_r._csp:
+            assert isinstance(constraint, AstRef)
+        # Verify optimizer assertions match the CSP constraints
+        opt_assertions = preocf_r._optimizer.assertions()
+        assert set(opt_assertions) == set(preocf_r._csp)
+
+    def test_random_min_c_rep_ranking_and_acceptance(self):
+        """Test compute_all_ranks and conditional_acceptance using c_rep."""
+        # Initialize with random_min_c_rep on birds belief base
+        preocf_c = PreOCF.init_random_min_c_rep(self.belief_base_birds)
+        # Impacts list should be created and correct length
+        assert hasattr(preocf_c, '_impacts')
+        assert isinstance(preocf_c._impacts, list)
+        assert len(preocf_c._impacts) == len(self.belief_base_birds.conditionals)
+        for impact in preocf_c._impacts:
+            assert isinstance(impact, int) and impact >= 0
+
+        # Before computing ranks, is_ocf should be False
+        assert not preocf_c.is_ocf()
+
+        # Compute all ranks
+        preocf_c.compute_all_ranks()
+
+        # After computing, ranks should be non-negative ints and is_ocf True
+        assert preocf_c.is_ocf()
+        # Sample some world ranks
+        assert isinstance(preocf_c.ranks['0000'], int)
+        assert isinstance(preocf_c.ranks['1111'], int)
+
+        # Test conditional acceptance for tautology
+        b = Symbol('b', BOOL)
+        cond_tauto = Conditional(b, b, '(b|b)')
+        assert preocf_c.conditional_acceptance(cond_tauto)
+
+        # Test conditional acceptance for contradiction
+        p = Symbol('p', BOOL)
+        cond_contra = Conditional(Not(p), p, '(!p|p)')
+        assert not preocf_c.conditional_acceptance(cond_contra)
 
 if __name__ == '__main__':
     unittest.main()
