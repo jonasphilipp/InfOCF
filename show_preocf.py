@@ -168,6 +168,17 @@ for cond in queries.conditionals.values():
     print(f"  {cond}: {'Accepted' if acceptance else 'Rejected'}")
 print()
 
+# 7b. Conditional Acceptance using random_min_c_rep
+print("=== Conditional Acceptance (Random Min C-Representation) ===")
+# Initialize PreOCF with c-representation
+preocf_birds_c = PreOCF.init_random_min_c_rep(belief_base_birds)
+# Compute all ranks to prepare for conditional acceptance
+actions = preocf_birds_c.compute_all_ranks()
+for cond in queries.conditionals.values():
+    acceptance_c = preocf_birds_c.conditional_acceptance(cond)
+    print(f"  {cond}: {'Accepted' if acceptance_c else 'Rejected'}")
+print()
+
 # 8. Conditionalization
 print("=== Conditionalization ===")
 # Conditionalize on 'b' (bird) using parsed formula
