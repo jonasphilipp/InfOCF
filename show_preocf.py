@@ -96,20 +96,6 @@ print()
 print(f"Is OCF (all worlds ranked): {preocf_birds.is_ocf()}")
 print()
 
-# Partial TPO demonstration on a non-OCF instance
-print("=== Partial PreOCF → TPO (manual ranks only) ===")
-# Fresh instance to avoid full ranking side-effects
-partial_ocf = PreOCF.init_system_z(belief_base_birds)
-# Compute ranks for some worlds only
-for w in ['0000', '1111', '0101']:
-    partial_ocf.rank_world(w)
-print(f"Is OCF now? {partial_ocf.is_ocf()}")
-partial_tpo2 = ranks2tpo(partial_ocf.ranks)
-print("Partial total-preorder layers:")
-for i, layer in enumerate(partial_tpo2):
-    print(f"  Layer {i}: {layer}")
-print()
-
 # 4. Compute all ranks
 print("=== Computing All Ranks ===")
 preocf_birds.compute_all_ranks()
@@ -205,6 +191,22 @@ print("Total preorder layers (worlds grouped by rank):")
 for i, layer in enumerate(tpo):
     print(f"  Layer {i} (rank {i}): {len(layer)} worlds")
 print(tpo)
+print()
+
+# Partial TPO demonstration on a non-OCF instance
+print("=== Partial PreOCF → TPO (manual ranks only) ===")
+# Fresh instance to avoid full ranking side-effects
+partial_ocf = PreOCF.init_system_z(belief_base_birds)
+# Compute ranks for some worlds only
+for w in ['0000', '1111', '0101']:
+    partial_ocf.rank_world(w)
+print(f"world, rank: {[(w, partial_ocf.ranks[w]) for w in ['0000', '1111', '0101']]}")
+print(f"Is OCF now? {partial_ocf.is_ocf()}")
+partial_tpo2 = ranks2tpo(partial_ocf.ranks)
+print("Partial total-preorder layers:")
+for i, layer in enumerate(partial_tpo2):
+    print(f"  Layer {i} (rank {i}) {len(layer)} worlds: {layer}")
+print()
 
 # Persisting data in the PreOCF instance
 preocf_birds.save("tpo_layers", tpo)
@@ -214,10 +216,10 @@ missing = preocf_birds.load("non_existing_key", default="<no data>")
 print("Attempt to load non-existing key gives:", missing)
 
 # Save persistence to disk and reload
-preocf_birds.save_persistence("birds_state.json", fmt="json")
+preocf_birds.save_state("birds_state.json", fmt="json")
 # Reset store to show reload works
-preocf_birds._persistence.clear()
-preocf_birds.load_persistence("birds_state.json")
+preocf_birds._state.clear()
+preocf_birds.load_state("birds_state.json")
 print("Reloaded from disk, tpo_layers len:", len(preocf_birds.load("tpo_layers")))
 
 # Convert back to ranks with a different ranking function
