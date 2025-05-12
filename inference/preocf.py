@@ -229,6 +229,14 @@ class PreOCF(ABC):
 
     def compute_all_ranks(self) -> dict[str, None | int]:
         return {w: self.rank_world(w) for w in self.ranks.keys()}
+    
+    
+    def world_accepts_formula(self, world: str, formula: FNode) -> bool:
+        solver = Solver(name='z3')
+        world_symbols = self.symbolize_bitvec(world)
+        [solver.add_assertion(s) for s in world_symbols]
+        solver.add_assertion(formula)
+        return solver.solve()
 
 
     @abstractmethod
