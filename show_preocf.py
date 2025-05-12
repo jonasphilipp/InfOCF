@@ -375,3 +375,48 @@ print("Recomputed ranks from TPO (identity function):", recomputed)
 # Demonstrate persistence with bare_ocf
 bare_ocf.save("comment", "Bare OCF created for demo")
 print("Bare OCF comment:", bare_ocf.load("comment"))
+
+
+# Demonstrate world acceptance of formulas
+print("\n=== World Acceptance of Formulas ===")
+
+# Test acceptance of formulas in our custom OCF
+print("\nTesting formula acceptance in custom OCF:")    
+
+new_custom_ocf = PreOCF.init_custom({}, None, ['a', 'b', 'c', 'd'])
+print(f"new_custom_ocf signature: {new_custom_ocf.signature}")
+formula_string = 'a,b,c,d'
+print(f"formula: {formula_string}")
+formula = parse_formula(formula_string)
+print(f"world 0000 accepts formula {formula_string}: {new_custom_ocf.world_accepts_formula('0000', formula)}")
+print(f"world 0001 accepts formula {formula_string}: {new_custom_ocf.world_accepts_formula('0001', formula)}")
+print(f"world 0011 accepts formula {formula_string}: {new_custom_ocf.world_accepts_formula('0011', formula)}")
+print(f"world 1111 accepts formula {formula_string}: {new_custom_ocf.world_accepts_formula('1111', formula)}") 
+
+
+#### This part is important for the student lars to me about
+
+
+print("\nTesting formula acceptance in a custom preocf_birds OCF:")
+# this is how you can create a preocf from a belief base
+new_custom_ocf_birds = PreOCF.init_custom({}, belief_base_birds, [])
+
+print(f" belief base signature: {belief_base_birds.signature}")
+print(f"belief base conditionals: {belief_base_birds.conditionals}")
+
+# this is how you can create a formula that is the conjunction of all the negated falsifictions of all conditionals in a belief base  
+formula = And([belief_base_birds.conditionals[i].make_not_A_or_B() for i in belief_base_birds.conditionals])
+
+# this is only to print the formula in a more readable format
+formula_string = str(formula)
+# exchange | for ; and & for , to match our syntax in print statement, this is not actually changing the formula
+formula_string = formula_string.replace('|', ';').replace('&', ',')
+print(f"formula: {formula_string}")
+
+# this is how you can check if a world accepts a formula
+print(f"world 0000 accepts formula {formula_string}: {new_custom_ocf_birds.world_accepts_formula('0000', formula)}")
+print(f"world 0001 accepts formula {formula_string}: {new_custom_ocf_birds.world_accepts_formula('0001', formula)}")
+print(f"world 1011 accepts formula {formula_string}: {new_custom_ocf_birds.world_accepts_formula('1011', formula)}")
+print(f"world 1101 accepts formula {formula_string}: {new_custom_ocf_birds.world_accepts_formula('1101', formula)}")
+print(f"world 1111 accepts formula {formula_string}: {new_custom_ocf_birds.world_accepts_formula('1111', formula)}") 
+
