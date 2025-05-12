@@ -388,10 +388,10 @@ print(f"new_custom_ocf signature: {new_custom_ocf.signature}")
 formula_string = 'a,b,c,d'
 print(f"formula: {formula_string}")
 formula = parse_formula(formula_string)
-print(f"world 0000 accepts formula {formula_string}: {new_custom_ocf.world_accepts_formula('0000', formula)}")
-print(f"world 0001 accepts formula {formula_string}: {new_custom_ocf.world_accepts_formula('0001', formula)}")
-print(f"world 0011 accepts formula {formula_string}: {new_custom_ocf.world_accepts_formula('0011', formula)}")
-print(f"world 1111 accepts formula {formula_string}: {new_custom_ocf.world_accepts_formula('1111', formula)}") 
+print(f"world 0000 satisfies formula {formula_string}: {new_custom_ocf.world_satisfies_conditionalization('0000', formula)}")
+print(f"world 0001 satisfies formula {formula_string}: {new_custom_ocf.world_satisfies_conditionalization('0001', formula)}")
+print(f"world 0011 satisfies formula {formula_string}: {new_custom_ocf.world_satisfies_conditionalization('0011', formula)}")
+print(f"world 1111 satisfies formula {formula_string}: {new_custom_ocf.world_satisfies_conditionalization('1111', formula)}") 
 
 
 #### This part is important for the student lars to me about
@@ -413,10 +413,10 @@ formula_string = str(formula)
 formula_string = formula_string.replace('|', ';').replace('&', ',')
 print(f"formula: {formula_string}")
 
-# this is how you can check if a world accepts a formula
-print(f"world 0000 accepts formula {formula_string}: {new_custom_ocf_birds.world_accepts_formula('0000', formula)}")
-print(f"world 0001 accepts formula {formula_string}: {new_custom_ocf_birds.world_accepts_formula('0001', formula)}")
-print(f"world 1011 accepts formula {formula_string}: {new_custom_ocf_birds.world_accepts_formula('1011', formula)}")
-print(f"world 1101 accepts formula {formula_string}: {new_custom_ocf_birds.world_accepts_formula('1101', formula)}")
-print(f"world 1111 accepts formula {formula_string}: {new_custom_ocf_birds.world_accepts_formula('1111', formula)}") 
+# this is how you can check if a world satisfies a formula
+print(f"world 0000 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('0000', formula)}")
+print(f"world 0001 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('0001', formula)}")
+print(f"world 1011 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('1011', formula)}")
+print(f"world 1101 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('1101', formula)}")
+print(f"world 1111 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('1111', formula)}") 
 
