@@ -461,3 +461,30 @@ def create_preocf(ranking_system: str, *args, **kwargs) -> PreOCF:
         return CustomPreOCF(*args, **kwargs)
     else:
         raise ValueError(f"Unknown ranking system: {ranking_system}")
+
+def compile(ranking_function: PreOCF, revision_conditionals: list[Conditional]) -> list[list[dict[str, list[int, list[int]]]]]:
+    outer_list = []
+    for rev_cond in revision_conditionals:
+        inner_list = [dict(), dict()]
+        for world in ranking_function.ranks.keys():
+            if ranking_function.world_satisfies_conditionalization(world, rev_cond.make_A_then_not_B()):
+                inner_list[0][world] = [ranking_function.rank_world(world), [], []]
+                for cond in revision_conditionals:
+                    if ranking_function.conditional_acceptance(cond):
+                        inner_list[0][world][1].append(cond.index)
+                    else:
+                        inner_list[0][world][2].append(cond.index)
+            else:
+                inner_list[1][world] = [ranking_function.rank_world(world), [], []]
+                for cond in revision_conditionals:
+                    if ranking_function.conditional_acceptance(cond):
+                        inner_list[1][world][1].append(cond.index)
+                    else:
+                        inner_list[1][world][2].append(cond.index)
+
+        outer_list.append(inner_list)
+
+    return outer_list
+
+
+
