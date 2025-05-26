@@ -181,16 +181,16 @@ class PreOCF(ABC):
         return obj
 
     @classmethod
-    def init_system_z(cls, belief_base: BeliefBase, signature: list = None, state: dict[str, object] = None) -> 'PreOCF':
-        return SystemZPreOCF(belief_base, signature, state)
+    def init_system_z(cls, belief_base: BeliefBase, signature: list = None, metadata: dict[str, object] = None) -> 'PreOCF':
+        return SystemZPreOCF(belief_base, signature, metadata)
 
     @classmethod
-    def init_random_min_c_rep(cls, belief_base: BeliefBase, signature: list = None, state: dict[str, object] = None):
-        return RandomMinCRepPreOCF(belief_base, signature, state)
+    def init_random_min_c_rep(cls, belief_base: BeliefBase, signature: list = None, metadata: dict[str, object] = None):
+        return RandomMinCRepPreOCF(belief_base, signature, metadata)
     
     @classmethod
-    def init_custom(cls, ranks: dict[str, None | int], belief_base: BeliefBase = None, signature: list = None, state: dict[str, object] = None):
-        return CustomPreOCF(ranks, belief_base, signature, state)
+    def init_custom(cls, ranks: dict[str, None | int], belief_base: BeliefBase = None, signature: list = None, metadata: dict[str, object] = None):
+        return CustomPreOCF(ranks, belief_base, signature, metadata)
     
     @classmethod
     def create_bitvec_world_dict(cls, signature=None) -> dict[str, None]:
@@ -419,14 +419,14 @@ def tpo2ranks(tpo: list[set[str]], rank_function: callable) -> dict[str, None | 
 
 # PreOCF subclasses and factory
 class SystemZPreOCF(PreOCF):
-    def __init__(self, belief_base: BeliefBase, signature: list = None, state: dict[str, object] = None):
+    def __init__(self, belief_base: BeliefBase, signature: list = None, metadata: dict[str, object] = None):
         if signature is None:
             signature = belief_base.signature
         else:
             signature = tuple(signature)
         ranks = PreOCF.create_bitvec_world_dict(signature)
         conditionals = belief_base.conditionals
-        super().__init__(ranks, signature, conditionals, 'system-z', state)
+        super().__init__(ranks, signature, conditionals, 'system-z', metadata)
         self._z_partition, _ = consistency(BeliefBase(signature, conditionals, 'z-partition'))
 
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
@@ -450,14 +450,14 @@ class SystemZPreOCF(PreOCF):
         return partition_index + 1
 
 class RandomMinCRepPreOCF(PreOCF):
-    def __init__(self, belief_base: BeliefBase, signature: list = None, state: dict[str, object] = None):
+    def __init__(self, belief_base: BeliefBase, signature: list = None, metadata: dict[str, object] = None):
         if signature is None:
             signature = belief_base.signature
         else:
             signature = signature
         ranks = PreOCF.create_bitvec_world_dict(signature)
         conditionals = belief_base.conditionals
-        super().__init__(ranks, signature, conditionals, 'random_min_c_rep', state)
+        super().__init__(ranks, signature, conditionals, 'random_min_c_rep', metadata)
         epistemic_state = create_epistemic_state(belief_base, 'c-inference', 'z3', 'rc2')
         c_inf = c_inference.CInference(epistemic_state)
         c_inf.preprocess_belief_base(0)
@@ -491,9 +491,155 @@ class RandomMinCRepPreOCF(PreOCF):
                 rank += self._impacts[idx-1]
         return rank
 
+    # ------------------------------------------------------------------
+    # Impact vector persistence methods
+    # ------------------------------------------------------------------
+    def export_impacts(self, path: str | pathlib.Path, fmt: str = "json") -> None:
+        """Export the computed impact vector to a file for later reuse."""
+        if not hasattr(self, '_impacts') or self._impacts is None:
+            raise ValueError("No impacts computed yet. Run the constructor or compute impacts first.")
+        
+        path = pathlib.Path(path)
+        impact_data = {
+            "impacts": self._impacts,
+            "conditionals_count": len(self.conditionals),
+            "ranking_system": self.ranking_system,
+            "signature": self.signature
+        }
+        
+        if fmt == "json":
+            with path.open("w") as fd:
+                json.dump(impact_data, fd, indent=2)
+        elif fmt == "pickle":
+            with path.open("wb") as fd:
+                pickle.dump(impact_data, fd)
+        else:
+            raise ValueError("fmt must be 'json' or 'pickle'")
+
+    def import_impacts(self, path: str | pathlib.Path) -> None:
+        """Import a previously exported impact vector from a file."""
+        path = pathlib.Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Impact file not found: {path}")
+        
+        # Determine format from file extension
+        if path.suffix == ".json":
+            with path.open("r") as fd:
+                impact_data = json.load(fd)
+        else:  # assume pickle
+            with path.open("rb") as fd:
+                impact_data = pickle.load(fd)
+        
+        # Validate the imported data
+        if not isinstance(impact_data, dict):
+            raise ValueError("Impact file does not contain a valid data structure")
+        
+        required_keys = ["impacts", "conditionals_count", "ranking_system", "signature"]
+        for key in required_keys:
+            if key not in impact_data:
+                raise ValueError(f"Impact file missing required key: {key}")
+        
+        # Validate compatibility
+        if impact_data["conditionals_count"] != len(self.conditionals):
+            raise ValueError(f"Impact vector size mismatch: file has {impact_data['conditionals_count']}, "
+                           f"current PreOCF has {len(self.conditionals)} conditionals")
+        
+        if impact_data["ranking_system"] != self.ranking_system:
+            warnings.warn(f"Ranking system mismatch: file has '{impact_data['ranking_system']}', "
+                         f"current PreOCF has '{self.ranking_system}'", RuntimeWarning)
+        
+        if impact_data["signature"] != self.signature:
+            warnings.warn(f"Signature mismatch: file has {impact_data['signature']}, "
+                         f"current PreOCF has {self.signature}", RuntimeWarning)
+        
+        # Import the impacts
+        self._impacts = impact_data["impacts"]
+        
+        # Store import metadata
+        self.save_meta("impacts_imported_from", str(path))
+        import time
+        self.save_meta("impacts_import_timestamp", time.time())
+
+    @classmethod
+    def init_with_impacts(cls, belief_base: BeliefBase, impacts_path: str | pathlib.Path, 
+                         signature: list = None, metadata: dict[str, object] = None) -> 'RandomMinCRepPreOCF':
+        """Create a RandomMinCRepPreOCF instance using pre-computed impacts from a file."""
+        # Create instance without computing impacts (we'll override them)
+        instance = cls.__new__(cls)
+        
+        # Initialize parent class attributes
+        if signature is None:
+            signature = belief_base.signature
+        ranks = PreOCF.create_bitvec_world_dict(signature)
+        conditionals = belief_base.conditionals
+        PreOCF.__init__(instance, ranks, signature, conditionals, 'random_min_c_rep', metadata)
+        
+        # Set placeholders for attributes that would normally be computed
+        instance._csp = None
+        instance._optimizer = None
+        
+        # Import the impacts
+        instance.import_impacts(impacts_path)
+        
+        return instance
+
+    # ------------------------------------------------------------------
+    # Simple impact vector load/save methods (Python lists)
+    # ------------------------------------------------------------------
+    def save_impacts(self) -> list[int]:
+        """Return the current impact vector as a Python list for easy storage/transfer."""
+        if not hasattr(self, '_impacts') or self._impacts is None:
+            raise ValueError("No impacts computed yet. Run the constructor or compute impacts first.")
+        return self._impacts.copy()
+
+    def load_impacts(self, impacts: list[int]) -> None:
+        """Load impact vector from a Python list with basic validation."""
+        if not isinstance(impacts, list):
+            raise TypeError("Impacts must be a list of integers")
+        
+        if not all(isinstance(x, int) for x in impacts):
+            raise TypeError("All impact values must be integers")
+        
+        if len(impacts) != len(self.conditionals):
+            raise ValueError(f"Impact vector size mismatch: provided {len(impacts)}, "
+                           f"expected {len(self.conditionals)} (number of conditionals)")
+        
+        if any(x < 0 for x in impacts):
+            raise ValueError("Impact values must be non-negative")
+        
+        self._impacts = impacts.copy()
+        
+        # Store load metadata
+        self.save_meta("impacts_loaded_from_list", True)
+        import time
+        self.save_meta("impacts_load_timestamp", time.time())
+
+    @classmethod
+    def init_with_impacts_list(cls, belief_base: BeliefBase, impacts: list[int], 
+                              signature: list = None, metadata: dict[str, object] = None) -> 'RandomMinCRepPreOCF':
+        """Create a RandomMinCRepPreOCF instance using a pre-computed impact vector list."""
+        # Create instance without computing impacts (we'll override them)
+        instance = cls.__new__(cls)
+        
+        # Initialize parent class attributes
+        if signature is None:
+            signature = belief_base.signature
+        ranks = PreOCF.create_bitvec_world_dict(signature)
+        conditionals = belief_base.conditionals
+        PreOCF.__init__(instance, ranks, signature, conditionals, 'random_min_c_rep', metadata)
+        
+        # Set placeholders for attributes that would normally be computed
+        instance._csp = None
+        instance._optimizer = None
+        
+        # Load the impacts
+        instance.load_impacts(impacts)
+        
+        return instance
+
 class CustomPreOCF(PreOCF):
-    def __init__(self, ranks: dict[str, None | int], belief_base: BeliefBase = None, signature: list = None, state: dict[str, object] = None):
-        super().__init__(ranks, signature or (belief_base.signature if belief_base else None), belief_base.conditionals if belief_base else None, 'custom', state)
+    def __init__(self, ranks: dict[str, None | int], belief_base: BeliefBase = None, signature: list = None, metadata: dict[str, object] = None):
+        super().__init__(ranks, signature or (belief_base.signature if belief_base else None), belief_base.conditionals if belief_base else None, 'custom', metadata)
 
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
         rank = self.ranks.get(world)
@@ -516,20 +662,15 @@ def compile(ranking_function: PreOCF, revision_conditionals: list[Conditional]) 
     for rev_cond in revision_conditionals:
         inner_list = [dict(), dict()]
         for world in ranking_function.ranks.keys():
-            if ranking_function.world_satisfies_conditionalization(world, rev_cond.make_A_then_not_B()):
-                inner_list[0][world] = [ranking_function.rank_world(world), [], []]
-                for cond in revision_conditionals:
-                    if ranking_function.conditional_acceptance(cond):
-                        inner_list[0][world][1].append(cond.index)
-                    else:
-                        inner_list[0][world][2].append(cond.index)
-            else:
-                inner_list[1][world] = [ranking_function.rank_world(world), [], []]
-                for cond in revision_conditionals:
-                    if ranking_function.conditional_acceptance(cond):
-                        inner_list[1][world][1].append(cond.index)
-                    else:
-                        inner_list[1][world][2].append(cond.index)
+            branch_index = 0 if ranking_function.world_satisfies_conditionalization(world, rev_cond.make_A_then_not_B()) else 1
+            
+            inner_list[branch_index][world] = [ranking_function.rank_world(world), [], []]
+            
+            for cond in revision_conditionals:
+                if ranking_function.conditional_acceptance(cond):
+                    inner_list[branch_index][world][1].append(cond.index)
+                else:
+                    inner_list[branch_index][world][2].append(cond.index)
 
         outer_list.append(inner_list)
 
