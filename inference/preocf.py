@@ -66,58 +66,58 @@ class PreOCF(ABC):
         return {self.int2strlist(r): ranks[r] for r in ranks}
     '''
 
-    def __init__(self, ranks: dict[str, None | int], signature: list | None, conditionals: dict[int, Conditional] | None, ranking_system: str, state: dict[str, object] | None = None):
+    def __init__(self, ranks: dict[str, None | int], signature: list | None, conditionals: dict[int, Conditional] | None, ranking_system: str, metadata: dict[str, object] | None = None):
         self.ranks = ranks
         self.signature = signature
         self.conditionals = conditionals
         self.ranking_system = ranking_system
-        # Initialise state storage
-        if state is None:
-            self._state = {}
-        elif isinstance(state, dict):
-            self._state = state
+        # Initialise metadata storage
+        if metadata is None:
+            self._metadata = {}
+        elif isinstance(metadata, dict):
+            self._metadata = metadata
         else:
-            raise TypeError("state must be a dict[str, object] or None")
+            raise TypeError("metadata must be a dict[str, object] or None")
 
     # ------------------------------------------------------------------
-    # Persistence convenience API
+    # Metadata convenience API
     # ------------------------------------------------------------------
-    def save(self, key: str, value: object) -> None:
-        """Store arbitrary data under the given key inside the OCF instance."""
-        self._state[key] = value
+    def save_meta(self, key: str, value: object) -> None:
+        """Store arbitrary metadata under the given key inside the OCF instance."""
+        self._metadata[key] = value
 
-    def load(self, key: str, default: object = None) -> object:
-        """Retrieve data previously stored with save(); returns *default* if key absent."""
-        return self._state.get(key, default)
+    def load_meta(self, key: str, default: object = None) -> object:
+        """Retrieve metadata previously stored with save_meta(); returns *default* if key absent."""
+        return self._metadata.get(key, default)
 
     @property
-    def state_dict(self) -> dict[str, object]:
-        """Direct access to the state store (read-write)."""
-        return self._state
+    def metadata(self) -> dict[str, object]:
+        """Direct access to the metadata store (read-write)."""
+        return self._metadata
 
     # ------------------------------------------------------------------
     # Disk-level persistence helpers (JSON / pickle)
     # ------------------------------------------------------------------
-    def save_state(self, path: str | pathlib.Path, fmt: str = "pickle") -> None:
-        """Dump the internal state dict to *path*."""
+    def save_metadata(self, path: str | pathlib.Path, fmt: str = "pickle") -> None:
+        """Dump the internal metadata dict to *path*."""
         path = pathlib.Path(path)
         if fmt == "pickle":
             with path.open("wb") as fd:
-                pickle.dump(self._state, fd)
+                pickle.dump(self._metadata, fd)
         elif fmt == "json":
             try:
                 with path.open("w") as fd:
-                    json.dump(self._state, fd, indent=2, default=str)
+                    json.dump(self._metadata, fd, indent=2, default=str)
             except TypeError as e:
-                raise TypeError("Some persistence values are not JSON-serialisable") from e
+                raise TypeError("Some metadata values are not JSON-serialisable") from e
         else:
             raise ValueError("fmt must be 'pickle' or 'json'")
 
-    def load_state(self, path: str | pathlib.Path) -> None:
-        """Load a state file (pickle or JSON). Existing keys are overwritten."""
+    def load_metadata(self, path: str | pathlib.Path) -> None:
+        """Load a metadata file (pickle or JSON). Existing keys are overwritten."""
         path = pathlib.Path(path)
         if not path.exists():
-            warnings.warn(f"No persistence file at {path} – nothing loaded", RuntimeWarning)
+            warnings.warn(f"No metadata file at {path} – nothing loaded", RuntimeWarning)
             return
 
         if path.suffix == ".json":
@@ -127,9 +127,58 @@ class PreOCF(ABC):
                 data = pickle.load(fd)
 
         if not isinstance(data, dict):
-            raise ValueError("Persistence file did not contain a dict")
+            raise ValueError("Metadata file did not contain a dict")
 
-        self._state.update(data)
+        self._metadata.update(data)
+
+    # ------------------------------------------------------------------
+    # Full-object persistence helpers (no manual key bookkeeping needed)
+    # ------------------------------------------------------------------
+    def __getstate__(self):
+        """Return complete object state as dict. Useful for manual state inspection/manipulation."""
+        return self.__dict__.copy()
+
+    def __setstate__(self, state):
+        """Restore object from state dict."""
+        self.__dict__.update(state)
+
+    def save_ocf(self, path: str | pathlib.Path, *, protocol: int = pickle.HIGHEST_PROTOCOL) -> None:
+        """Serialize the entire PreOCF object to *path* via pickle so it can be restored later without manual bookkeeping."""
+        path = pathlib.Path(path)
+        
+        # Temporarily remove non-picklable objects for serialization
+        non_picklable_backups = {}
+        non_picklable_attrs = ['_optimizer', '_csp']  # Add other non-picklable attributes as needed
+        
+        for attr in non_picklable_attrs:
+            if hasattr(self, attr):
+                non_picklable_backups[attr] = getattr(self, attr)
+                setattr(self, attr, None)
+        
+        try:
+            with path.open('wb') as fd:
+                pickle.dump(self, fd, protocol=protocol)
+        finally:
+            # Restore all non-picklable objects
+            for attr, value in non_picklable_backups.items():
+                setattr(self, attr, value)
+
+    @staticmethod
+    def load_ocf(path: str | pathlib.Path) -> 'PreOCF':
+        """Deserialize a PreOCF instance previously written by `save_ocf`."""
+        path = pathlib.Path(path)
+        with path.open('rb') as fd:
+            obj = pickle.load(fd)
+        if not isinstance(obj, PreOCF):
+            raise TypeError('Pickle did not contain a PreOCF object')
+        
+        # Ensure non-picklable attributes exist (helps with objects saved without them)
+        non_picklable_attrs = ['_optimizer', '_csp']
+        for attr in non_picklable_attrs:
+            if attr not in obj.__dict__:
+                setattr(obj, attr, None)
+        
+        return obj
 
     @classmethod
     def init_system_z(cls, belief_base: BeliefBase, signature: list = None, state: dict[str, object] = None) -> 'PreOCF':
@@ -192,7 +241,7 @@ class PreOCF(ABC):
         # Build new signature list by removing marginalized variables
         new_sig = [s for s in self.signature if s not in marginalization]
         # Return a custom OCF with the marginalized ranks
-        return PreOCF.init_custom(ranks, None, new_sig, self._state)
+        return PreOCF.init_custom(ranks, None, new_sig, self._metadata)
 
     '''
     # not only sig elems
