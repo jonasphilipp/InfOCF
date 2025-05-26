@@ -309,6 +309,180 @@ for file in ["birds_metadata.json", "birds_preocf.pkl"]:
         print(f"Cleaned up: {file}")
 print()
 
+# Impact Vector Persistence Demonstration
+print("=== Impact Vector Persistence (RandomMinCRepPreOCF) ===")
+print("Demonstrating impact vector save/load and export/import functionality...")
+
+try:
+    # Create a RandomMinCRepPreOCF with computed impacts
+    print("\n1. Creating RandomMinCRepPreOCF with computed impacts...")
+    preocf_random = PreOCF.init_random_min_c_rep(belief_base_birds)
+    print(f"   Impact vector computed: {preocf_random._impacts}")
+    print(f"   Impact vector length: {len(preocf_random._impacts)}")
+    
+    # Demonstrate simple save/load with Python lists
+    print("\n2. Simple Impact Save/Load (Python lists)...")
+    
+    # Save impacts to a Python list
+    saved_impacts = preocf_random.save_impacts()
+    print(f"   Saved impacts: {saved_impacts}")
+    print(f"   Type: {type(saved_impacts)}")
+    
+    # Create a new instance and load the impacts
+    print("\n   Creating new instance and loading impacts...")
+    from inference.preocf import RandomMinCRepPreOCF
+    preocf_loaded = RandomMinCRepPreOCF.__new__(RandomMinCRepPreOCF)
+    ranks = PreOCF.create_bitvec_world_dict(belief_base_birds.signature)
+    PreOCF.__init__(preocf_loaded, ranks, belief_base_birds.signature,
+                   belief_base_birds.conditionals, 'random_min_c_rep', None)
+    preocf_loaded._csp = None
+    preocf_loaded._optimizer = None
+    preocf_loaded.load_impacts(saved_impacts)
+    
+    print(f"   Loaded impacts: {preocf_loaded._impacts}")
+    print(f"   Impacts match: {preocf_loaded._impacts == preocf_random._impacts}")
+    
+    # Test that both instances produce identical ranks
+    print("\n   Verifying rank computation consistency...")
+    test_worlds = ['0000', '1111', '1010', '0101']
+    for world in test_worlds:
+        orig_rank = preocf_random.rank_world(world)
+        loaded_rank = preocf_loaded.rank_world(world)
+        match = "✓" if orig_rank == loaded_rank else "✗"
+        print(f"   World {world}: Original={orig_rank}, Loaded={loaded_rank} {match}")
+    
+    # Demonstrate factory method with list
+    print("\n3. Factory Method with Impact List...")
+    preocf_factory = RandomMinCRepPreOCF.init_with_impacts_list(
+        belief_base_birds, saved_impacts)
+    print(f"   Factory impacts: {preocf_factory._impacts}")
+    print(f"   Factory metadata: {preocf_factory.load_meta('impacts_loaded_from_list')}")
+    
+    # Demonstrate file-based export/import
+    print("\n4. File-based Export/Import...")
+    
+    # Export to JSON
+    print("   Exporting impacts to JSON...")
+    preocf_random.export_impacts("impacts_demo.json", fmt="json")
+    print("   ✓ Exported to impacts_demo.json")
+    
+    # Export to pickle
+    print("   Exporting impacts to pickle...")
+    preocf_random.export_impacts("impacts_demo.pkl", fmt="pickle")
+    print("   ✓ Exported to impacts_demo.pkl")
+    
+    # Import from JSON
+    print("\n   Creating new instance and importing from JSON...")
+    preocf_json_import = RandomMinCRepPreOCF.__new__(RandomMinCRepPreOCF)
+    ranks = PreOCF.create_bitvec_world_dict(belief_base_birds.signature)
+    PreOCF.__init__(preocf_json_import, ranks, belief_base_birds.signature,
+                   belief_base_birds.conditionals, 'random_min_c_rep', None)
+    preocf_json_import._csp = None
+    preocf_json_import._optimizer = None
+    preocf_json_import.import_impacts("impacts_demo.json")
+    
+    print(f"   JSON imported impacts: {preocf_json_import._impacts}")
+    print(f"   Import source: {preocf_json_import.load_meta('impacts_imported_from')}")
+    
+    # Import from pickle using factory method
+    print("\n   Using factory method with pickle file...")
+    preocf_pickle_factory = RandomMinCRepPreOCF.init_with_impacts(
+        belief_base_birds, "impacts_demo.pkl")
+    print(f"   Pickle factory impacts: {preocf_pickle_factory._impacts}")
+    
+    # Performance comparison demonstration
+    print("\n5. Performance Comparison...")
+    import time
+    
+    # Time the original computation
+    print("   Timing original impact computation...")
+    start_time = time.time()
+    preocf_computed = PreOCF.init_random_min_c_rep(belief_base_birds)
+    computation_time = time.time() - start_time
+    print(f"   Original computation time: {computation_time:.4f} seconds")
+    
+    # Time the loading from list
+    print("   Timing impact loading from list...")
+    start_time = time.time()
+    preocf_list_loaded = RandomMinCRepPreOCF.init_with_impacts_list(
+        belief_base_birds, saved_impacts)
+    list_load_time = time.time() - start_time
+    print(f"   List loading time: {list_load_time:.4f} seconds")
+    
+    # Time the loading from file
+    print("   Timing impact loading from file...")
+    start_time = time.time()
+    preocf_file_loaded = RandomMinCRepPreOCF.init_with_impacts(
+        belief_base_birds, "impacts_demo.json")
+    file_load_time = time.time() - start_time
+    print(f"   File loading time: {file_load_time:.4f} seconds")
+    
+    # Calculate speedup
+    if list_load_time > 0:
+        list_speedup = computation_time / list_load_time
+        print(f"   List loading speedup: {list_speedup:.1f}x faster")
+    
+    if file_load_time > 0:
+        file_speedup = computation_time / file_load_time
+        print(f"   File loading speedup: {file_speedup:.1f}x faster")
+    
+    # Demonstrate validation
+    print("\n6. Validation and Error Handling...")
+    
+    # Test with mismatched belief base
+    print("   Testing validation with different belief base...")
+    simple_kb = "signature\na,b\n\nconditionals\nsimple{\n(a|b)\n}"
+    simple_bb = parse_belief_base(simple_kb)
+    simple_belief_base = BeliefBase(simple_bb.signature, simple_bb.conditionals, 'simple')
+    
+    try:
+        # This should fail due to size mismatch
+        test_preocf = RandomMinCRepPreOCF.__new__(RandomMinCRepPreOCF)
+        ranks = PreOCF.create_bitvec_world_dict(simple_belief_base.signature)
+        PreOCF.__init__(test_preocf, ranks, simple_belief_base.signature,
+                       simple_belief_base.conditionals, 'random_min_c_rep', None)
+        test_preocf._csp = None
+        test_preocf._optimizer = None
+        test_preocf.load_impacts(saved_impacts)
+        print("   ✗ Validation failed to catch size mismatch")
+    except ValueError as e:
+        print(f"   ✓ Validation caught size mismatch: {str(e)[:50]}...")
+    
+    # Test with invalid impact values
+    print("   Testing validation with negative impacts...")
+    try:
+        preocf_loaded.load_impacts([1, 2, -1, 4])
+        print("   ✗ Validation failed to catch negative values")
+    except ValueError as e:
+        print(f"   ✓ Validation caught negative values: {str(e)[:50]}...")
+    
+    # Demonstrate metadata tracking
+    print("\n7. Metadata Tracking...")
+    print(f"   List load metadata: {preocf_loaded.load_meta('impacts_loaded_from_list')}")
+    print(f"   List load timestamp: {preocf_loaded.load_meta('impacts_load_timestamp')}")
+    print(f"   File import source: {preocf_json_import.load_meta('impacts_imported_from')}")
+    print(f"   File import timestamp: {preocf_json_import.load_meta('impacts_import_timestamp')}")
+    
+    # Clean up demonstration files
+    print("\n8. Cleaning up demonstration files...")
+    for file in ["impacts_demo.json", "impacts_demo.pkl"]:
+        if os.path.exists(file):
+            os.remove(file)
+            print(f"   Cleaned up: {file}")
+    
+    print("\n✓ Impact vector persistence demonstration completed successfully!")
+    
+except Exception as e:
+    print(f"\n✗ Impact persistence demonstration failed: {e}")
+    print("This is expected if RandomMinCRepPreOCF dependencies are not available.")
+    
+    # Clean up any partial files
+    for file in ["impacts_demo.json", "impacts_demo.pkl"]:
+        if os.path.exists(file):
+            os.remove(file)
+
+print()
+
 # Convert back to ranks with a different ranking function
 def custom_rank_function(layer_num):
     return layer_num * 10  # Multiply rank by 10
