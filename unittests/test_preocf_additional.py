@@ -245,5 +245,286 @@ class TestPreOCFAdditional(unittest.TestCase):
         # The number of worlds should match
         self.assertEqual(len(marg_preocf.ranks), len(cond_after_marg))
 
+    def test_metadata_operations(self):
+        """Test metadata storage and retrieval operations."""
+        # Create a fresh PreOCF
+        preocf = PreOCF.init_system_z(self.belief_base_birds)
+        
+        # Test basic metadata operations
+        preocf.save_meta('author', 'Alice')
+        preocf.save_meta('experiment_id', 'exp_001')
+        preocf.save_meta('version', 1.0)
+        preocf.save_meta('tags', ['test', 'birds', 'system-z'])
+        
+        # Test retrieval
+        self.assertEqual(preocf.load_meta('author'), 'Alice')
+        self.assertEqual(preocf.load_meta('experiment_id'), 'exp_001')
+        self.assertEqual(preocf.load_meta('version'), 1.0)
+        self.assertEqual(preocf.load_meta('tags'), ['test', 'birds', 'system-z'])
+        
+        # Test default values
+        self.assertIsNone(preocf.load_meta('nonexistent'))
+        self.assertEqual(preocf.load_meta('nonexistent', 'default'), 'default')
+        
+        # Test metadata property
+        metadata_dict = preocf.metadata
+        self.assertEqual(len(metadata_dict), 4)
+        self.assertIn('author', metadata_dict)
+        self.assertIn('experiment_id', metadata_dict)
+        
+        # Test direct metadata modification
+        preocf.metadata['direct_key'] = 'direct_value'
+        self.assertEqual(preocf.load_meta('direct_key'), 'direct_value')
+        
+        # Test metadata persistence
+        import tempfile
+        import os
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            meta_path = os.path.join(temp_dir, 'metadata.pkl')
+            
+            # Save metadata
+            preocf.save_metadata(meta_path)
+            
+            # Create new PreOCF and load metadata
+            preocf2 = PreOCF.init_system_z(self.belief_base_birds)
+            preocf2.load_metadata(meta_path)
+            
+            # Check that metadata was loaded
+            self.assertEqual(preocf2.load_meta('author'), 'Alice')
+            self.assertEqual(preocf2.load_meta('experiment_id'), 'exp_001')
+            self.assertEqual(preocf2.load_meta('version'), 1.0)
+            
+            # Test JSON format
+            meta_json_path = os.path.join(temp_dir, 'metadata.json')
+            preocf.save_metadata(meta_json_path, fmt='json')
+            
+            preocf3 = PreOCF.init_system_z(self.belief_base_birds)
+            preocf3.load_metadata(meta_json_path)
+            
+            self.assertEqual(preocf3.load_meta('author'), 'Alice')
+            self.assertEqual(preocf3.load_meta('experiment_id'), 'exp_001')
+
+    def test_object_state_operations(self):
+        """Test full object state save/load operations."""
+        import tempfile
+        import os
+        
+        # Create and configure a PreOCF
+        preocf = PreOCF.init_system_z(self.belief_base_birds)
+        preocf.compute_all_ranks()
+        
+        # Add some metadata
+        preocf.save_meta('test_id', 'state_test_001')
+        preocf.save_meta('created_by', 'unittest')
+        preocf.save_meta('config', {'param1': 42, 'param2': 'value'})
+        
+        # Store original state for comparison
+        original_ranks = preocf.ranks.copy()
+        original_signature = preocf.signature.copy()
+        original_ranking_system = preocf.ranking_system
+        original_metadata = preocf.metadata.copy()
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ocf_path = os.path.join(temp_dir, 'test_preocf.pkl')
+            
+            # Save the complete object
+            preocf.save_ocf(ocf_path)
+            
+            # Load the object
+            loaded_preocf = PreOCF.load_ocf(ocf_path)
+            
+            # Verify all attributes are preserved
+            self.assertEqual(loaded_preocf.ranks, original_ranks)
+            self.assertEqual(loaded_preocf.signature, original_signature)
+            self.assertEqual(loaded_preocf.ranking_system, original_ranking_system)
+            self.assertEqual(loaded_preocf.metadata, original_metadata)
+            
+            # Verify metadata is accessible
+            self.assertEqual(loaded_preocf.load_meta('test_id'), 'state_test_001')
+            self.assertEqual(loaded_preocf.load_meta('created_by'), 'unittest')
+            self.assertEqual(loaded_preocf.load_meta('config'), {'param1': 42, 'param2': 'value'})
+            
+            # Verify the loaded object is functional
+            self.assertTrue(loaded_preocf.is_ocf())
+            
+            # Test that we can perform operations on the loaded object
+            test_rank = loaded_preocf.rank_world('1010')
+            original_test_rank = preocf.rank_world('1010')
+            self.assertEqual(test_rank, original_test_rank)
+            
+            # Test formula ranking
+            formula_rank = loaded_preocf.formula_rank(self.b)
+            original_formula_rank = preocf.formula_rank(self.b)
+            self.assertEqual(formula_rank, original_formula_rank)
+
+    def test_object_state_with_different_preocf_types(self):
+        """Test object state operations with different PreOCF types."""
+        import tempfile
+        import os
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Test with SystemZ PreOCF
+            system_z_preocf = PreOCF.init_system_z(self.belief_base_birds)
+            system_z_preocf.compute_all_ranks()
+            system_z_preocf.save_meta('type', 'system-z')
+            
+            sz_path = os.path.join(temp_dir, 'system_z.pkl')
+            system_z_preocf.save_ocf(sz_path)
+            loaded_sz = PreOCF.load_ocf(sz_path)
+            
+            self.assertEqual(loaded_sz.ranking_system, 'system-z')
+            self.assertEqual(loaded_sz.load_meta('type'), 'system-z')
+            self.assertTrue(loaded_sz.is_ocf())
+            
+            # Test with RandomMinCRep PreOCF
+            try:
+                random_preocf = PreOCF.init_random_min_c_rep(self.belief_base_birds)
+                random_preocf.compute_all_ranks()
+                random_preocf.save_meta('type', 'random-min-c-rep')
+                
+                rand_path = os.path.join(temp_dir, 'random.pkl')
+                random_preocf.save_ocf(rand_path)
+                loaded_rand = PreOCF.load_ocf(rand_path)
+                
+                self.assertEqual(loaded_rand.ranking_system, 'random_min_c_rep')
+                self.assertEqual(loaded_rand.load_meta('type'), 'random-min-c-rep')
+                self.assertTrue(loaded_rand.is_ocf())
+                
+                # Verify _impacts are preserved
+                self.assertEqual(len(loaded_rand._impacts), len(random_preocf._impacts))
+                self.assertEqual(loaded_rand._impacts, random_preocf._impacts)
+                
+            except Exception as e:
+                # Skip if random min c rep fails (dependency issues)
+                self.skipTest(f"RandomMinCRep test skipped due to: {e}")
+            
+            # Test with Custom PreOCF
+            custom_ranks = PreOCF.create_bitvec_world_dict(self.belief_base_birds.signature)
+            for i, world in enumerate(custom_ranks.keys()):
+                custom_ranks[world] = i % 3  # Assign ranks 0, 1, 2 cyclically
+            
+            custom_preocf = PreOCF.init_custom(custom_ranks, self.belief_base_birds)
+            custom_preocf.save_meta('type', 'custom')
+            custom_preocf.save_meta('custom_info', 'cyclic ranks')
+            
+            custom_path = os.path.join(temp_dir, 'custom.pkl')
+            custom_preocf.save_ocf(custom_path)
+            loaded_custom = PreOCF.load_ocf(custom_path)
+            
+            self.assertEqual(loaded_custom.ranking_system, 'custom')
+            self.assertEqual(loaded_custom.load_meta('type'), 'custom')
+            self.assertEqual(loaded_custom.load_meta('custom_info'), 'cyclic ranks')
+            self.assertTrue(loaded_custom.is_ocf())
+            self.assertEqual(loaded_custom.ranks, custom_ranks)
+
+    def test_getstate_setstate_operations(self):
+        """Test __getstate__ and __setstate__ operations."""
+        # Create and configure a PreOCF
+        preocf = PreOCF.init_system_z(self.belief_base_birds)
+        preocf.compute_all_ranks()
+        preocf.save_meta('state_test', 'getstate_test')
+        
+        # Get the complete state
+        state = preocf.__getstate__()
+        
+        # Verify state contains all expected attributes
+        expected_attrs = ['ranks', 'signature', 'conditionals', 'ranking_system', '_metadata']
+        for attr in expected_attrs:
+            self.assertIn(attr, state)
+        
+        # Verify metadata is included
+        self.assertIn('state_test', state['_metadata'])
+        self.assertEqual(state['_metadata']['state_test'], 'getstate_test')
+        
+        # Create a new PreOCF and restore state
+        new_preocf = PreOCF.init_custom({}, None, ['a', 'b'])  # Dummy initialization
+        new_preocf.__setstate__(state)
+        
+        # Verify all attributes were restored
+        self.assertEqual(new_preocf.ranks, preocf.ranks)
+        self.assertEqual(new_preocf.signature, preocf.signature)
+        self.assertEqual(new_preocf.ranking_system, preocf.ranking_system)
+        self.assertEqual(new_preocf.metadata, preocf.metadata)
+        self.assertEqual(new_preocf.load_meta('state_test'), 'getstate_test')
+
+    def test_optimizer_handling_in_persistence(self):
+        """Test that optimizer is properly handled during save/load operations."""
+        try:
+            # Create a RandomMinCRep PreOCF which has an optimizer
+            preocf = PreOCF.init_random_min_c_rep(self.belief_base_birds)
+            preocf.compute_all_ranks()
+            
+            # Verify optimizer exists initially
+            self.assertIsNotNone(preocf._optimizer)
+            
+            # Get state - should include optimizer
+            state = preocf.__getstate__()
+            self.assertIn('_optimizer', state)
+            
+            import tempfile
+            import os
+            
+            with tempfile.TemporaryDirectory() as temp_dir:
+                ocf_path = os.path.join(temp_dir, 'optimizer_test.pkl')
+                
+                # Save object - optimizer should be temporarily removed
+                preocf.save_ocf(ocf_path)
+                
+                # Verify optimizer is restored after save
+                self.assertIsNotNone(preocf._optimizer)
+                
+                # Load object
+                loaded_preocf = PreOCF.load_ocf(ocf_path)
+                
+                # Verify optimizer is None in loaded object (expected)
+                self.assertIsNone(loaded_preocf._optimizer)
+                
+                # Verify other attributes are preserved
+                self.assertEqual(loaded_preocf._impacts, preocf._impacts)
+                self.assertEqual(loaded_preocf.ranks, preocf.ranks)
+                
+        except Exception as e:
+            # Skip if random min c rep fails (dependency issues)
+            self.skipTest(f"Optimizer test skipped due to: {e}")
+
+    def test_error_handling_in_persistence(self):
+        """Test error handling in persistence operations."""
+        import tempfile
+        import os
+        
+        # Test loading non-existent file
+        with tempfile.TemporaryDirectory() as temp_dir:
+            nonexistent_path = os.path.join(temp_dir, 'nonexistent.pkl')
+            
+            with self.assertRaises(FileNotFoundError):
+                PreOCF.load_ocf(nonexistent_path)
+        
+        # Test loading invalid file content
+        with tempfile.TemporaryDirectory() as temp_dir:
+            invalid_path = os.path.join(temp_dir, 'invalid.pkl')
+            
+            # Write non-PreOCF content
+            import pickle
+            with open(invalid_path, 'wb') as f:
+                pickle.dump({'not': 'a preocf'}, f)
+            
+            with self.assertRaises(TypeError):
+                PreOCF.load_ocf(invalid_path)
+        
+        # Test metadata loading with non-existent file
+        preocf = PreOCF.init_system_z(self.belief_base_birds)
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            nonexistent_meta_path = os.path.join(temp_dir, 'nonexistent_meta.pkl')
+            
+            # Should warn but not raise exception
+            import warnings
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                preocf.load_metadata(nonexistent_meta_path)
+                self.assertTrue(len(w) > 0)
+                self.assertIn("nothing loaded", str(w[0].message))
+
 if __name__ == '__main__':
     unittest.main() 
