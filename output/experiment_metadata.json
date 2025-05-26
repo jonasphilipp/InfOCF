@@ -1,0 +1,11 @@
+{
+  "experiment_type": "custom_ranking_demo",
+  "ranking_strategy": "cyclic_modulo_3",
+  "timestamp": "2024-01-15T10:30:00",
+  "notes": "Demonstration of metadata-only persistence",
+  "parameters": {
+    "modulo": 3,
+    "base_rank": 0,
+    "increment": 1
+  }
+}

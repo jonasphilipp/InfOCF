@@ -37,7 +37,7 @@ from pysmt.shortcuts import Symbol, Not, And, Or
 from pysmt.typing import BOOL
 from BitVector import BitVector
 
-# 1. First, let's load and prepare a belief base
+# First, let's load and prepare a belief base
 # We'll use the birds example which is small but illustrative
 print("=== Creating Belief Base ===")
 birds_kb_string = "signature\nb,p,f,w\n\nconditionals\nbirds{\n(f|b),\n(!f|p),\n(b|p),(w|b)\n}"
@@ -54,7 +54,7 @@ for idx, cond in belief_base_birds.conditionals.items():
     print(f"  {idx}: {cond}")
 print()
 
-# 2. Create a PreOCF using System Z
+# Create a PreOCF using System Z
 print("=== Creating PreOCF with System Z Ranking ===")
 preocf_birds = PreOCF.init_system_z(belief_base_birds)
 print(f"PreOCF created with {len(preocf_birds.ranks)} possible worlds")
@@ -62,7 +62,7 @@ print(f"Ranking system: {preocf_birds.ranking_system}")
 print(f"Is OCF (all worlds ranked): {preocf_birds.is_ocf()}")
 print()
 
-# 3. Compute ranks for specific worlds
+# Compute ranks for specific worlds
 print("=== Computing Ranks for Specific Worlds ===")
 # Initially worlds have None as their rank, we'll compute some specific ones
 worlds_to_check = ['1111', '0000', '1010', '0101']
@@ -96,7 +96,7 @@ print()
 print(f"Is OCF (all worlds ranked): {preocf_birds.is_ocf()}")
 print()
 
-# 4. Compute all ranks
+# Compute all ranks
 print("=== Computing All Ranks ===")
 preocf_birds.compute_all_ranks()
 print()
@@ -116,7 +116,7 @@ for rank, worlds in sorted(ranks_by_value.items()):
     print(f"  Rank {rank}: {len(worlds)} worlds (e.g., {worlds_desc})")
 print()
 
-# 5. Show ranks in original and verbose format for whole dictionary 
+# Show ranks in original and verbose format for whole dictionary 
 print("=== Original Representation ===")
 for world, rank in preocf_birds.ranks.items():
     print(world, rank)
@@ -129,7 +129,7 @@ for world_tuple, rank in list(verbose_ranks.items())[:5]:
     print(world_tuple, rank)
 print()
 
-# 6. Working with formulas and conditionals
+# Working with formulas and conditionals
 print("=== Formula Evaluation ===")
 # Parse formulas using parser
 formulas_str = ["b", "p", "b,p", "b;p", "!b", "b,!p"]
@@ -141,7 +141,7 @@ for desc, formula in formulas.items():
     print(f"  Formula '{desc}': Rank = {rank}")
 print()
 
-# 7. Conditional acceptance
+# Conditional acceptance
 print("=== Conditional Acceptance ===")
 conditional_string = "(f|b),(!f|p),(b|p),(w|b),(f|p),(w|p)"
 # Initialize conditionals using the parser
@@ -154,7 +154,7 @@ for cond in queries.conditionals.values():
     print(f"  {cond}: {'Accepted' if acceptance else 'Rejected'}")
 print()
 
-# 7b. Conditional Acceptance using random_min_c_rep
+# Conditional Acceptance using random_min_c_rep
 print("=== Conditional Acceptance (Random Min C-Representation) ===")
 # Initialize PreOCF with c-representation
 preocf_birds_c = PreOCF.init_random_min_c_rep(belief_base_birds)
@@ -165,7 +165,7 @@ for cond in queries.conditionals.values():
     print(f"  {cond}: {'Accepted' if acceptance_c else 'Rejected'}")
 print()
 
-# 8. Conditionalization
+# Conditionalization
 print("=== Conditionalization ===")
 # Conditionalize on 'b' (bird) using parsed formula
 conditionalization = formulas["b"]
@@ -183,7 +183,7 @@ for world, rank in list(conditionalized_ranks.items()):
     print(f"  World {world} {world_desc}: Rank = {rank}")
 print()
 
-# 9. Total Preorder Conversion
+# Total Preorder Conversion
 print("=== Total Preorder Conversion ===")
 # Convert ranks to total preorder
 tpo = ranks2tpo(preocf_birds.ranks)
@@ -208,19 +208,106 @@ for i, layer in enumerate(partial_tpo2):
     print(f"  Layer {i} (rank {i}) {len(layer)} worlds: {layer}")
 print()
 
-# Persisting data in the PreOCF instance
-preocf_birds.save("tpo_layers", tpo)
-print("Stored total preorder layers in persistence. Retrieved:", preocf_birds.load("tpo_layers"))
+# Metadata Storage and Persistence
+print("=== Metadata Storage and Persistence ===")
+# Store metadata about this experiment
+preocf_birds.save_meta("experiment_name", "Birds Knowledge Base Analysis")
+preocf_birds.save_meta("author", "PreOCF Demo")
+preocf_birds.save_meta("creation_date", "2024-01-15")
+preocf_birds.save_meta("analysis_results", {
+    "total_worlds": len(preocf_birds.ranks),
+    "ranking_system": preocf_birds.ranking_system,
+    "tpo_layers": len(tpo)
+})
+preocf_birds.save_meta("tpo_layers", tpo)
 
-missing = preocf_birds.load("non_existing_key", default="<no data>")
-print("Attempt to load non-existing key gives:", missing)
+print("Stored metadata:")
+print(f"  Experiment: {preocf_birds.load_meta('experiment_name')}")
+print(f"  Author: {preocf_birds.load_meta('author')}")
+print(f"  Date: {preocf_birds.load_meta('creation_date')}")
+print(f"  Analysis results: {preocf_birds.load_meta('analysis_results')}")
 
-# Save persistence to disk and reload
-preocf_birds.save_state("birds_state.json", fmt="json")
-# Reset store to show reload works
-preocf_birds._state.clear()
-preocf_birds.load_state("birds_state.json")
-print("Reloaded from disk, tpo_layers len:", len(preocf_birds.load("tpo_layers")))
+# Test loading non-existing metadata
+missing = preocf_birds.load_meta("non_existing_key", default="<no metadata>")
+print(f"  Non-existing key: {missing}")
+
+# Save metadata to disk and reload
+print("\nSaving metadata to disk...")
+preocf_birds.save_metadata("birds_metadata.json", fmt="json")
+
+# Clear metadata to demonstrate reload
+original_metadata = preocf_birds.metadata.copy()
+preocf_birds.metadata.clear()
+print(f"Metadata cleared, current keys: {list(preocf_birds.metadata.keys())}")
+
+# Reload from disk
+preocf_birds.load_metadata("birds_metadata.json")
+print(f"Metadata reloaded, keys: {list(preocf_birds.metadata.keys())}")
+print(f"Reloaded TPO layers count: {len(preocf_birds.load_meta('tpo_layers'))}")
+print()
+
+# Full Object-Level Persistence
+print("=== Full Object-Level Persistence ===")
+print("Demonstrating complete PreOCF serialization and restoration...")
+
+# Save the entire PreOCF object to disk
+print("Saving complete PreOCF object to 'birds_preocf.pkl'...")
+preocf_birds.save_ocf("birds_preocf.pkl")
+print("✓ Object saved successfully")
+
+# Create a different PreOCF to show the difference
+print("\nCreating a different PreOCF (Random Min C-Rep) for comparison...")
+preocf_birds_c = PreOCF.init_random_min_c_rep(belief_base_birds)
+preocf_birds_c.compute_all_ranks()
+preocf_birds_c.save_meta("ranking_system_note", "This uses c-representation")
+print(f"C-Rep PreOCF ranking system: {preocf_birds_c.ranking_system}")
+print(f"C-Rep PreOCF metadata keys: {list(preocf_birds_c.metadata.keys())}")
+
+# Load the original System Z PreOCF back
+print("\nLoading the saved System Z PreOCF...")
+loaded_preocf = PreOCF.load_ocf("birds_preocf.pkl")
+print("✓ Object loaded successfully")
+
+# Verify the loaded object is identical
+print("\nVerifying loaded object integrity:")
+print(f"  Ranking system: {loaded_preocf.ranking_system}")
+print(f"  Signature: {loaded_preocf.signature}")
+print(f"  Number of worlds: {len(loaded_preocf.ranks)}")
+print(f"  Is OCF: {loaded_preocf.is_ocf()}")
+print(f"  Metadata keys: {list(loaded_preocf.metadata.keys())}")
+print(f"  Experiment name: {loaded_preocf.load_meta('experiment_name')}")
+
+# Test that ranks are preserved
+sample_worlds = ['1111', '0000', '1010']
+print(f"\nRank comparison for sample worlds:")
+for world in sample_worlds:
+    orig_rank = preocf_birds.ranks[world]
+    loaded_rank = loaded_preocf.ranks[world]
+    match = "✓" if orig_rank == loaded_rank else "✗"
+    print(f"  World {world}: Original={orig_rank}, Loaded={loaded_rank} {match}")
+
+# Test conditional acceptance is preserved
+print(f"\nConditional acceptance comparison:")
+test_conditional = list(belief_base_birds.conditionals.values())[0]
+orig_acceptance = preocf_birds.conditional_acceptance(test_conditional)
+loaded_acceptance = loaded_preocf.conditional_acceptance(test_conditional)
+match = "✓" if orig_acceptance == loaded_acceptance else "✗"
+print(f"  {test_conditional}: Original={orig_acceptance}, Loaded={loaded_acceptance} {match}")
+
+# Demonstrate state inspection with __getstate__
+print(f"\nObject state inspection:")
+state_dict = loaded_preocf.__getstate__()
+print(f"  State contains {len(state_dict)} attributes")
+print(f"  Key attributes: {[k for k in state_dict.keys() if not k.startswith('_')]}")
+print(f"  Internal attributes: {[k for k in state_dict.keys() if k.startswith('_')]}")
+
+# Clean up demonstration files
+import os
+for file in ["birds_metadata.json", "birds_preocf.pkl"]:
+    if os.path.exists(file):
+        os.remove(file)
+        print(f"Cleaned up: {file}")
+print()
 
 # Convert back to ranks with a different ranking function
 def custom_rank_function(layer_num):
@@ -243,7 +330,7 @@ print("\nVerifying structure preservation:")
 for i, (orig_layer, custom_layer) in enumerate(zip(tpo, tpo_custom)):
     print(f"  Layer {i}: Same worlds = {orig_layer == custom_layer}")
 
-# 10. Marginalization
+# Marginalization
 print("\n=== Marginalization ===")
 print("Marginalizing the PreOCF by projecting out certain variables")
 print("Original signature:", preocf_birds.signature)
@@ -288,7 +375,7 @@ print("Ranks of matching original worlds:")
 for world in matching_original_worlds:
     print(f"  World {world} {preocf_birds.bv2strtuple(world)}: Rank = {preocf_birds.ranks[world]}")
 
-# 11. Initializing with Custom Ranks
+# Initializing with Custom Ranks
 print("\n=== Custom OCF Initialization ===")
 print("Creating a PreOCF with custom ranks")
 
@@ -354,7 +441,7 @@ for i, layer in enumerate(custom_tpo):
     layer_worlds = [custom_preocf.bv2strtuple(w) for w in layer]
     print(f"  Layer {i} (rank {i}): {layer_worlds}")
 
-# 12. Bare Custom OCF Demo (no belief base or signature)
+# Bare Custom OCF Demo (no belief base or signature)
 print("\n=== Bare Custom OCF Demo ===")
 # Manually define a ranks dict
 bare_ranks = {'00': 2, '01': 0, '10': 1, '11': 3}
@@ -373,8 +460,8 @@ recomputed = tpo2ranks(bare_tpo, lambda layer: layer)
 print("Recomputed ranks from TPO (identity function):", recomputed)
 
 # Demonstrate persistence with bare_ocf
-bare_ocf.save("comment", "Bare OCF created for demo")
-print("Bare OCF comment:", bare_ocf.load("comment"))
+bare_ocf.save_meta("comment", "Bare OCF created for demo")
+print("Bare OCF comment:", bare_ocf.load_meta("comment"))
 
 
 # Demonstrate world acceptance of formulas
