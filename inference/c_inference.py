@@ -8,6 +8,34 @@ from inference.optimizer import create_optimizer
 from inference.consistency_sat import checkTautologies
 
 ### some cleanup and some more documentation of class' funcitonalities pending
+#replaces every items in the argument by it's sum representation
+def makeSummation(minima: dict) -> dict[int, list]:
+    results = dict()
+    for index, summ in minima.items():
+        print(f"!!!!!!!!! summ {summ}")
+        interim = []
+        for subsum in summ:
+            print(f"!!!!!!!!! subsum {subsum}")
+            if subsum:
+                interim.append(Plus([Symbol(f'eta_{i}', INT) for i in subsum]))
+            else:
+                interim.append(Int(0))  # Or use 0 directly
+        results[index] = interim
+    print(f"!!!!!!!!! results {results}")
+    return results
+
+
+def freshVars(i: int) -> tuple:
+    print(f"freshVars {i}")
+    return Symbol(f'mv_{i}', INT), Symbol(f'mf_{i}', INT)
+
+
+def minima_encoding(mv: int, ssums: list) -> list:
+    ands = [LE(mv, i) for i in ssums]
+    ors = Not(And([LT(mv, i) for i in ssums]))
+    ands.append(ors)
+    print(f"minima_encoding {ands}")
+    return ands
 
 
 class CInference(Inference):
@@ -18,48 +46,36 @@ class CInference(Inference):
         if 'fMin' not in self.epistemic_state:
             self.epistemic_state['fMin'] = dict()
 
-    #replaces every items in the argument by it's sum representation
-    def makeSummation(self, minima: dict) -> dict[int, list]:
-        results = dict()
-        for index, summ in minima.items():
-            interim = []
-            for subsum in summ:
-                if subsum:
-                    interim.append(Plus([Symbol(f'eta_{i}', INT) for i in subsum]))
-                else:
-                    interim.append(Int(0))  # Or use 0 directly
-            results[index] = interim
-        return results
 
-    def freshVars(self, i: int) -> tuple:
-        return Symbol(f'mv_{i}', INT), Symbol(f'mf_{i}', INT)
-
-    def minima_encoding(self, mv: int, ssums: list) -> list:
-        ands = [LE(mv, i) for i in ssums]
-        ors = Not(And([LT(mv, i) for i in ssums]))
-        ands.append(ors)
-        return ands
 
     def encoding(self, etas: dict, vSums: dict, fSums: dict) -> list:
         csp = []
         for index, eta in etas.items():
-            mv, mf = self.freshVars(index)
-            vMin = self.minima_encoding(mv, vSums[index])
-            fMin = self.minima_encoding(mf, fSums[index])
+            print(f"eta {eta}")
+            print(f"vSums {vSums[index]}")
+            print(f"fSums {fSums[index]}")
+            mv, mf = freshVars(index)
+            vMin = minima_encoding(mv, vSums[index])
+            fMin = minima_encoding(mf, fSums[index])
             csp.extend(vMin)
             csp.extend(fMin)
             csp.append(GT(eta, mv - mf))
         return csp
 
     def translate(self) -> list:
+        print(f"translate")
         eta = {i: Symbol(f'eta_{i}', INT) for i, _ in enumerate(self.epistemic_state['belief_base'].conditionals, start=1)}
         #defeat= = checkTautologies(self.epistemic_state['belief_base'].conditionals)
         #if not defeat: return False
         gteZeros = [GE(e, Int(0)) for e in eta.values()]
-        vSums = self.makeSummation(self.epistemic_state['vMin'])
-        fSums = self.makeSummation(self.epistemic_state['fMin'])
+        vSums = makeSummation(self.epistemic_state['vMin'])
+        print(f"!!!!!!!!! vSums {vSums}")
+        fSums = makeSummation(self.epistemic_state['fMin'])
+        print(f"!!!!!!!!! fSums {fSums}")
         csp = self.encoding(eta, vSums, fSums)
+        print(f"!!!!!!!!!   !!!!!!! csp {csp}")
         csp.extend(gteZeros)
+        print(f"!!!!!!!!! csp extend !!!!!!!!!!!!!!!!!!!!!!!!!!! {csp}")
         return csp
 
 
@@ -177,11 +193,11 @@ class CInference(Inference):
             else: 
                 fMin = xMins_lst
 
-        vSum = self.makeSummation({0:vMin})
-        fSum = self.makeSummation({0:fMin})
-        mv, mf = self.freshVars(0)
-        vM = self.minima_encoding(mv, vSum[0])
-        fM = self.minima_encoding(mf, fSum[0])
+        vSum = makeSummation({0:vMin})
+        fSum = makeSummation({0:fMin})
+        mv, mf = freshVars(0)
+        vM = minima_encoding(mv, vSum[0])
+        fM = minima_encoding(mf, fSum[0])
         #print(f"vM {vM}")
         #print(f"fM {fM}")
         csp = vM + fM + [GE(mv, mf)]
