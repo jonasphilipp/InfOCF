@@ -134,7 +134,7 @@ class CInference(Inference):
                 [wcnf.append(s, weight=1) for j, softc in self.epistemic_state['nf_cnf_dict'].items() if i != j for s in softc]
                 
                 optimizer = create_optimizer(self.epistemic_state)
-                xMins_lst = optimizer.minimal_correction_subsets(wcnf, i)
+                xMins_lst = optimizer.minimal_correction_subsets(wcnf, ignore=[i])
 
                 if leading_conditional is self.epistemic_state['v_cnf_dict']:
                     self.epistemic_state['vMin'][i] = xMins_lst
