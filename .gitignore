@@ -173,3 +173,7 @@ cython_debug/
 
 # local_folder
 local/
+
+todo_preocf
+test_lex_inf_comparison.py
+test_system_w_comparison.py
