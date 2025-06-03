@@ -49,7 +49,7 @@ class Optimizer(ABC):
 
     """
     @abstractmethod
-    def minimal_correction_subsets(self, wcnf: WCNF, ignore_index: int = 0):
+    def minimal_correction_subsets(self, wcnf: WCNF, ignore: list[int] = []):
         return list()
 
 
@@ -67,12 +67,12 @@ class Optimizer(ABC):
     Returns:
         Set of IDs
     """
-    def get_violated_conditional(self, model: list[int], cost: int, ignore: int) -> set[int]:
+    def get_violated_conditional(self, model: list[int], cost: int, ignore: list[int]) -> set[int]:
         violated = set()
         if cost > 0:
             counter = 0
             for index, conditional in self.epistemic_state['nf_cnf_dict'].items():
-                if index == ignore:
+                if index in ignore:
                     continue
                 for clause in conditional:
                     if not any(x in clause for x in model):
@@ -145,7 +145,7 @@ class OptimizerRC2(Optimizer):
     """
     RC2 based implementation of Optimizer (partial maxsat solver)
     """
-    def minimal_correction_subsets(self, wcnf: WCNF, ignore_index: int = 0):
+    def minimal_correction_subsets(self, wcnf: WCNF, ignore: list[int] = []):
         xMins = []
         sat_solver = self.epistemic_state['pmaxsat_solver'][4:]
         if not sat_solver: sat_solver = 'g3'
@@ -163,7 +163,7 @@ class OptimizerRC2(Optimizer):
                 int += 1 
                 cost = rc2.cost
                 
-                violated = self.get_violated_conditional(model, cost, ignore_index)
+                violated = self.get_violated_conditional(model, cost, ignore)
                 
                 if not violated:
                     xMins.append(violated)

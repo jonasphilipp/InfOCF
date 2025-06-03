@@ -67,7 +67,7 @@ class LexInf(Inference):
         result of inference as bool 
     """
     def _rec_inference(self, hard_constraints_v: WCNF, hard_constraints_f: WCNF,  partition_index: int) -> bool:
-        print(partition_index)
+        #print(partition_index)
         assert type(self.epistemic_state['partition']) == list
         part = self.epistemic_state['partition'][partition_index]
         #print(f'part: {part}')
@@ -76,15 +76,16 @@ class LexInf(Inference):
             [hard_constraints_v.append(s, weight=1) for s in softc]
             [hard_constraints_f.append(s, weight=1) for s in softc]
         optimizer = create_optimizer(self.epistemic_state)
-        mcs_v = optimizer.minimal_correction_subsets(hard_constraints_v, scope=part)
-        mcs_f = optimizer.minimal_correction_subsets(hard_constraints_f, scope=part)
-        print(f'mcs_v: {mcs_v}')
-        print(f'mcs_f: {mcs_f}')
+        ignore = [item for sublist in filter(lambda x: x != part, self.epistemic_state['partition']) for item in sublist]
+        mcs_v = optimizer.minimal_correction_subsets(hard_constraints_v, ignore=ignore)
+        mcs_f = optimizer.minimal_correction_subsets(hard_constraints_f, ignore=ignore)
+        #print(f'mcs_v: {mcs_v}')
+        #print(f'mcs_f: {mcs_f}')
         if not mcs_v:
-            print('minimal_correction_subsets not found for verification')
+            #print('minimal_correction_subsets not found for verification')
             return False
         if not mcs_f:
-            print('minimal_correction_subsets not found for falsification')
+            #print('minimal_correction_subsets not found for falsification')
             return True
         min_len_v = min(len(xi) for xi in mcs_v)
         min_len_f = min(len(xi) for xi in mcs_f)
