@@ -76,7 +76,7 @@ class LexInf(Inference):
             [hard_constraints_v.append(s, weight=1) for s in softc]
             [hard_constraints_f.append(s, weight=1) for s in softc]
         optimizer = create_optimizer(self.epistemic_state)
-        ignore = [item for sublist in filter(lambda x: x != part, self.epistemic_state['partition']) for item in sublist]
+        ignore = [item for sublist in self.epistemic_state['partition'] if sublist != part for item in sublist]
         mcs_v = optimizer.minimal_correction_subsets(hard_constraints_v, ignore=ignore)
         mcs_f = optimizer.minimal_correction_subsets(hard_constraints_f, ignore=ignore)
         #print(f'mcs_v: {mcs_v}')

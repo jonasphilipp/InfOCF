@@ -75,7 +75,7 @@ class SystemW(Inference):
         [wcnf.append(c) for c in self.epistemic_state['v_cnf_dict'][0]]
         [wcnf_prime.append(c) for c in self.epistemic_state['f_cnf_dict'][0]]
         optimizer = create_optimizer(self.epistemic_state)
-        ignore = list(filter(lambda x: x != part, self.epistemic_state['partition']))
+        ignore = [item for sublist in self.epistemic_state['partition'] if sublist != part for item in sublist]
         xi_i_list = optimizer.minimal_correction_subsets(wcnf, ignore=ignore)
         xi_i_prime_list = optimizer.minimal_correction_subsets(wcnf_prime, ignore=ignore)
         xi_i_set = frozenset([frozenset(l) for l in xi_i_list])

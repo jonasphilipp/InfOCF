@@ -67,7 +67,7 @@ def consistency(ckb, solver='z3', weakly=False):
 
 
 def consistency_indices(ckb, solver, weakly=False):
-    conditionals = [i for i in ckb.conditionals]
+    conditionals = [i for i in ckb.conditionals.keys()]
     #partition is a list of lists
     partition = []
     ### We use the solver here, not the optimizer
