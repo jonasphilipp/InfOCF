@@ -1,4 +1,4 @@
-from pysmt.shortcuts import And, Not
+from pysmt.shortcuts import And, Not, Or
 
 
 class Conditional:
@@ -23,7 +23,10 @@ class Conditional:
 
     def make_B(self):
         return self.consequence
-
+    
+    def make_not_A_or_B(self):
+        return Or(Not(self.antecedence), self.consequence)
+    
     def __str__(self):
         return self.textRepresentation
 

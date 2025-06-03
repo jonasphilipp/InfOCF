@@ -89,3 +89,32 @@ def parseQuery(querystring):
     #query.__class__ = Queries
     return ckbquery.conditionals
 
+def parse_formula(string: str):
+    """
+    Parse a propositional formula using the CKB grammar and return a pysmt formula.
+    Supports ! for negation, comma for AND, and semicolon for OR using the native grammar syntax.
+    """
+    # Use the grammar's native syntax directly
+    s = string
+    from antlr4 import InputStream, CommonTokenStream
+    from .CKBLexer import CKBLexer
+    from .CKBParser import CKBParser
+    from .myVisitor import myVisitor
+
+    # Setup parser with error listeners
+    stream = InputStream(s)
+    lexer = CKBLexer(stream)
+    lexer.removeErrorListeners()
+    lexer.addErrorListener(ThrowingErrorListener())
+    tokens = CommonTokenStream(lexer)
+    parser = CKBParser(tokens)
+    parser.removeErrorListeners()
+    parser.addErrorListener(ThrowingErrorListener())
+
+    # Parse formula rule
+    tree = parser.formula()
+    visitor = myVisitor()
+    # Initialize sigcheck so visitVar can record variables without attribute errors
+    visitor.sigcheck = []
+    return visitor.visit(tree)
+
