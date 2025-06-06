@@ -100,7 +100,7 @@ def main():
     
     # Define revision conditionals. The `.index` attribute is now the source of truth.
     # It must be unique and is recommended to be 0-indexed.
-    cond1 = Conditional(b, f, '(f|b)')
+    cond1 = Conditional(f, b, '(f|b)')
     cond1.index = 1
     
     cond2 = Conditional(Not(f), p, '(!f|p)')
@@ -120,7 +120,7 @@ def main():
     print(f"\nRunning c-revision...")
     print("=" * 50)
     
-    model = c_revision(preocf, revision_conditionals)
+    model = c_revision(preocf, revision_conditionals, gamma_plus_zero=True)
     
     print_results(model, revision_conditionals)
 

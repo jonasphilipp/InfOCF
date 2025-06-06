@@ -1,9 +1,13 @@
 from inference.c_inference import freshVars, minima_encoding
 from inference.preocf import PreOCF
 from inference.conditional import Conditional
-from pysmt.shortcuts import Symbol, Plus, GE, GT, Int, Solver
+from pysmt.shortcuts import Symbol, Plus, GE, GT, Int, Solver, Equals
 from pysmt.typing import INT
 
+
+"""
+ATTENTION: This file is not tested yet sufficiently, and the implementation is not complete.
+"""
 
 def compile(ranking_function: PreOCF, revision_conditionals: list[Conditional]) -> list[list[dict[str, list[int, list[int]]]]]:
     outer_list = []
@@ -67,7 +71,7 @@ def compile_alt(ranking_function: PreOCF, revision_conditionals: list[Conditiona
 
     return vMin, fMin
 
-def symbolize_minima_expression(minima: dict[int, list]) -> dict[int, list]:
+def symbolize_minima_expression(minima: dict[int, list], gamma_plus_zero: bool = False) -> dict[int, list]:
     """
     Convert minima expression to symbolic form.
     Input: dict mapping indices to lists of triples [rank, accepted_indices, rejected_indices]
@@ -85,7 +89,7 @@ def symbolize_minima_expression(minima: dict[int, list]) -> dict[int, list]:
                 rejected_indices = triple[2]
                 
                 # Create expressions for accepted conditionals
-                if accepted_indices:
+                if accepted_indices and not gamma_plus_zero:
                     accepted_sum = Plus([Symbol(f'gamma+_{i}', INT) for i in accepted_indices])
                     results[index].append(Plus([accepted_sum, Int(rank)]))
                 else:
@@ -117,7 +121,7 @@ def encoding(gammas: dict, vSums: dict, fSums: dict) -> list:
     return csp
 
 
-def translate_to_csp(compilation: tuple[dict[int, list[int]], dict[int, list[int]]]) -> list:
+def translate_to_csp(compilation: tuple[dict[int, list[int]], dict[int, list[int]]], gamma_plus_zero: bool = False) -> list:
     gammas = {i: (Symbol(f'gamma+_{i}', INT), Symbol(f'gamma-_{i}', INT)) for i in compilation[0].keys()}
     #defeat= = checkTautologies(self.epistemic_state['belief_base'].conditionals)
     #if not defeat: return False
@@ -125,6 +129,8 @@ def translate_to_csp(compilation: tuple[dict[int, list[int]], dict[int, list[int
     for gamma_plus, gamma_minus in gammas.values():
         gteZeros.append(GE(gamma_plus, Int(0)))
         gteZeros.append(GE(gamma_minus, Int(0)))
+        if gamma_plus_zero:
+            gteZeros.append(Equals(gamma_plus, Int(0)))
     vSums = symbolize_minima_expression(compilation[0])
     fSums = symbolize_minima_expression(compilation[1])
     csp = encoding(gammas, vSums, fSums)
@@ -141,9 +147,11 @@ def solve_and_get_model(csp):
             return model
         return None
 
-def c_revision(ranking_function: PreOCF, revision_conditionals: list[Conditional]):
+
+### work in progress, not tested yet
+def c_revision(ranking_function: PreOCF, revision_conditionals: list[Conditional], gamma_plus_zero: bool = False):
     compilation = compile_alt(ranking_function, revision_conditionals)
-    csp = translate_to_csp(compilation)
+    csp = translate_to_csp(compilation, gamma_plus_zero)
     # get model of csp
     model = solve_and_get_model(csp)
     return model
