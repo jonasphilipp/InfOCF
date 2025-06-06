@@ -7,7 +7,8 @@ import os
 # Add the project root to the path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from inference.preocf import compile_alt, PreOCF
+from inference.preocf import PreOCF
+from inference.c_revision import compile_alt
 from inference.conditional import Conditional
 from pysmt.shortcuts import Symbol, And, Not, BOOL
 

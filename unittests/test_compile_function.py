@@ -9,7 +9,8 @@ import os
 # Add the parent directory to the path so we can import the modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from inference.preocf import PreOCF, compile
+from inference.preocf import PreOCF
+from inference.c_revision import compile
 from inference.conditional import Conditional
 from inference.belief_base import BeliefBase
 from parser.Wrappers import parse_belief_base
