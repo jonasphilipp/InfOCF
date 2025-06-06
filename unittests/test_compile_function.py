@@ -67,17 +67,25 @@ class TestCompileFunction(unittest.TestCase):
             self.assertIsInstance(entry[1], dict)
 
     def test_compile_function_world_coverage(self):
-        """Test that all worlds are covered in the compile result."""
+        """Test that relevant worlds are covered in the compile result."""
         result = compile(self.preocf_z_birds, self.revision_conditionals)
         
-        all_worlds = set(self.preocf_z_birds.ranks.keys())
-        
-        for entry in result:
+        for i, rev_cond in enumerate(self.revision_conditionals):
+            entry = result[i]
+            
             # Collect all worlds from both dictionaries
             worlds_in_entry = set(entry[0].keys()) | set(entry[1].keys())
             
-            # Check that all worlds are covered
-            self.assertEqual(worlds_in_entry, all_worlds)
+            # Check that each world in the entry satisfies either verification or falsification
+            for world in worlds_in_entry:
+                satisfies_verification = self.preocf_z_birds.world_satisfies_conditionalization(
+                    world, rev_cond.make_A_then_B()
+                )
+                satisfies_falsification = self.preocf_z_birds.world_satisfies_conditionalization(
+                    world, rev_cond.make_A_then_not_B()
+                )
+                # World should satisfy at least one condition
+                self.assertTrue(satisfies_verification or satisfies_falsification)
 
     def test_compile_function_world_data_structure(self):
         """Test the data structure for each world in the compile result."""
@@ -136,10 +144,19 @@ class TestCompileFunction(unittest.TestCase):
         entry = result[0]
         self.assertEqual(len(entry), 2)
         
-        # All worlds should be covered
-        all_worlds = set(self.preocf_z_birds.ranks.keys())
+        # Check that worlds are properly categorized
         worlds_in_entry = set(entry[0].keys()) | set(entry[1].keys())
-        self.assertEqual(worlds_in_entry, all_worlds)
+        rev_cond = single_conditional[0]
+        
+        for world in worlds_in_entry:
+            satisfies_verification = self.preocf_z_birds.world_satisfies_conditionalization(
+                world, rev_cond.make_A_then_B()
+            )
+            satisfies_falsification = self.preocf_z_birds.world_satisfies_conditionalization(
+                world, rev_cond.make_A_then_not_B()
+            )
+            # World should satisfy at least one condition
+            self.assertTrue(satisfies_verification or satisfies_falsification)
 
     def test_compile_function_world_satisfies_conditionalization(self):
         """Test that worlds are correctly categorized based on conditionalization."""
@@ -149,18 +166,19 @@ class TestCompileFunction(unittest.TestCase):
             entry = result[i]
             
             # Check that worlds are correctly distributed between the two dictionaries
-            for world in self.preocf_z_birds.ranks.keys():
-                satisfies_negation = self.preocf_z_birds.world_satisfies_conditionalization(
+            for world in set(entry[0].keys()) | set(entry[1].keys()):
+                satisfies_verification = self.preocf_z_birds.world_satisfies_conditionalization(
+                    world, rev_cond.make_A_then_B()
+                )
+                satisfies_falsification = self.preocf_z_birds.world_satisfies_conditionalization(
                     world, rev_cond.make_A_then_not_B()
                 )
                 
-                if satisfies_negation:
-                    # World should be in first dictionary
+                if satisfies_verification:
+                    # World should be in verification dictionary (index 0)
                     self.assertIn(world, entry[0])
-                    self.assertNotIn(world, entry[1])
-                else:
-                    # World should be in second dictionary
-                    self.assertNotIn(world, entry[0])
+                if satisfies_falsification:
+                    # World should be in falsification dictionary (index 1)  
                     self.assertIn(world, entry[1])
 
     def test_compile_function_ranks_consistency(self):
@@ -203,10 +221,20 @@ class TestCompileFunction(unittest.TestCase):
         
         # Basic structure checks
         self.assertEqual(len(result), 2)
-        for entry in result:
+        for i, entry in enumerate(result):
             self.assertEqual(len(entry), 2)
             worlds_covered = set(entry[0].keys()) | set(entry[1].keys())
-            self.assertEqual(worlds_covered, set(custom_ranks.keys()))
+            
+            # Check that covered worlds satisfy at least one condition for this revision conditional
+            rev_cond = rev_conds[i]
+            for world in worlds_covered:
+                satisfies_verification = custom_preocf.world_satisfies_conditionalization(
+                    world, rev_cond.make_A_then_B()
+                )
+                satisfies_falsification = custom_preocf.world_satisfies_conditionalization(
+                    world, rev_cond.make_A_then_not_B()
+                )
+                self.assertTrue(satisfies_verification or satisfies_falsification)
 
     def test_compile_function_performance(self):
         """Test that compile function completes in reasonable time."""

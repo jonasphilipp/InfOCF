@@ -66,25 +66,26 @@ class TestCompileAlt(unittest.TestCase):
         self.assertTrue(has_vmin_entry or has_fmin_entry)
     
     def test_compile_alt_conditional_acceptance_logic(self):
-        """Test that conditional acceptance correctly populates triple[1] and triple[2]."""
-        # Setup: alternating acceptance pattern
-        self.mock_ranking_function.world_satisfies_conditionalization.side_effect = cycle([True])
+        """Test that conditional classification correctly populates triple[1] and triple[2]."""
+        # Setup: alternating satisfaction pattern
+        self.mock_ranking_function.world_satisfies_conditionalization.side_effect = cycle([True, False, True, False])
         self.mock_ranking_function.rank_world.side_effect = cycle([0])
-        self.mock_ranking_function.conditional_acceptance.side_effect = cycle([True, False])
         
         vMin, fMin = compile_alt(self.mock_ranking_function, self.revision_conditionals)
         
-        # Check that conditional_acceptance was called
-        self.assertTrue(self.mock_ranking_function.conditional_acceptance.called)
+        # Check that world_satisfies_conditionalization was called
+        self.assertTrue(self.mock_ranking_function.world_satisfies_conditionalization.called)
         
         # Check structure of any result that exists
         for result_dict in [vMin, fMin]:
             for key, value in result_dict.items():
-                if value is not None and isinstance(value, list) and len(value) == 3:
-                    rank, accepted, rejected = value
-                    self.assertIsInstance(rank, int)
-                    self.assertIsInstance(accepted, list)
-                    self.assertIsInstance(rejected, list)
+                if value is not None and isinstance(value, list):
+                    for triple in value:
+                        if triple and len(triple) >= 3:
+                            rank, accepted, rejected = triple
+                            self.assertIsInstance(rank, int)
+                            self.assertIsInstance(accepted, list)
+                            self.assertIsInstance(rejected, list)
     
     def test_compile_alt_empty_revision_conditionals(self):
         """Test behavior with empty revision conditionals list."""
@@ -207,19 +208,19 @@ class TestCompileAlt(unittest.TestCase):
     
     def test_compile_alt_method_calls(self):
         """Test that all necessary methods are called with correct parameters."""
-        self.mock_ranking_function.world_satisfies_conditionalization.side_effect = cycle([True])
+        self.mock_ranking_function.world_satisfies_conditionalization.side_effect = cycle([True, False, True, False])
         self.mock_ranking_function.rank_world.side_effect = cycle([0])
-        self.mock_ranking_function.conditional_acceptance.side_effect = cycle([True])
         
         vMin, fMin = compile_alt(self.mock_ranking_function, self.revision_conditionals)
         
         # Verify methods were called
         self.assertTrue(self.mock_ranking_function.world_satisfies_conditionalization.called)
         self.assertTrue(self.mock_ranking_function.rank_world.called)
-        self.assertTrue(self.mock_ranking_function.conditional_acceptance.called)
         
-        # Verify make_A_then_not_B was called on conditionals
+        # Verify make_A_then_B and make_A_then_not_B were called on conditionals
+        self.mock_conditional_1.make_A_then_B.assert_called()
         self.mock_conditional_1.make_A_then_not_B.assert_called()
+        self.mock_conditional_2.make_A_then_B.assert_called()
         self.mock_conditional_2.make_A_then_not_B.assert_called()
     
     def test_compile_alt_single_world(self):
