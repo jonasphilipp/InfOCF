@@ -1,7 +1,7 @@
 from inference.c_inference import freshVars, minima_encoding
 from inference.preocf import PreOCF
 from inference.conditional import Conditional
-from pysmt.shortcuts import Symbol, Plus, GE, GT, Int
+from pysmt.shortcuts import Symbol, Plus, GE, GT, Int, Solver
 from pysmt.typing import INT
 
 
@@ -10,14 +10,19 @@ def compile(ranking_function: PreOCF, revision_conditionals: list[Conditional]) 
     for rev_cond in revision_conditionals:
         inner_list = [dict(), dict()]
         for world in ranking_function.ranks.keys():
-            branch_index = 0 if ranking_function.world_satisfies_conditionalization(world, rev_cond.make_A_then_not_B()) else 1
+            if ranking_function.world_satisfies_conditionalization(world, rev_cond.make_A_then_B()):
+                branch_index = 0
+            elif ranking_function.world_satisfies_conditionalization(world, rev_cond.make_A_then_not_B()):
+                branch_index = 1
+            else:
+                continue
             
             inner_list[branch_index][world] = [ranking_function.rank_world(world), [], []]
             
             for cond in revision_conditionals:
-                if ranking_function.conditional_acceptance(cond):
+                if ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_B()):
                     inner_list[branch_index][world][1].append(cond.index)
-                else:
+                elif ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_not_B()):
                     inner_list[branch_index][world][2].append(cond.index)
 
         outer_list.append(inner_list)
@@ -27,24 +32,38 @@ def compile(ranking_function: PreOCF, revision_conditionals: list[Conditional]) 
 def compile_alt(ranking_function: PreOCF, revision_conditionals: list[Conditional]) -> tuple[dict[int, list[int]], dict[int, list[int]]]:
     vMin = dict()
     fMin = dict()
-    for index, rev_cond in enumerate(revision_conditionals):
-        vMin[index] = []  # Initialize outside the world loop
-        fMin[index] = []  # Initialize outside the world loop
+
+    # Initialize dictionaries for all revision conditionals based on their index
+    for rev_cond in revision_conditionals:
+        if not hasattr(rev_cond, 'index'):
+            raise ValueError(f"Revision conditional '{rev_cond.textRepresentation}' is missing the 'index' attribute.")
+        vMin[rev_cond.index] = []
+        fMin[rev_cond.index] = []
+
+    for rev_cond in revision_conditionals:
+        # The key is now the conditional's own index
+        key_index = rev_cond.index
         
         for world in ranking_function.ranks.keys():
-            v_dict = True if ranking_function.world_satisfies_conditionalization(world, rev_cond.make_A_then_not_B()) else False
+            v_dict = ranking_function.world_satisfies_conditionalization(world, rev_cond.make_A_then_B())
+            f_dict = ranking_function.world_satisfies_conditionalization(world, rev_cond.make_A_then_not_B())
             
+            if not v_dict and not f_dict:
+                continue
+
             triple = [ranking_function.rank_world(world), [], []]
             
+            # Here, we also use the cond.index
             for cond in revision_conditionals:
-                if ranking_function.conditional_acceptance(cond):
+                if ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_B()):    
                     triple[1].append(cond.index)
-                else:
+                elif ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_not_B()):
                     triple[2].append(cond.index)
+            
             if v_dict:
-                vMin[index].append(triple)
-            else:
-                fMin[index].append(triple)
+                vMin[key_index].append(triple)
+            elif f_dict:
+                fMin[key_index].append(triple)
 
     return vMin, fMin
 
@@ -111,3 +130,20 @@ def translate_to_csp(compilation: tuple[dict[int, list[int]], dict[int, list[int
     csp = encoding(gammas, vSums, fSums)
     csp.extend(gteZeros)
     return csp
+
+def solve_and_get_model(csp):
+    with Solver(name='z3') as solver:
+        solver.add_assertions(csp)
+        if solver.solve():
+            model = {}
+            for var_name, var_value in solver.get_model():
+                model[var_name.symbol_name()] = var_value
+            return model
+        return None
+
+def c_revision(ranking_function: PreOCF, revision_conditionals: list[Conditional]):
+    compilation = compile_alt(ranking_function, revision_conditionals)
+    csp = translate_to_csp(compilation)
+    # get model of csp
+    model = solve_and_get_model(csp)
+    return model
