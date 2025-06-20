@@ -171,10 +171,10 @@ def symbolize_minima_expression(minima: dict[int, list], gamma_plus_zero: bool =
                 # Malformed entry, skip it silently.
                 continue
 
-                rank = triple[0]
-                accepted_indices = triple[1]
-                rejected_indices = triple[2]
-                
+            rank = triple[0]
+            accepted_indices = triple[1]
+            rejected_indices = triple[2]
+            
             # ------------------------------------------------------------------
             # When γ⁺ are fixed to zero, terms that only depend on γ⁺ would reduce
             # to zero and thus dominate the minima undesirably. Furthermore, if a
@@ -200,16 +200,16 @@ def symbolize_minima_expression(minima: dict[int, list], gamma_plus_zero: bool =
                 added = True
 
             # Include γ⁺ part only when they contribute (i.e. not fixed to zero).
-                if accepted_indices and not gamma_plus_zero:
+            if accepted_indices and not gamma_plus_zero:
                 accepted_sum = Plus([_gamma(f'gamma+_{i}') for i in accepted_indices])
-                    results[index].append(Plus([accepted_sum, Int(rank)]))
+                results[index].append(Plus([accepted_sum, Int(rank)]))
                 added = True
 
             # If this triple yielded no expression (e.g. γ⁺ fixed to 0 AND no γ⁻
             # violations), fall back to the plain rank so every triple influences
             # the minima calculation.
             if not added:
-                    results[index].append(Int(rank))
+                results[index].append(Int(rank))
     
     return results
 
@@ -245,7 +245,7 @@ def translate_to_csp(compilation: tuple[dict[int, list[int]], dict[int, list[int
     for gamma_plus, gamma_minus in gammas.values():
         # gamma_plus is constant 0 when gamma_plus_zero=True
         if not gamma_plus_zero:
-        gteZeros.append(GE(gamma_plus, Int(0)))
+            gteZeros.append(GE(gamma_plus, Int(0)))
         gteZeros.append(GE(gamma_minus, Int(0)))
     vSums = symbolize_minima_expression(compilation[0], gamma_plus_zero)
     fSums = symbolize_minima_expression(compilation[1], gamma_plus_zero)
