@@ -1,7 +1,7 @@
 from inference.c_inference import freshVars, minima_encoding
 from inference.preocf import PreOCF
 from inference.conditional import Conditional
-from pysmt.shortcuts import Symbol, Plus, GE, GT, Int, Solver, Equals
+from pysmt.shortcuts import Symbol, Plus, GE, GT, Int, Solver, Equals, And, Not
 from pysmt.typing import INT
 import z3
 
@@ -91,39 +91,51 @@ def compile_alt_fast(
     O(|C|·|W|).
     """
 
-    # Prepare empty bucket lists keyed by conditional index.
-    vMin: dict[int, list] = {cond.index: [] for cond in revision_conditionals}
-    fMin: dict[int, list] = {cond.index: [] for cond in revision_conditionals}
+    # Signature lookup for mask extraction
+    sig_index = {v: i for i, v in enumerate(ranking_function.signature)}
+
+    # Pre-extract masks for simple literals; complex ones will be None and fallback to solver.
+    cond_masks = {}
+    for cond in revision_conditionals:
+        cond_masks[cond.index] = _extract_cond_masks(cond, sig_index)
+
+    vMin: dict[int, list] = {c.index: [] for c in revision_conditionals}
+    fMin: dict[int, list] = {c.index: [] for c in revision_conditionals}
 
     # Evaluate each world once.
     for world in ranking_function.ranks.keys():
         rank_val = ranking_function.rank_world(world)
+        # cache world bits as ints
+        bits = [int(b) for b in world]
 
-        accepted: list[int] = []  # indices where world |= A→B
-        rejected: list[int] = []  # indices where world |= A→¬B
+        accepted_list = []
+        rejected_list = []
 
-        # First pass – compute acceptance/rejection sets for *all* conditionals.
         for cond in revision_conditionals:
-            if ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_B()):
-                accepted.append(cond.index)
-            elif ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_not_B()):
-                rejected.append(cond.index)
+            mask = cond_masks[cond.index]
+            if mask is None:
+                # Fallback to solver evaluation for complex formula
+                if ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_B()):
+                    accepted_list.append(cond.index)
+                elif ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_not_B()):
+                    rejected_list.append(cond.index)
+            else:
+                a_idx, a_val, c_idx, c_val = mask
+                if bits[a_idx] == a_val:
+                    if bits[c_idx] == c_val:
+                        accepted_list.append(cond.index)
+                    else:
+                        rejected_list.append(cond.index)
 
-        acc_set = set(accepted)
-        rej_set = set(rejected)
+        acc_set = set(accepted_list)
+        rej_set = set(rejected_list)
 
-        # For each conditional, build a dedicated triple *without* its own index
-        # in the accepted/rejected lists – in line with the semantics of the
-        # original compile_alt implementation.
         for cond in revision_conditionals:
             idx = cond.index
-
             if idx in acc_set or idx in rej_set:
-                # Create filtered copies (avoid mutating originals)
-                acc_filtered = [i for i in accepted if i != idx]
-                rej_filtered = [i for i in rejected if i != idx]
-                triple = [rank_val, acc_filtered, rej_filtered]
-
+                acc_filtered = [i for i in accepted_list if i != idx]
+                rej_filtered = [i for i in rejected_list if i != idx]
+                triple = (rank_val, acc_filtered, rej_filtered)
                 if idx in acc_set:
                     vMin[idx].append(triple)
                 else:
@@ -207,15 +219,22 @@ def encoding(gammas: dict, vSums: dict, fSums: dict) -> list:
 
 
 def translate_to_csp(compilation: tuple[dict[int, list[int]], dict[int, list[int]]], gamma_plus_zero: bool = False) -> list:
-    gammas = {i: (Symbol(f'gamma+_{i}', INT), Symbol(f'gamma-_{i}', INT)) for i in compilation[0].keys()}
+    gammas = {}
+    for i in compilation[0].keys():
+        if gamma_plus_zero:
+            plus_var = Int(0)
+        else:
+            plus_var = Symbol(f'gamma+_{i}', INT)
+        minus_var = Symbol(f'gamma-_{i}', INT)
+        gammas[i] = (plus_var, minus_var)
     #defeat= = checkTautologies(self.epistemic_state['belief_base'].conditionals)
     #if not defeat: return False
     gteZeros = []
     for gamma_plus, gamma_minus in gammas.values():
-        gteZeros.append(GE(gamma_plus, Int(0)))
+        # gamma_plus is constant 0 when gamma_plus_zero=True
+        if not gamma_plus_zero:
+            gteZeros.append(GE(gamma_plus, Int(0)))
         gteZeros.append(GE(gamma_minus, Int(0)))
-        if gamma_plus_zero:
-            gteZeros.append(Equals(gamma_plus, Int(0)))
     vSums = symbolize_minima_expression(compilation[0], gamma_plus_zero)
     fSums = symbolize_minima_expression(compilation[1], gamma_plus_zero)
     csp = encoding(gammas, vSums, fSums)
@@ -237,7 +256,8 @@ def solve_and_get_model(csp, minimize_vars: list[str] | None = None):
     # Convert pysmt expressions to native z3 expressions so we can leverage
     # z3's *Optimize* capabilities.
     pysmt_solver = Solver(name='z3')
-    z3_csp = [pysmt_solver.converter.convert(expr) for expr in csp]
+    converter = pysmt_solver.converter
+    z3_csp = [converter.convert(expr) for expr in csp]
 
     # If no optimisation requested, fall back to a plain satisfiable model.
     if not minimize_vars:
@@ -289,3 +309,30 @@ def c_revision(
 
     model = solve_and_get_model(csp, minimize_vars)
     return model
+
+# ----------------------------------------------------------------------------
+# Helper: quick literal extraction for simple conjunctions of two literals
+# ----------------------------------------------------------------------------
+
+def _literal_info(node):
+    """Return (var_name, required_val) if *node* is a literal, else None."""
+    # Symbol -> var must be True
+    if node.is_symbol():
+        return node.symbol_name(), 1
+    # Not(Symbol) -> var must be False
+    if node.is_not() and node.arg(0).is_symbol():
+        return node.arg(0).symbol_name(), 0
+    return None
+
+def _extract_cond_masks(cond, sig_index):
+    """Return (a_idx, a_val, c_idx, c_val) or None if complex."""
+    lit_a = _literal_info(cond.antecedence)
+    lit_c = _literal_info(cond.consequence)
+    if lit_a is None or lit_c is None:
+        return None
+    try:
+        a_idx = sig_index[lit_a[0]]
+        c_idx = sig_index[lit_c[0]]
+    except KeyError:
+        return None
+    return a_idx, lit_a[1], c_idx, lit_c[1]
