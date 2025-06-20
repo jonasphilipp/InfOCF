@@ -9,11 +9,12 @@ for easy experimentation with different configurations.
 import sys
 import os
 import pprint
+import z3
 
 # Add the project root to the path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from inference.preocf import CustomPreOCF
+from inference.preocf import PreOCF, CustomPreOCF
 from inference.c_revision import c_revision
 from inference.conditional import Conditional
 from inference.belief_base import BeliefBase
@@ -83,6 +84,65 @@ def print_results(model, revision_conditionals):
         print(f"\nC-revision failed: No satisfying model found!")
         print("This could indicate inconsistency in the constraints.")
 
+def calculate_pareto_front(belief_base):
+    """Compute the Pareto front of η-vectors for the given belief base.
+
+    The Pareto front is derived from the optimisation problem that defines
+    the c-representation (RandomMinCRep).  Each vector corresponds to one
+    set of minimal η values (impacts) such that all KB constraints hold.
+
+    Returns:
+        list[tuple[int, ...]] | None – A list of η-vectors or *None* if the
+        computation failed (e.g. due to missing external dependencies).
+    """
+
+    try:
+        # Build the optimisation model via the existing factory method.
+        preocf_c = PreOCF.init_random_min_c_rep(belief_base)
+    except Exception as e:
+        print("\n[Warning] RandomMinCRepPreOCF initialisation failed:", e)
+        return None
+
+    # Prepare a fresh optimiser – we re-create it instead of re-using the
+    # internal one so we can safely iterate through all Pareto-optimal
+    # solutions without disturbing the PreOCF instance.
+    eta_vars = [z3.Int(f"eta_{i}") for i in range(1, len(belief_base.conditionals) + 1)]
+
+    opt = z3.Optimize()
+    opt.set(priority='pareto')
+
+    # Add base CSP (already converted to native z3 expressions).
+    opt.add(*preocf_c._csp)
+
+    # Tell the optimiser to minimise every η variable.
+    for v in eta_vars:
+        opt.minimize(v)
+
+    pareto_vectors = []
+
+    # Enumerate all Pareto-optimal models.
+    while opt.check() == z3.sat:
+        m = opt.model()
+        vector = tuple(m[v].as_long() for v in eta_vars)
+        pareto_vectors.append(vector)
+
+        # Block the current model to search for another one that strictly
+        # improves at least one objective.
+        opt.add(z3.Or(*[v < val for v, val in zip(eta_vars, vector)]))
+
+    return pareto_vectors
+
+def print_pareto_front(pareto_vectors):
+    """Pretty-print the list of Pareto η-vectors."""
+    if not pareto_vectors:
+        print("\nNo Pareto-optimal η-vectors found (or computation skipped).")
+        return
+
+    print("\nPareto front of c-representation (η impacts):")
+    for idx, vec in enumerate(pareto_vectors, 1):
+        vec_str = ", ".join(f"η{j+1}={val}" for j, val in enumerate(vec))
+        print(f"  Solution {idx}: {vec_str}")
+
 def main():
     """Run c-revision with the specified parameters."""
     
@@ -123,6 +183,13 @@ def main():
     model = c_revision(preocf, revision_conditionals, gamma_plus_zero=True)
     
     print_results(model, revision_conditionals)
+
+    # ----------------------------------------
+    # Pareto front of c-representation
+    # ----------------------------------------
+
+    pareto_vectors = calculate_pareto_front(belief_base)
+    print_pareto_front(pareto_vectors)
 
 if __name__ == "__main__":
     main() 

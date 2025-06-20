@@ -3,6 +3,7 @@ from inference.preocf import PreOCF
 from inference.conditional import Conditional
 from pysmt.shortcuts import Symbol, Plus, GE, GT, Int, Solver, Equals
 from pysmt.typing import INT
+import z3
 
 
 """
@@ -57,8 +58,11 @@ def compile_alt(ranking_function: PreOCF, revision_conditionals: list[Conditiona
 
             triple = [ranking_function.rank_world(world), [], []]
             
-            # Here, we also use the cond.index
+            # Skip the leading conditional itself – only consider *other* conditionals
             for cond in revision_conditionals:
+                if cond.index == key_index:
+                    continue
+
                 if ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_B()):    
                     triple[1].append(cond.index)
                 elif ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_not_B()):
@@ -83,24 +87,49 @@ def symbolize_minima_expression(minima: dict[int, list], gamma_plus_zero: bool =
         results[index] = []
         
         for triple in triple_list:
-            if len(triple) >= 3:
-                rank = triple[0]
-                accepted_indices = triple[1]
-                rejected_indices = triple[2]
-                
-                # Create expressions for accepted conditionals
-                if accepted_indices and not gamma_plus_zero:
-                    accepted_sum = Plus([Symbol(f'gamma+_{i}', INT) for i in accepted_indices])
-                    results[index].append(Plus([accepted_sum, Int(rank)]))
-                else:
-                    results[index].append(Int(rank))
-                
-                # Create expressions for rejected conditionals  
-                if rejected_indices:
-                    rejected_sum = Plus([Symbol(f'gamma-_{i}', INT) for i in rejected_indices])
-                    results[index].append(Plus([rejected_sum, Int(rank)]))
-                else:
-                    results[index].append(Int(rank))
+            if len(triple) < 3:
+                # Malformed entry, skip it silently.
+                continue
+
+            rank = triple[0]
+            accepted_indices = triple[1]
+            rejected_indices = triple[2]
+
+            # ------------------------------------------------------------------
+            # When γ⁺ are fixed to zero, terms that only depend on γ⁺ would reduce
+            # to zero and thus dominate the minima undesirably. Furthermore, if a
+            # world does not violate any conditional (no rejected indices) it will
+            # again yield a rank-only cost of zero.  This special-case is handled
+            # by *skipping* such triples altogether – except when γ⁺ are *not* all
+            # fixed to zero, in which case the γ⁺ variables still have influence.
+            # ------------------------------------------------------------------
+            # NOTE: We no longer skip γ⁺-only triples because, with γ⁺ fixed to 0, they
+            #       translate to a *plain* rank cost of 0 – exactly what the original
+            #       c-representation requires for some fMin sets.  Omitting them made
+            #       γ⁻ vectors too small (e.g. γ⁻₂=1 instead of 2).  The downstream
+            #       logic already replaces γ⁺-terms with the bare rank when
+            #       gamma_plus_zero=True, so there is no risk of undervaluing costs.
+
+            added = False
+
+            # Build expression for rejected conditionals (γ⁻ part); this is the
+            # essential component for our optimisation irrespective of γ⁺.
+            if rejected_indices:
+                rejected_sum = Plus([Symbol(f'gamma-_{i}', INT) for i in rejected_indices])
+                results[index].append(Plus([rejected_sum, Int(rank)]))
+                added = True
+
+            # Include γ⁺ part only when they contribute (i.e. not fixed to zero).
+            if accepted_indices and not gamma_plus_zero:
+                accepted_sum = Plus([Symbol(f'gamma+_{i}', INT) for i in accepted_indices])
+                results[index].append(Plus([accepted_sum, Int(rank)]))
+                added = True
+
+            # If this triple yielded no expression (e.g. γ⁺ fixed to 0 AND no γ⁻
+            # violations), fall back to the plain rank so every triple influences
+            # the minima calculation.
+            if not added:
+                results[index].append(Int(rank))
     
     return results
 
@@ -131,27 +160,73 @@ def translate_to_csp(compilation: tuple[dict[int, list[int]], dict[int, list[int
         gteZeros.append(GE(gamma_minus, Int(0)))
         if gamma_plus_zero:
             gteZeros.append(Equals(gamma_plus, Int(0)))
-    vSums = symbolize_minima_expression(compilation[0])
-    fSums = symbolize_minima_expression(compilation[1])
+    vSums = symbolize_minima_expression(compilation[0], gamma_plus_zero)
+    fSums = symbolize_minima_expression(compilation[1], gamma_plus_zero)
     csp = encoding(gammas, vSums, fSums)
     csp.extend(gteZeros)
     return csp
 
-def solve_and_get_model(csp):
-    with Solver(name='z3') as solver:
-        solver.add_assertions(csp)
-        if solver.solve():
-            model = {}
-            for var_name, var_value in solver.get_model():
-                model[var_name.symbol_name()] = var_value
-            return model
+def solve_and_get_model(csp, minimize_vars: list[str] | None = None):
+    """Return a model satisfying *csp* and Pareto-minimising *minimize_vars*.
+
+    Arguments
+    ---------
+    csp : list[pysmt.FNode]
+        Constraint set produced by ``translate_to_csp`` (pysmt expressions).
+    minimize_vars : list[str] | None
+        Variable names to be minimised in the Pareto sense.  If *None*, the
+        first model found is returned without optimisation.
+    """
+
+    # Convert pysmt expressions to native z3 expressions so we can leverage
+    # z3's *Optimize* capabilities.
+    pysmt_solver = Solver(name='z3')
+    z3_csp = [pysmt_solver.converter.convert(expr) for expr in csp]
+
+    # If no optimisation requested, fall back to a plain satisfiable model.
+    if not minimize_vars:
+        s = z3.Solver()
+        s.add(*z3_csp)
+        if s.check() == z3.sat:
+            m = s.model()
+            return {d.name(): m[d].as_long() for d in m.decls()}
         return None
+
+    # Otherwise build an optimiser.
+    opt = z3.Optimize()
+    opt.set(priority="pareto")
+    opt.add(*z3_csp)
+
+    # Register all variables to be minimised.
+    for vname in minimize_vars:
+        opt.minimize(z3.Int(vname))
+
+    # Enumerate first Pareto-optimal model (suffices since *priority='pareto'*).
+    if opt.check() == z3.sat:
+        m = opt.model()
+        return {d.name(): m[d].as_long() for d in m.decls()}
+
+    return None
 
 
 ### work in progress, not tested yet
-def c_revision(ranking_function: PreOCF, revision_conditionals: list[Conditional], gamma_plus_zero: bool = False):
+def c_revision(
+    ranking_function: PreOCF,
+    revision_conditionals: list[Conditional],
+    gamma_plus_zero: bool = False,
+):
+    """Compute γ⁺/γ⁻ parameters according to c-revision semantics.
+
+    When *gamma_plus_zero* is *True*, γ⁺ variables are fixed to 0 and the
+    optimiser will calculate a Pareto-minimal γ⁻ vector.  This should match the
+    η-vector of the c-representation given an all-zero initial ranking.
+    """
+
     compilation = compile_alt(ranking_function, revision_conditionals)
     csp = translate_to_csp(compilation, gamma_plus_zero)
-    # get model of csp
-    model = solve_and_get_model(csp)
+
+    # Assemble the list of γ⁻ variables to be minimised.
+    minimize_vars = [f"gamma-_{cond.index}" for cond in revision_conditionals]
+
+    model = solve_and_get_model(csp, minimize_vars)
     return model
