@@ -180,3 +180,33 @@ todo_preocf
 # local test files
 test_lex_inf_comparison.py
 test_system_w_comparison.py
+
+# Added by Task Master AI
+# Logs
+logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+# Dependency directories
+node_modules/
+# Environment variables
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+.DS_Store
+
+# local files
+.roomodes
+.taskmasterconfig
+.windsurfrules
+.env.example
+.roo
+.cursor
+.taskmaster
