@@ -1,5 +1,23 @@
-from pysmt.shortcuts import And, Not, Or
+# ---------------------------------------------------------------------------
+# Standard library
+# ---------------------------------------------------------------------------
 
+import logging
+
+# ---------------------------------------------------------------------------
+# Third-party
+# ---------------------------------------------------------------------------
+
+from pysmt.shortcuts import Symbol, Not, And, Or, Iff, is_unsat, is_sat
+from pysmt.typing import BOOL
+
+# ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+
+from infocf import get_logger
+
+logger = get_logger(__name__)
 
 class Conditional:
     def __init__(self,consequence, antecedence, textRepresentation, weak=False):

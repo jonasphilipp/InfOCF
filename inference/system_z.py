@@ -1,10 +1,23 @@
-from inference.conditional import Conditional
+# ---------------------------------------------------------------------------
+# Standard library
+# ---------------------------------------------------------------------------
+
+import logging
+
+# ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+
 from inference.inference import Inference
+from inference.conditional import Conditional
 from inference.consistency_sat import consistency
 from warnings import warn
 from pysmt.shortcuts import Solver, Not, is_unsat, And
 from time import process_time
 
+from infocf import get_logger
+
+logger = get_logger(__name__)
 
 class SystemZ(Inference):
     """

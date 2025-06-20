@@ -1,4 +1,5 @@
 from time import time_ns
+import logging
 from pysmt.shortcuts import Symbol, Int, LE, GE, And, Plus, Not, is_sat, is_unsat, Solver, LT, INT, GT
 from pysat.formula import WCNF
 from inference.inference import Inference
@@ -6,27 +7,35 @@ from inference.conditional import Conditional
 from inference.tseitin_transformation import TseitinTransformation
 from inference.optimizer import create_optimizer
 from inference.consistency_sat import checkTautologies
+from infocf import get_logger
+
+# Configure module logger
+logger = get_logger(__name__)
 
 ### some cleanup and some more documentation of class' funcitonalities pending
 #replaces every items in the argument by it's sum representation
 def makeSummation(minima: dict) -> dict[int, list]:
     results = dict()
     for index, summ in minima.items():
-        print(f"!!!!!!!!! summ {summ}")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("summ %s", summ)
         interim = []
         for subsum in summ:
-            print(f"!!!!!!!!! subsum {subsum}")
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("subsum %s", subsum)
             if subsum:
                 interim.append(Plus([Symbol(f'eta_{i}', INT) for i in subsum]))
             else:
                 interim.append(Int(0))  # Or use 0 directly
         results[index] = interim
-    print(f"!!!!!!!!! results {results}")
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("results %s", results)
     return results
 
 
 def freshVars(i: int) -> tuple:
-    print(f"freshVars {i}")
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("freshVars %s", i)
     return Symbol(f'mv_{i}', INT), Symbol(f'mf_{i}', INT)
 
 
@@ -34,7 +43,8 @@ def minima_encoding(mv: int, ssums: list) -> list:
     ands = [LE(mv, i) for i in ssums]
     ors = Not(And([LT(mv, i) for i in ssums]))
     ands.append(ors)
-    print(f"minima_encoding {ands}")
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("minima_encoding %s", ands)
     return ands
 
 
@@ -51,9 +61,10 @@ class CInference(Inference):
     def encoding(self, etas: dict, vSums: dict, fSums: dict) -> list:
         csp = []
         for index, eta in etas.items():
-            print(f"eta {eta}")
-            print(f"vSums {vSums[index]}")
-            print(f"fSums {fSums[index]}")
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("eta %s", eta)
+                logger.debug("vSums %s", vSums[index])
+                logger.debug("fSums %s", fSums[index])
             mv, mf = freshVars(index)
             vMin = minima_encoding(mv, vSums[index])
             fMin = minima_encoding(mf, fSums[index])
@@ -63,19 +74,23 @@ class CInference(Inference):
         return csp
 
     def translate(self) -> list:
-        print(f"translate")
+        logger.info("translate called")
         eta = {i: Symbol(f'eta_{i}', INT) for i, _ in enumerate(self.epistemic_state['belief_base'].conditionals, start=1)}
         #defeat= = checkTautologies(self.epistemic_state['belief_base'].conditionals)
         #if not defeat: return False
         gteZeros = [GE(e, Int(0)) for e in eta.values()]
         vSums = makeSummation(self.epistemic_state['vMin'])
-        print(f"!!!!!!!!! vSums {vSums}")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("vSums %s", vSums)
         fSums = makeSummation(self.epistemic_state['fMin'])
-        print(f"!!!!!!!!! fSums {fSums}")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("fSums %s", fSums)
         csp = self.encoding(eta, vSums, fSums)
-        print(f"!!!!!!!!!   !!!!!!! csp {csp}")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("csp %s", csp)
         csp.extend(gteZeros)
-        print(f"!!!!!!!!! csp extend !!!!!!!!!!!!!!!!!!!!!!!!!!! {csp}")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("csp extended %s", csp)
         return csp
 
 

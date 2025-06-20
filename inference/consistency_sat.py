@@ -1,4 +1,22 @@
+# ---------------------------------------------------------------------------
+# Standard library
+# ---------------------------------------------------------------------------
+
+import logging
+
+# ---------------------------------------------------------------------------
+# Third-party
+# ---------------------------------------------------------------------------
+
 from pysmt.shortcuts import Solver, Implies, is_sat
+
+# ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+
+from infocf import get_logger
+
+logger = get_logger(__name__)
 
 def toImplicit(conditionals):
     """
@@ -17,7 +35,8 @@ def checkTautologies(conditionals):
 
 
 def consistency(ckb, solver='z3', weakly=False):
-    #print(solver)
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("solver: %s", solver)
     conditionals = [i for i in ckb.conditionals.values()]
     #partition is a list of lists
     partition = []
@@ -30,13 +49,17 @@ def consistency(ckb, solver='z3', weakly=False):
             if len(conditionals) == 0:
                 if weakly:
                     partition.append([])
-                #print(calls, levels, [len(i) for i in partition], 'consistent')
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug("calls: %s, levels: %s, partition lengths: %s, status: consistent", 
+                                calls, levels, [len(i) for i in partition])
                 return partition, ([len(p) for p in partition],calls, levels)
             levels +=1
-            #print(levels)
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("levels: %s", levels)
             s.push()
             knowledge = toImplicit(conditionals)
-            #print(knowledge)
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("knowledge: %s", knowledge)
             [s.add_assertion(k) for k in knowledge]
             R = []
             C = []
@@ -52,7 +75,8 @@ def consistency(ckb, solver='z3', weakly=False):
             if R == []:
                 #we found no parition, the ckb is inconsistent
                 #Maybe throw an error instead?
-                #print(calls, levels, 'False')
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug("calls: %s, levels: %s, status: False", calls, levels)
                 if weakly:
                     # if weakly flag set and returend list hast non-empty list as last element, 
                     # then belief base is only weakly consistent
@@ -79,12 +103,16 @@ def consistency_indices(ckb, solver, weakly=False):
             if len(conditionals) == 0:
                 if weakly:
                     partition.append([])
-                #print(calls, levels, [len(i) for i in partition], 'consistent')
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug("calls: %s, levels: %s, partition lengths: %s, status: consistent", 
+                                calls, levels, [len(i) for i in partition])
                 return partition, ([len(p) for p in partition],calls, levels)
             levels +=1
-            #print(levels)
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("levels: %s", levels)
             s.push()
-            #[print(c, type(c)) for c in conditionals]
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("conditionals: %s", [(c, type(c)) for c in conditionals])
             knowledge = toImplicit([ckb.conditionals[i] for i in conditionals])
             [s.add_assertion(k) for k in knowledge]
             R = []

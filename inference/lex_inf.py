@@ -1,10 +1,29 @@
+# ---------------------------------------------------------------------------
+# Standard library
+# ---------------------------------------------------------------------------
+
+from warnings import warn
+import logging
+
+# ---------------------------------------------------------------------------
+# Third-party
+# ---------------------------------------------------------------------------
+
+from pysat.formula import WCNF
+
+# ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+
 from inference.inference import Inference
 from inference.tseitin_transformation import TseitinTransformation
 from inference.consistency_sat import consistency_indices
 from inference.optimizer import create_optimizer
 from inference.conditional import Conditional
-from warnings import warn
-from pysat.formula import WCNF
+
+from infocf import get_logger
+
+logger = get_logger(__name__)
 
 class LexInf(Inference):
     """
@@ -67,10 +86,12 @@ class LexInf(Inference):
         result of inference as bool 
     """
     def _rec_inference(self, hard_constraints_v: WCNF, hard_constraints_f: WCNF,  partition_index: int) -> bool:
-        #print(partition_index)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("partition_index: %s", partition_index)
         assert type(self.epistemic_state['partition']) == list
         part = self.epistemic_state['partition'][partition_index]
-        #print(f'part: {part}')
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("part: %s", part)
         for index in part:
             softc = self.epistemic_state['nf_cnf_dict'][index]
             [hard_constraints_v.append(s, weight=1) for s in softc]
@@ -79,13 +100,14 @@ class LexInf(Inference):
         ignore = [item for sublist in self.epistemic_state['partition'] if sublist != part for item in sublist]
         mcs_v = optimizer.minimal_correction_subsets(hard_constraints_v, ignore=ignore)
         mcs_f = optimizer.minimal_correction_subsets(hard_constraints_f, ignore=ignore)
-        #print(f'mcs_v: {mcs_v}')
-        #print(f'mcs_f: {mcs_f}')
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("mcs_v: %s", mcs_v)
+            logger.debug("mcs_f: %s", mcs_f)
         if not mcs_v:
-            #print('minimal_correction_subsets not found for verification')
+            logger.debug('minimal_correction_subsets not found for verification')
             return False
         if not mcs_f:
-            #print('minimal_correction_subsets not found for falsification')
+            logger.debug('minimal_correction_subsets not found for falsification')
             return True
         min_len_v = min(len(xi) for xi in mcs_v)
         min_len_f = min(len(xi) for xi in mcs_f)

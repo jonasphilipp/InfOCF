@@ -5,9 +5,13 @@ from inference.consistency_sat import consistency
 from z3 import Optimize, z3, unsat, Or, is_true, unknown
 from warnings import warn
 from time import process_time
+import logging
 
 from pysmt.shortcuts import Solver, Not, is_unsat, And
 
+from infocf import get_logger
+
+logger = get_logger(__name__)
 
 def makeOptimizer() -> Optimize:
     opt = z3.Optimize()
@@ -87,13 +91,14 @@ class LexInfZ3(Inference):
         opt_f.add(query.make_A_then_not_B())
         xi_i_prime_set = self.get_all_xi_i(opt_f, part)
         opt_f.pop()
-        #print(f'xi_i_set {xi_i_set}')
-        #print(f'xi_i_prime_set {xi_i_prime_set}')
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("xi_i_set %s", xi_i_set)
+            logger.debug("xi_i_prime_set %s", xi_i_prime_set)
         if not xi_i_set:
-            #print('no falsification mcs')
+            logger.debug('no falsification mcs')
             return False
         if not xi_i_prime_set:
-            #print('no verification mcs')
+            logger.debug('no verification mcs')
             return True
         
         v = min([len(s) for s in xi_i_set])

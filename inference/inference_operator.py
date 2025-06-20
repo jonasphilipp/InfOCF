@@ -1,5 +1,20 @@
+# ---------------------------------------------------------------------------
+# Standard library
+# ---------------------------------------------------------------------------
+
+import logging
+
+# ---------------------------------------------------------------------------
+# Third-party 
+# ---------------------------------------------------------------------------
+
 import pandas as pd
 from pysmt.environment import get_env
+
+# ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+
 from inference.belief_base import BeliefBase
 from inference.inference import Inference
 from inference.lex_inf import LexInf
@@ -10,6 +25,10 @@ from inference.system_z import SystemZ
 from inference.p_entailment import PEntailment
 from inference.c_inference import CInference
 from inference.queries import Queries
+
+from infocf import get_logger
+
+logger = get_logger(__name__)
 
 """
 Creates epistemic state dict. Everything we know or find out about a belief base and also some meta 
