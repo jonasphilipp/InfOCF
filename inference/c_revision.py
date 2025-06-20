@@ -10,6 +10,16 @@ import z3
 ATTENTION: This file is not tested yet sufficiently, and the implementation is not complete.
 """
 
+# Cache for gamma± symbol objects (avoids recreating identical FNodes)
+_gamma_sym_cache: dict[str, "FNode"] = {}
+
+def _gamma(name: str):
+    sym = _gamma_sym_cache.get(name)
+    if sym is None:
+        sym = Symbol(name, INT)
+        _gamma_sym_cache[name] = sym
+    return sym
+
 def compile(ranking_function: PreOCF, revision_conditionals: list[Conditional]) -> list[list[dict[str, list[int, list[int]]]]]:
     outer_list = []
     for rev_cond in revision_conditionals:
@@ -34,6 +44,7 @@ def compile(ranking_function: PreOCF, revision_conditionals: list[Conditional]) 
 
     return outer_list
 
+# Reference implementation (quadratic); kept for testing.
 def compile_alt(ranking_function: PreOCF, revision_conditionals: list[Conditional]) -> tuple[dict[int, list[int]], dict[int, list[int]]]:
     vMin = dict()
     fMin = dict()
@@ -75,6 +86,7 @@ def compile_alt(ranking_function: PreOCF, revision_conditionals: list[Conditiona
 
     return vMin, fMin
 
+# Optimised implementation
 def compile_alt_fast(
     ranking_function: PreOCF, revision_conditionals: list[Conditional]
 ) -> tuple[dict[int, list], dict[int, list]]:
@@ -183,13 +195,13 @@ def symbolize_minima_expression(minima: dict[int, list], gamma_plus_zero: bool =
             # Build expression for rejected conditionals (γ⁻ part); this is the
             # essential component for our optimisation irrespective of γ⁺.
             if rejected_indices:
-                rejected_sum = Plus([Symbol(f'gamma-_{i}', INT) for i in rejected_indices])
+                rejected_sum = Plus([_gamma(f'gamma-_{i}') for i in rejected_indices])
                 results[index].append(Plus([rejected_sum, Int(rank)]))
                 added = True
 
             # Include γ⁺ part only when they contribute (i.e. not fixed to zero).
             if accepted_indices and not gamma_plus_zero:
-                accepted_sum = Plus([Symbol(f'gamma+_{i}', INT) for i in accepted_indices])
+                accepted_sum = Plus([_gamma(f'gamma+_{i}') for i in accepted_indices])
                 results[index].append(Plus([accepted_sum, Int(rank)]))
                 added = True
 
@@ -224,8 +236,8 @@ def translate_to_csp(compilation: tuple[dict[int, list[int]], dict[int, list[int
         if gamma_plus_zero:
             plus_var = Int(0)
         else:
-            plus_var = Symbol(f'gamma+_{i}', INT)
-        minus_var = Symbol(f'gamma-_{i}', INT)
+            plus_var = _gamma(f'gamma+_{i}')
+        minus_var = _gamma(f'gamma-_{i}')
         gammas[i] = (plus_var, minus_var)
     #defeat= = checkTautologies(self.epistemic_state['belief_base'].conditionals)
     #if not defeat: return False
