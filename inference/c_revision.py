@@ -75,6 +75,62 @@ def compile_alt(ranking_function: PreOCF, revision_conditionals: list[Conditiona
 
     return vMin, fMin
 
+def compile_alt_fast(
+    ranking_function: PreOCF, revision_conditionals: list[Conditional]
+) -> tuple[dict[int, list], dict[int, list]]:
+    """Optimised variant of *compile_alt*.
+
+    Instead of an outer loop over revision conditionals *and* an inner loop over
+    *all* conditionals again, we:
+
+    1. Iterate once over every world;
+    2. Evaluate *all* conditionals for that world (both A→B and A→¬B) just once;
+    3. Distribute the resulting triple to the respective vMin/fMin buckets.
+
+    The number of expensive solver calls drops from O(|C|²·|W|) to
+    O(|C|·|W|).
+    """
+
+    # Prepare empty bucket lists keyed by conditional index.
+    vMin: dict[int, list] = {cond.index: [] for cond in revision_conditionals}
+    fMin: dict[int, list] = {cond.index: [] for cond in revision_conditionals}
+
+    # Evaluate each world once.
+    for world in ranking_function.ranks.keys():
+        rank_val = ranking_function.rank_world(world)
+
+        accepted: list[int] = []  # indices where world |= A→B
+        rejected: list[int] = []  # indices where world |= A→¬B
+
+        # First pass – compute acceptance/rejection sets for *all* conditionals.
+        for cond in revision_conditionals:
+            if ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_B()):
+                accepted.append(cond.index)
+            elif ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_not_B()):
+                rejected.append(cond.index)
+
+        acc_set = set(accepted)
+        rej_set = set(rejected)
+
+        # For each conditional, build a dedicated triple *without* its own index
+        # in the accepted/rejected lists – in line with the semantics of the
+        # original compile_alt implementation.
+        for cond in revision_conditionals:
+            idx = cond.index
+
+            if idx in acc_set or idx in rej_set:
+                # Create filtered copies (avoid mutating originals)
+                acc_filtered = [i for i in accepted if i != idx]
+                rej_filtered = [i for i in rejected if i != idx]
+                triple = [rank_val, acc_filtered, rej_filtered]
+
+                if idx in acc_set:
+                    vMin[idx].append(triple)
+                else:
+                    fMin[idx].append(triple)
+
+    return vMin, fMin
+
 def symbolize_minima_expression(minima: dict[int, list], gamma_plus_zero: bool = False) -> dict[int, list]:
     """
     Convert minima expression to symbolic form.
@@ -209,7 +265,10 @@ def solve_and_get_model(csp, minimize_vars: list[str] | None = None):
     return None
 
 
-### work in progress, not tested yet
+# Choose which compilation backend to use – fast by default.
+_compile_backend = compile_alt_fast
+
+
 def c_revision(
     ranking_function: PreOCF,
     revision_conditionals: list[Conditional],
@@ -222,7 +281,7 @@ def c_revision(
     η-vector of the c-representation given an all-zero initial ranking.
     """
 
-    compilation = compile_alt(ranking_function, revision_conditionals)
+    compilation = _compile_backend(ranking_function, revision_conditionals)
     csp = translate_to_csp(compilation, gamma_plus_zero)
 
     # Assemble the list of γ⁻ variables to be minimised.
