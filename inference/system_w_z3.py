@@ -1,11 +1,29 @@
+# ---------------------------------------------------------------------------
+# Standard library
+# ---------------------------------------------------------------------------
+
+from warnings import warn
+from time import process_time
+import logging
+
+# ---------------------------------------------------------------------------
+# Third-party
+# ---------------------------------------------------------------------------
+
+from z3 import Optimize, z3, unsat, Or, is_true, unknown
+
+# ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+
 from inference.inference import Inference
 from inference.conditional import Conditional
 from inference.conditional_z3 import Conditional_z3
 from inference.consistency_sat import consistency
-from z3 import Optimize, z3, unsat, Or, is_true, unknown
-from warnings import warn
-from time import process_time
 
+from infocf import get_logger
+
+logger = get_logger(__name__)
 
 def makeOptimizer() -> Optimize:
     opt = z3.Optimize()

@@ -1,10 +1,26 @@
+# ---------------------------------------------------------------------------
+# Standard library
+# ---------------------------------------------------------------------------
+
 from time import process_time
+from abc import ABC, abstractmethod
+import logging
+
+# ---------------------------------------------------------------------------
+# Third-party
+# ---------------------------------------------------------------------------
+
 from pysat.card import IDPool
 from pysat.formula import WCNF
 from pysat.examples.rc2 import RC2
-from abc import ABC, abstractmethod
 
-    
+# ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+
+from infocf import get_logger
+
+logger = get_logger(__name__)
 
 class Optimizer(ABC):
     epistemic_state: dict
@@ -158,7 +174,8 @@ class OptimizerRC2(Optimizer):
                 model = rc2.compute()
                 
                 if model == None:
-                    #print(f"models found: {int}")
+                    if logger.isEnabledFor(logging.DEBUG):
+                        logger.debug("models found: %s", int)
                     break
                 int += 1 
                 cost = rc2.cost

@@ -1,9 +1,23 @@
+# ---------------------------------------------------------------------------
+# Standard library
+# ---------------------------------------------------------------------------
+
 import multiprocessing as mp
 from abc import ABC, abstractmethod
 from time import process_time_ns, process_time
+import logging
+
+# ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+
 from inference.conditional import Conditional
 from inference.consistency_sat import consistency
 from pysmt.shortcuts import is_unsat, And, Not
+
+from infocf import get_logger
+
+logger = get_logger(__name__)
 
 class Inference(ABC):
     """
@@ -176,10 +190,10 @@ class Inference(ABC):
 
     def general_inference(self, query: Conditional):
         if is_unsat(query.antecedence) or is_unsat(And(query.antecedence, Not(query.consequence))):
-            print('general_inference query selffullfilling')
+            logger.debug('general_inference query selffullfilling')
             return True
         elif is_unsat(And(query.antecedence, query.consequence)): 
-            print("general_inference query inconsistent")
+            logger.debug("general_inference query inconsistent")
             return False
         else:
             return self._inference(query)

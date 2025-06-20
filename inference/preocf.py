@@ -17,9 +17,10 @@ from z3 import Optimize, z3, And, sat
 # std-lib imports for persistence helpers
 import json, pickle, pathlib, warnings
 from abc import ABC, abstractmethod
+from infocf import get_logger
 
 # Create a logger object
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # parms: bb, ranks
 

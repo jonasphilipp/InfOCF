@@ -1,11 +1,29 @@
+# ---------------------------------------------------------------------------
+# Standard library
+# ---------------------------------------------------------------------------
+
+from warnings import warn
+import logging
+
+# ---------------------------------------------------------------------------
+# Third-party
+# ---------------------------------------------------------------------------
+
+from pysat.formula import WCNF
+
+# ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+
 from inference.inference import Inference
+from inference.conditional import Conditional
 from inference.tseitin_transformation import TseitinTransformation
 from inference.consistency_sat import consistency_indices
 from inference.optimizer import create_optimizer
-from inference.conditional import Conditional
-from z3 import unsat, Or, is_true
-from warnings import warn
-from pysat.formula import WCNF
+
+from infocf import get_logger
+
+logger = get_logger(__name__)
 
 class SystemW(Inference):
     """

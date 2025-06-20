@@ -1,8 +1,27 @@
+# ---------------------------------------------------------------------------
+# Standard library
+# ---------------------------------------------------------------------------
+
+import logging
+
+# ---------------------------------------------------------------------------
+# Third-party
+# ---------------------------------------------------------------------------
+
+from pysmt.shortcuts import Not
+
+# ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+
 from inference.inference import Inference
 from inference.conditional import Conditional
 from inference.consistency_sat import consistency
 from inference.belief_base import BeliefBase
-from pysmt.shortcuts import Not
+
+from infocf import get_logger
+
+logger = get_logger(__name__)
 
 
 class PEntailment(Inference):

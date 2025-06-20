@@ -3,7 +3,9 @@ from z3 import z3
 from time import time_ns
 from pysmt.shortcuts import Solver
 from inference.conditional import Conditional
+from infocf import get_logger
 
+logger = get_logger(__name__)
 
 class TseitinTransformation:
     epistemic_state: dict

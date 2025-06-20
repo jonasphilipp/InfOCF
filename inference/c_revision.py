@@ -4,7 +4,11 @@ from inference.conditional import Conditional
 from pysmt.shortcuts import Symbol, Plus, GE, GT, Int, Solver, Equals, And, Not
 from pysmt.typing import INT
 import z3
+import logging
+from infocf import get_logger
 
+# Configure module logger
+logger = get_logger(__name__)
 
 """
 ATTENTION: This file is not tested yet sufficiently, and the implementation is not complete.
@@ -217,9 +221,10 @@ def symbolize_minima_expression(minima: dict[int, list], gamma_plus_zero: bool =
 def encoding(gammas: dict, vSums: dict, fSums: dict) -> list:
     csp = []
     for index, gamma in gammas.items():
-        print(f"gamma {gamma}")
-        print(f"vSums {vSums[index]}")
-        print(f"fSums {fSums[index]}")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("gamma %s", gamma)
+            logger.debug("vSums %s", vSums[index])
+            logger.debug("fSums %s", fSums[index])
         mv, mf = freshVars(index)
         vMin = minima_encoding(mv, vSums[index])
         fMin = minima_encoding(mf, fSums[index])
