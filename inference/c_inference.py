@@ -74,7 +74,7 @@ class CInference(Inference):
         return csp
 
     def translate(self) -> list:
-        logger.info("translate called")
+        logger.debug("translate called")
         eta = {i: Symbol(f'eta_{i}', INT) for i, _ in enumerate(self.epistemic_state['belief_base'].conditionals, start=1)}
         #defeat= = checkTautologies(self.epistemic_state['belief_base'].conditionals)
         #if not defeat: return False
