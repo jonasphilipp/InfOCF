@@ -4,6 +4,7 @@ from .myVisitor import myVisitor
 from .CKBLexer import CKBLexer
 from .CKBParser import CKBParser
 import os
+import logging
 #from .QUERYLexer import QUERYLexer
 #from .QUERYParser import QUERYParser
 #from .myQueryVisitor import myQueryVisitor
@@ -11,9 +12,11 @@ import os
 from inference.queries import Queries
 from inference.belief_base import BeliefBase
 
-
-
 from antlr4.error.ErrorListener import ErrorListener
+
+from infocf import get_logger
+
+logger = get_logger(__name__)
 
 class ThrowingErrorListener(ErrorListener):
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
@@ -71,7 +74,8 @@ def parseCKB(ckbs_string):
     stream = CommonTokenStream(lexer)
     parser = CKBParser(stream)
     """
-    #print(ckbs_string)
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("Parsing CKB string: %s", ckbs_string[:100] + "..." if len(ckbs_string) > 100 else ckbs_string)
     tree = getParseTree(ckbs_string)
     visitor = myVisitor()
     ckbs = visitor.visit(tree)
@@ -85,7 +89,8 @@ def parseCKB(ckbs_string):
 def parseQuery(querystring):
     ckb_template=f"signature \n a,b,c,d,e,f \n conditionals \n Querydummy \n {{ \n {querystring}\n }}" 
     ckbquery=parseCKB(ckb_template)
-    #print(query)
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("Parsed query: %s", ckbquery.conditionals)
     #query.__class__ = Queries
     return ckbquery.conditionals
 
