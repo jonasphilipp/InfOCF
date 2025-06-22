@@ -60,9 +60,9 @@ class TestCompileAlt(unittest.TestCase):
         # Test with single conditional
         vMin, fMin = compile_alt(self.mock_ranking_function, [self.mock_conditional_1])
         
-        # At least one should have an entry for index 0
-        has_vmin_entry = 0 in vMin and vMin[0] is not None
-        has_fmin_entry = 0 in fMin and fMin[0] is not None
+        # At least one should have an entry for index 1 (not 0, since conditional_1 has index=1)
+        has_vmin_entry = 1 in vMin and vMin[1] is not None
+        has_fmin_entry = 1 in fMin and fMin[1] is not None
         self.assertTrue(has_vmin_entry or has_fmin_entry)
     
     def test_compile_alt_conditional_acceptance_logic(self):
@@ -112,7 +112,9 @@ class TestCompileAlt(unittest.TestCase):
         self.assertEqual(len(fMin), len(self.revision_conditionals))
         
         # But the lists should be empty since no worlds were processed
-        for i in range(len(self.revision_conditionals)):
+        # Use actual conditional indices (1, 2) instead of range-based (0, 1)
+        expected_indices = [cond.index for cond in self.revision_conditionals]  # [1, 2]
+        for i in expected_indices:
             self.assertIn(i, vMin)
             self.assertIn(i, fMin)
             self.assertEqual(len(vMin[i]), 0)  # Empty list
@@ -238,9 +240,10 @@ class TestCompileAlt(unittest.TestCase):
         self.assertEqual(len(vMin), len(self.revision_conditionals))
         self.assertEqual(len(fMin), len(self.revision_conditionals))
         
-        # Count total entries across all conditionals
+        # Count total entries across all conditionals using actual indices
         total_entries = 0
-        for i in range(len(self.revision_conditionals)):
+        expected_indices = [cond.index for cond in self.revision_conditionals]  # [1, 2]
+        for i in expected_indices:
             total_entries += len(vMin[i]) + len(fMin[i])
         
         # With new implementation: single world processed for each conditional
@@ -249,8 +252,8 @@ class TestCompileAlt(unittest.TestCase):
         expected_total = len(self.revision_conditionals) * 1  # 1 world per conditional
         self.assertEqual(total_entries, expected_total)
         
-        # Verify structure for each conditional
-        for i in range(len(self.revision_conditionals)):
+        # Verify structure for each conditional using actual indices
+        for i in expected_indices:
             self.assertIn(i, vMin)
             self.assertIn(i, fMin)
             # World satisfies conditionalization, so should be in vMin
