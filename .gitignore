@@ -177,6 +177,9 @@ local/
 # local todo file
 todo_preocf
 
+# planning folder (for project planning and migration documents)
+planning/
+
 # local test files
 test_lex_inf_comparison.py
 test_system_w_comparison.py
