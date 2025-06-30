@@ -4,7 +4,7 @@ from inference.conditional_z3 import Conditional_z3
 from inference.consistency_sat import consistency
 from z3 import Optimize, z3, unsat, Or, is_true, unknown
 from warnings import warn
-from time import process_time
+from time import perf_counter
 import logging
 
 from pysmt.shortcuts import Solver, Not, is_unsat, And
@@ -61,9 +61,9 @@ class LexInfZ3(Inference):
         query_z3 = Conditional_z3.translate_from_existing(query)
         #self._translation_end()
         opt_v = makeOptimizer()
-        opt_v.set(timeout=int(1000*(self.epistemic_state['kill_time'] - process_time())))
+        opt_v.set(timeout=int(1000*(self.epistemic_state['kill_time'] - perf_counter())))
         opt_f = makeOptimizer()
-        opt_f.set(timeout=int(1000*(self.epistemic_state['kill_time'] - process_time())))
+        opt_f.set(timeout=int(1000*(self.epistemic_state['kill_time'] - perf_counter())))
         result = self._rec_inference(opt_v, opt_f, len(self.epistemic_state['partition']) -1, query_z3)
         #self._inference_end()
         return result
@@ -144,7 +144,7 @@ class LexInfZ3(Inference):
         for conditional in part:
             opt.add_soft(conditional.make_A_then_not_B() == False)
         while True:
-            if self.epistemic_state['kill_time'] and process_time() > self.epistemic_state['kill_time']:
+            if self.epistemic_state['kill_time'] and perf_counter() > self.epistemic_state['kill_time']:
                 raise TimeoutError
             check = opt.check()
             if check == unsat:

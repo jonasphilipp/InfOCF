@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------
 
 from warnings import warn
-from time import process_time
+from time import perf_counter
 import logging
 
 # ---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ class SystemWZ3(Inference):
         query_z3 = Conditional_z3.translate_from_existing(query)
         #self._translation_end()
         opt = makeOptimizer()
-        opt.set(timeout=int(1000*(self.epistemic_state['kill_time'] - process_time())))
+        opt.set(timeout=int(1000*(self.epistemic_state['kill_time'] - perf_counter())))
         result = self._rec_inference(opt, len(self.epistemic_state['partition']) -1, query_z3)
         #self._inference_end()
         return result
@@ -135,7 +135,7 @@ class SystemWZ3(Inference):
         for conditional in part:
             opt.add_soft(conditional.make_A_then_not_B() == False)
         while True:
-            if self.epistemic_state['kill_time'] and process_time() > self.epistemic_state['kill_time']:
+            if self.epistemic_state['kill_time'] and perf_counter() > self.epistemic_state['kill_time']:
                 raise TimeoutError
             check = opt.check()
             if check == unsat:

@@ -4,7 +4,7 @@
 
 import multiprocessing as mp
 from abc import ABC, abstractmethod
-from time import process_time_ns, process_time
+from time import perf_counter, perf_counter_ns
 import logging
 
 # ---------------------------------------------------------------------------
@@ -44,24 +44,50 @@ class Inference(ABC):
     Side Effects:
         kill_time, preprocessing_time and preprocessing_timed_out in epistemic_state
     """
-    def preprocess_belief_base(self, preprocessing_timeout: int) -> None: 
+    def preprocess_belief_base(self, preprocessing_timeout: int) -> None:
+        if self.epistemic_state['preprocessing_done']:
+            logger.info("Preprocessing already completed, skipping", extra={
+                'preprocessing_time_ms': self.epistemic_state['preprocessing_time'],
+                'belief_base_name': self.epistemic_state['belief_base'].name,
+                'inference_system': self.epistemic_state['inference_system']
+            })
+            return
+        
         #self._epistemic_state._preprocessing_timeout = preprocessing_timeout
         empty = len(self.epistemic_state['belief_base'].conditionals) == 0
         assert not empty, "belief base empty"
         cons, _ = consistency(self.epistemic_state['belief_base'], self.epistemic_state['smt_solver'])
         assert cons != False, "belief base inconsistent"
         if preprocessing_timeout:    
-            self.epistemic_state['kill_time'] = preprocessing_timeout + process_time()
+            self.epistemic_state['kill_time'] = preprocessing_timeout + perf_counter()
         else:
             self.epistemic_state['kill_time'] = 0
         try:
-            preprocessing_start_time = process_time_ns() / 1e+6
+            preprocessing_start_time = perf_counter_ns() / 1e+6
             self._preprocess_belief_base()
-            self.epistemic_state['preprocessing_time'] += (process_time_ns() / 1e+6 - preprocessing_start_time)
+            self.epistemic_state['preprocessing_time'] += (perf_counter_ns() / 1e+6 - preprocessing_start_time)
             self.epistemic_state['preprocessing_done'] = True
+            
+            # INFO-level logging for successful preprocessing completion
+            logger.info("Belief base preprocessing completed successfully", extra={
+                'preprocessing_time_ms': self.epistemic_state['preprocessing_time'],
+                'belief_base_name': self.epistemic_state['belief_base'].name,
+                'inference_system': self.epistemic_state['inference_system'],
+                'timeout_used': preprocessing_timeout,
+                'conditionals_count': len(self.epistemic_state['belief_base'].conditionals)
+            })
+            
         except TimeoutError:
             self.epistemic_state['preprocessing_time'] = preprocessing_timeout * 1000
             self.epistemic_state['preprocessing_timed_out'] = True
+            
+            # INFO-level logging for preprocessing timeout
+            logger.info("Belief base preprocessing timed out", extra={
+                'preprocessing_timeout': preprocessing_timeout,
+                'partial_preprocessing_time_ms': self.epistemic_state['preprocessing_time'],
+                'belief_base_name': self.epistemic_state['belief_base'].name,
+                'inference_system': self.epistemic_state['inference_system']
+            })
         except Exception as e:
             raise e
 
@@ -79,6 +105,16 @@ class Inference(ABC):
         result_dict in epistemic_state
     """
     def inference(self, queries: dict, timeout: int, multi_inference: bool) -> None:
+        # INFO-level logging for inference operation start
+        logger.info("Starting inference operations", extra={
+            'query_count': len(queries),
+            'timeout': timeout,
+            'multi_inference': multi_inference,
+            'inference_system': self.epistemic_state['inference_system'],
+            'belief_base_name': self.epistemic_state['belief_base'].name,
+            'preprocessing_completed': self.epistemic_state['preprocessing_done']
+        })
+        
         if not self.epistemic_state['preprocessing_done'] and not self.epistemic_state['preprocessing_timed_out']:
             Exception("preprocess belief_base before running inference")
         if self.epistemic_state['preprocessing_timed_out']:
@@ -87,6 +123,21 @@ class Inference(ABC):
             self.epistemic_state['result_dict'].update(self.multi_inference(queries, timeout))
         else:
             self.epistemic_state['result_dict'].update(self.single_inference(queries, timeout))
+            
+        # INFO-level logging for inference operation completion
+        successful_queries = sum(1 for result in self.epistemic_state['result_dict'].values() if not result[2])
+        timed_out_queries = len(queries) - successful_queries
+        total_inference_time = sum(result[3] for result in self.epistemic_state['result_dict'].values())
+        
+        logger.info("Inference operations completed", extra={
+            'query_count': len(queries),
+            'successful_queries': successful_queries,
+            'timed_out_queries': timed_out_queries,
+            'total_inference_time_ms': total_inference_time,
+            'average_query_time_ms': total_inference_time / len(queries) if queries else 0,
+            'multi_inference': multi_inference,
+            'inference_system': self.epistemic_state['inference_system']
+        })
     
     
     """
@@ -107,13 +158,13 @@ class Inference(ABC):
         result_dict = dict()
         for index, query in queries.items():
             if timeout:
-                self.epistemic_state['kill_time'] = timeout + process_time()
+                self.epistemic_state['kill_time'] = timeout + perf_counter()
             else:
                 self.epistemic_state['kill_time'] = 0
             try:
-                start_time = process_time_ns() / 1e+6
+                start_time = perf_counter_ns() / 1e+6
                 result = self.general_inference(query)
-                time = (process_time_ns() / 1e+6 - start_time)
+                time = (perf_counter_ns() / 1e+6 - start_time)
                 result_dict[str(query)] = (index, result, False, time)
             except TimeoutError:
                 result_dict[str(query)] = (index, False, True, timeout * 1000)
@@ -175,13 +226,13 @@ class Inference(ABC):
     """ 
     def _multi_inference_worker(self, index: int, query: Conditional, mp_return_dict: dict, timeout: int) -> None:
         if timeout:
-            self.epistemic_state['kill_time'] = timeout + process_time()
+            self.epistemic_state['kill_time'] = timeout + perf_counter()
         else:
             self.epistemic_state['kill_time'] = 0
         try:
-            start_time = process_time_ns() / 1e+6
+            start_time = perf_counter_ns() / 1e+6
             result = self.general_inference(query)
-            time = (process_time_ns() / 1e+6 - start_time)
+            time = (perf_counter_ns() / 1e+6 - start_time)
             mp_return_dict[index] = (index, result, False, time)
         except TimeoutError:
             mp_return_dict[index] = (index, False, True, timeout * 1000)

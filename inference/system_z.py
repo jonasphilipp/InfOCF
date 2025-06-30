@@ -13,7 +13,7 @@ from inference.conditional import Conditional
 from inference.consistency_sat import consistency
 from warnings import warn
 from pysmt.shortcuts import Solver, Not, is_unsat, And
-from time import process_time
+from time import perf_counter
 
 from infocf import get_logger
 
@@ -69,7 +69,7 @@ class SystemZ(Inference):
         result of inference as bool 
     """
     def _rec_inference(self, solver: Solver, partition_index: int, query: Conditional) -> bool: #type: ignore
-        if self.epistemic_state['kill_time'] and process_time() > self.epistemic_state['kill_time']:
+        if self.epistemic_state['kill_time'] and perf_counter() > self.epistemic_state['kill_time']:
             raise TimeoutError
         assert type(self.epistemic_state['partition']) == list
         part = self.epistemic_state['partition'][partition_index]

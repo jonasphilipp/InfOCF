@@ -1,4 +1,4 @@
-from time import time_ns
+from time import perf_counter_ns
 import logging
 from pysmt.shortcuts import Symbol, Int, LE, GE, And, Plus, Not, is_sat, is_unsat, Solver, LT, INT, GT
 from pysat.formula import WCNF
@@ -155,7 +155,7 @@ class CInference(Inference):
         Execution time in ms
     """
     def compile_constraint(self) -> float:
-        start_time = time_ns() / (1e+6)
+        start_time = perf_counter_ns() / (1e+6)
 
         for leading_conditional in [self.epistemic_state['v_cnf_dict'], self.epistemic_state['f_cnf_dict']]:
             for i, conditional in leading_conditional.items():
@@ -172,7 +172,7 @@ class CInference(Inference):
                 else: 
                     self.epistemic_state['fMin'][i] = xMins_lst
 
-        return (time_ns()/(1e+6))-start_time
+        return (perf_counter_ns()/(1e+6))-start_time
     
 
     """
@@ -189,7 +189,7 @@ class CInference(Inference):
         Execution time
     """
     def compile_and_encode_query(self, query: Conditional) -> tuple[list, float]:
-        start_time = time_ns() / 1e+6
+        start_time = perf_counter_ns() / 1e+6
 
         vMin, fMin = [], []
         tseitin_transformation = TseitinTransformation(self.epistemic_state)
@@ -217,5 +217,5 @@ class CInference(Inference):
         #print(f"fM {fM}")
         csp = vM + fM + [GE(mv, mf)]
         #print(f"csp {csp}")
-        return csp ,(time_ns()/(1e+6)-start_time)
+        return csp ,(perf_counter_ns()/(1e+6)-start_time)
 
