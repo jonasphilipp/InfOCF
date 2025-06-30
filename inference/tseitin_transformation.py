@@ -1,6 +1,6 @@
 from pysat.card import IDPool
 from z3 import z3
-from time import time_ns
+from time import perf_counter_ns
 from pysmt.shortcuts import Solver
 from inference.conditional import Conditional
 from infocf import get_logger
@@ -48,7 +48,7 @@ class TseitinTransformation:
         Execution time in ms
     """
     def belief_base_to_cnf(self, v: bool, f: bool, nf: bool) -> float:
-        start_time = time_ns()
+        start_time = perf_counter_ns()
         t = z3.Tactic('tseitin-cnf')
         
         for index, conditional in self.epistemic_state['belief_base'].conditionals.items():
@@ -64,7 +64,7 @@ class TseitinTransformation:
             if nf:
                 g3 = t(z3.Or(z3.Not(antecedence), consequence))
                 self.epistemic_state['nf_cnf_dict'][index] = self.goal2intcnf(g3[0])
-        return (time_ns() - start_time) / (1e+6) 
+        return (perf_counter_ns() - start_time) / (1e+6) 
 
     """
     Transforms query conditional to CNF

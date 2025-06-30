@@ -2,7 +2,7 @@
 # Standard library
 # ---------------------------------------------------------------------------
 
-from time import process_time
+from time import perf_counter
 from abc import ABC, abstractmethod
 import logging
 
@@ -168,7 +168,7 @@ class OptimizerRC2(Optimizer):
         int = 0
         with RC2(wcnf, solver=sat_solver) as rc2:
             while True:
-                if self.epistemic_state['kill_time'] and process_time() > self.epistemic_state['kill_time']:
+                if self.epistemic_state['kill_time'] and perf_counter() > self.epistemic_state['kill_time']:
                     raise TimeoutError
 
                 model = rc2.compute()

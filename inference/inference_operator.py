@@ -71,25 +71,72 @@ Returns:
     Instanciated inference object.
 """
 def create_inference_instance(epistemic_state) -> Inference:
-    if epistemic_state['inference_system'] == 'p-entailment':
+    inference_system = epistemic_state['inference_system']
+    
+    # INFO-level logging for inference system initialization
+    logger.info("Initializing inference system", extra={
+        'inference_system': inference_system,
+        'smt_solver': epistemic_state['smt_solver'], 
+        'pmaxsat_solver': epistemic_state['pmaxsat_solver'],
+        'belief_base_name': epistemic_state['belief_base'].name
+    })
+    
+    if inference_system == 'p-entailment':
         inference_instance = PEntailment(epistemic_state)
-    elif epistemic_state['inference_system'] == 'system-z':
+    elif inference_system == 'system-z':
         inference_instance = SystemZ(epistemic_state)
-    elif epistemic_state['inference_system'] == 'system-w':
+    elif inference_system == 'system-w':
         # this optimizer selection method is a placeholed and will be replaced
         if epistemic_state['pmaxsat_solver'] == 'z3':
             inference_instance = SystemWZ3(epistemic_state)
+            # DEBUG-level logging for Z3-specific system-w initialization
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("Using Z3-based System W implementation", extra={
+                    'pmaxsat_solver': 'z3',
+                    'implementation': 'SystemWZ3'
+                })
         else:
             inference_instance = SystemW(epistemic_state)
-    elif epistemic_state['inference_system'] == 'c-inference':
+            # DEBUG-level logging for standard system-w initialization
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("Using standard System W implementation", extra={
+                    'pmaxsat_solver': epistemic_state['pmaxsat_solver'],
+                    'implementation': 'SystemW'
+                })
+    elif inference_system == 'c-inference':
         inference_instance = CInference(epistemic_state)
-    elif epistemic_state['inference_system'] == 'lex_inf':
+    elif inference_system == 'lex_inf':
         if epistemic_state['pmaxsat_solver'] == 'z3':
             inference_instance = LexInfZ3(epistemic_state)
+            # DEBUG-level logging for Z3-specific lex_inf initialization
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("Using Z3-based Lexicographic Inference implementation", extra={
+                    'pmaxsat_solver': 'z3',
+                    'implementation': 'LexInfZ3'
+                })
         else:
             inference_instance = LexInf(epistemic_state)
+            # DEBUG-level logging for standard lex_inf initialization  
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("Using standard Lexicographic Inference implementation", extra={
+                    'pmaxsat_solver': epistemic_state['pmaxsat_solver'],
+                    'implementation': 'LexInf'
+                })
     else:
+        logger.error("Invalid inference system provided", extra={
+            'inference_system': inference_system,
+            'available_systems': ['p-entailment', 'system-z', 'system-w', 'c-inference', 'lex_inf']
+        })
         Exception('no correct inference system provideid')
+    
+    # INFO-level logging for successful initialization
+    logger.info("Inference system initialized successfully", extra={
+        'inference_system': inference_system,
+        'instance_class': inference_instance.__class__.__name__,
+        'smt_solver': epistemic_state['smt_solver'],
+        'pmaxsat_solver': epistemic_state['pmaxsat_solver']
+    })
+    
     return inference_instance #type: ignore
 
 
@@ -138,6 +185,22 @@ class InferenceOperator:
         if queries_name:
             queries.name = queries_name
         
+        # INFO-level logging for batch operation start
+        logger.info("Starting inference batch processing", extra={
+            'inference_system': self.epistemic_state['inference_system'],
+            'smt_solver': self.epistemic_state['smt_solver'],
+            'pmaxsat_solver': self.epistemic_state['pmaxsat_solver'],
+            'query_count': len(queries.conditionals),
+            'queries_name': queries.name,
+            'belief_base_name': self.epistemic_state['belief_base'].name,
+            'signature_size': len(self.epistemic_state['belief_base'].signature),
+            'conditionals_count': len(self.epistemic_state['belief_base'].conditionals),
+            'multi_inference': multi_inference,
+            'total_timeout': total_timeout,
+            'preprocessing_timeout': preprocessing_timeout,
+            'inference_timeout': inference_timeout
+        })
+        
         columns = ['index', 'result', 'signature_size', 'number_conditionals' ,'preprocessing_time',\
                    'inference_time', 'preprocessing_timed_out', 'inference_timed_out', 'belief_base',\
                    'queries', 'query', 'inference_system', 'smt_solver', 'pmaxsat_solver']
@@ -151,15 +214,47 @@ class InferenceOperator:
         elif total_timeout:
             preprocessing_timeout = total_timeout
 
+        # INFO-level logging for preprocessing phase
+        logger.info("Starting preprocessing phase", extra={
+            'preprocessing_timeout': preprocessing_timeout,
+            'inference_system': self.epistemic_state['inference_system']
+        })
+
         inference_instance.preprocess_belief_base(preprocessing_timeout)
+
+        # INFO-level logging for preprocessing completion
+        logger.info("Preprocessing phase completed", extra={
+            'preprocessing_time_ms': self.epistemic_state['preprocessing_time'],
+            'preprocessing_timed_out': self.epistemic_state['preprocessing_timed_out'],
+            'preprocessing_done': self.epistemic_state['preprocessing_done']
+        })
 
         if total_timeout and inference_timeout:
             inference_timeout = min(total_timeout - self.epistemic_state['preprocessing_time'] / 1000, inference_timeout)
         elif total_timeout:
             inference_timeout = total_timeout - self.epistemic_state['preprocessing_time'] / 1000
 
+        # INFO-level logging for query processing phase
+        logger.info("Starting query processing phase", extra={
+            'inference_timeout': inference_timeout,
+            'query_count': len(queries.conditionals),
+            'multi_inference': multi_inference
+        })
+
         inference_instance.inference(queries.conditionals, inference_timeout, multi_inference)
         results = self.epistemic_state['result_dict']
+
+        # DEBUG-level logging for detailed results processing
+        if logger.isEnabledFor(logging.DEBUG):
+            successful_queries = sum(1 for result in results.values() if not result[2])  # not timed out
+            timed_out_queries = len(results) - successful_queries
+            logger.debug("Query processing completed - detailed breakdown", extra={
+                'total_queries': len(results),
+                'successful_queries': successful_queries,
+                'timed_out_queries': timed_out_queries,
+                'results_summary': {str(k): {'result': v[1], 'timed_out': v[2], 'time_ms': v[3]} 
+                                  for k, v in list(results.items())[:3]}  # Sample first 3 for debug
+            })
 
         for index, query in enumerate(queries.conditionals.values()):
             query = str(query)
@@ -177,6 +272,19 @@ class InferenceOperator:
             df.at[index, 'query'] = query
             df.at[index, 'signature_size'] = len(self.epistemic_state['belief_base'].signature)
             df.at[index, 'number_conditionals'] = len(self.epistemic_state['belief_base'].conditionals)
+        
+        # INFO-level logging for batch operation completion with performance summary
+        total_inference_time = sum(results[str(q)][3] for q in queries.conditionals.values())
+        logger.info("Inference batch processing completed", extra={
+            'query_count': len(queries.conditionals),
+            'preprocessing_time_ms': self.epistemic_state['preprocessing_time'],
+            'total_inference_time_ms': round(total_inference_time, decimals),
+            'preprocessing_timed_out': self.epistemic_state['preprocessing_timed_out'],
+            'inference_timeouts': sum(1 for result in results.values() if result[2]),
+            'successful_queries': sum(1 for result in results.values() if not result[2]),
+            'queries_name': queries.name,
+            'belief_base_name': self.epistemic_state['belief_base'].name
+        })
         
         return df
 
