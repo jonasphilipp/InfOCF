@@ -241,7 +241,7 @@ class PreOCF(ABC):
             str(BitVector(intVal=i, size=len(signature)))
             for i in range(2 ** len(signature))
         ]
-        ranks = {w: None for w in worlds}
+        ranks = dict.fromkeys(worlds, None)
         return ranks
 
     # probably not needed, not gonna throw away now
