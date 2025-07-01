@@ -24,10 +24,10 @@ maintainers = [
     {name = "Lars-Phillip Spiegel"}
 ]
 keywords = [
-    "reasoning", 
-    "conditional-logic", 
-    "sat-solving", 
-    "belief-bases", 
+    "reasoning",
+    "conditional-logic",
+    "sat-solving",
+    "belief-bases",
     "artificial-intelligence",
     "non-monotonic-reasoning",
     "OCF",
@@ -81,7 +81,7 @@ dev = [
 ]
   solvers = [
       "cvc5>=1.1.2",
-      "z3-solver>=4.12.0", 
+      "z3-solver>=4.12.0",
       "python-sat[pblib,aiger]>=1.7.0",
       "pysmt>=0.9.5",
   ]
@@ -115,7 +115,7 @@ packages = ["infocf", "inference", "parser"]
 [tool.hatch.build.targets.sdist]
 include = [
     "/infocf",
-    "/inference", 
+    "/inference",
     "/parser",
     "/docs",
     "/examples",
@@ -191,7 +191,7 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "system_z: marks tests specific to System Z inference",
-    "system_w: marks tests specific to System W inference", 
+    "system_w: marks tests specific to System W inference",
     "c_inference: marks tests specific to c-inference",
     "p_entailment: marks tests specific to p-entailment",
     "parser: marks tests for the parser module",
@@ -223,6 +223,16 @@ exclude_lines = [
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+exclude = [
+    ".git",
+    "__pycache__",
+    "parser/CKB*.py",
+    "venv",
+    ".venv",
+    "output",
+]
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
@@ -236,14 +246,6 @@ ignore = [
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
 ]
-exclude = [
-    ".git",
-    "__pycache__",
-    "parser/CKB*.py",
-    "venv",
-    ".venv",
-    "output",
-]
 
-[tool.ruff.per-file-ignores]
-"__init__.py" = ["F401"] 
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]

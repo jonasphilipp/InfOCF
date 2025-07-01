@@ -1,0 +1,50 @@
+# Pre-commit hooks for InfOCF
+# Run: pre-commit install (one time setup)
+# Run: pre-commit run --all-files (to run on all files)
+
+repos:
+  # Ruff - Ultra-fast Python linter and formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      # Run the linter
+      - id: ruff
+        name: Ruff Linting
+        args: [--fix]  # Automatically fix issues where possible
+      # Run the formatter
+      - id: ruff-format
+        name: Ruff Formatting
+
+  # Built-in hooks for common issues
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        name: Remove trailing whitespace
+      - id: end-of-file-fixer
+        name: Fix end of files
+      - id: check-yaml
+        name: Check YAML syntax
+      - id: check-toml
+        name: Check TOML syntax
+      - id: check-json
+        name: Check JSON syntax
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+      - id: check-added-large-files
+        name: Check for large files
+        args: ['--maxkb=1000']
+      - id: mixed-line-ending
+        name: Fix mixed line endings
+        args: ['--fix=lf']
+
+  # MyPy for type checking (optional, non-blocking)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        name: MyPy type checking (optional)
+        additional_dependencies: [pysmt, numpy, pandas]
+        args: [--ignore-missing-imports, --no-strict-optional]
+        # Make it non-blocking - continue even if it fails
+        stages: [manual]  # Only run when explicitly called

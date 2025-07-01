@@ -16,95 +16,90 @@ jobs:
   code-quality:
     runs-on: ubuntu-latest
     name: Code Quality & Linting
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Install uv
       uses: astral-sh/setup-uv@v3
       with:
         version: "latest"
-        
+
     - name: Set up Python
       run: uv python install 3.11
-      
+
     - name: Create virtual environment
       run: uv venv .venv
-      
+
     - name: Install dependencies
       run: |
         source .venv/bin/activate
         uv pip install -e ".[dev,testing]"
-        
+
     - name: Run Ruff linting
       run: |
         source .venv/bin/activate
         ruff check . --output-format=github
-        
-    - name: Check Black formatting
+
+    - name: Check Ruff formatting
       run: |
         source .venv/bin/activate
-        black --check --diff .
-        
-    - name: Check import sorting
+        ruff format --check --diff .
+
+    - name: Type checking with MyPy (optional)
       run: |
         source .venv/bin/activate
-        isort --check-only --diff .
-        
-    - name: Type checking with MyPy
-      run: |
-        source .venv/bin/activate
-        mypy --install-types --non-interactive .
-      continue-on-error: true  # Don't fail on type issues for now
+        mypy --install-types --non-interactive . || echo "MyPy issues found but not blocking CI"
+      continue-on-error: true  # Don't fail on type issues for research codebase
 
   # Job 2: Core algorithm and functionality tests
   core-tests:
     runs-on: ubuntu-latest
     needs: code-quality
     name: Core Algorithm Tests
-    
+
     strategy:
       matrix:
         python-version: ['3.11', '3.12']
-        
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Install uv
       uses: astral-sh/setup-uv@v3
       with:
         version: "latest"
-        
+
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
-      
+
     - name: Create virtual environment
       run: uv venv .venv
-      
+
     - name: Install dependencies
       run: |
         source .venv/bin/activate
         uv pip install -e ".[dev,testing,solvers]"
-        
+
     - name: Install Java for ANTLR
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '11'
-        
+
     - name: Download ANTLR
       run: |
         mkdir -p antlr
         wget -O antlr/antlr-4.13.2-complete.jar https://www.antlr.org/download/antlr-4.13.2-complete.jar
         echo "export CLASSPATH=\".:$(pwd)/antlr/antlr-4.13.2-complete.jar:$CLASSPATH\"" >> $GITHUB_ENV
-        
+
     - name: Verify package import
       run: |
         source .venv/bin/activate
         python -c "import infocf; print(f'InfOCF v{infocf.__version__} imported successfully')"
-        
+
     - name: Run test suite with coverage
       run: |
         source .venv/bin/activate
@@ -113,7 +108,7 @@ jobs:
           --cov=infocf --cov=inference --cov=parser \
           --cov-report=xml --cov-report=term-missing \
           --tb=short
-          
+
     - name: Upload coverage to codecov
       uses: codecov/codecov-action@v4
       if: matrix.python-version == '3.11'
@@ -121,36 +116,36 @@ jobs:
         file: ./coverage.xml
         fail_ci_if_error: false
 
-  # Job 3: Installation validation and CLI testing  
+  # Job 3: Installation validation and CLI testing
   installation-validation:
     runs-on: ubuntu-latest
     needs: code-quality
     name: Installation & CLI Validation
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Install uv
       uses: astral-sh/setup-uv@v3
       with:
         version: "latest"
-        
+
     - name: Set up Python
       run: uv python install 3.11
-      
+
     - name: Test clean installation
       run: |
         uv venv test-env
         source test-env/bin/activate
         uv pip install -e ".[solvers]"
-        
+
     - name: Validate CLI entry points
       run: |
         source test-env/bin/activate
         infocf --version
         infocf --help
-        
+
     - name: Test basic functionality
       run: |
         source test-env/bin/activate
@@ -160,7 +155,7 @@ jobs:
         print('Package info:', get_package_info())
         print('Available operators:', list_inference_operators())
         "
-        
+
     - name: Test solver availability (without system solvers)
       run: |
         source test-env/bin/activate
@@ -180,21 +175,21 @@ jobs:
     needs: [code-quality, core-tests, installation-validation]
     if: always()
     name: CI Summary
-    
+
     steps:
     - name: Check CI status
       run: |
         echo "## InfOCF CI Results" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY  
+        echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
         echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
         echo "| Code Quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Core Tests | ${{ needs.core-tests.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Installation | ${{ needs.installation-validation.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        
+
         if [[ "${{ needs.code-quality.result }}" == "success" && "${{ needs.core-tests.result }}" == "success" && "${{ needs.installation-validation.result }}" == "success" ]]; then
           echo "✅ All CI checks passed! InfOCF is ready for research." >> $GITHUB_STEP_SUMMARY
         else
           echo "❌ Some CI checks failed. Please review the results above." >> $GITHUB_STEP_SUMMARY
-        fi 
+        fi
