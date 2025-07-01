@@ -4,19 +4,19 @@ ckbs: ckb;
 
 ckb: signature conditionals+;
 
-signature: 
+signature:
 	SIGN  myid (COMMA myid)*
 	;
-myid :  
-	num=ID 
+myid :
+	num=ID
 	;
 
-conditionals: 
+conditionals:
 	COND  name=ID  LBRA conditional (COMMA  conditional)*  RBRA
 	;
 
 
-conditional: 
+conditional:
 	LPAR consequent=formula  SEP antecedent=formula RPAR #StrongConditional
 	|LL consequent=formula  SEP antecedent=formula RL #WeakConditional
 	;
@@ -26,5 +26,4 @@ formula: NOT formula    			#Negation
 	| left=formula OR right=formula       	#Or
 	| LPAR formula RPAR	   		#Paren
 	| atom=ID 				#Var
-	; 
-
+	;

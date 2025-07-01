@@ -3,8 +3,7 @@ signature
 
 conditionals
 ALL3{
-	(g|a),	
-	(!g|a,(o;p;s;u;v;w;x;y;z)),		
-	(g|a,(o;p;s;u;v;w;x;y;z),t)	
+	(g|a),
+	(!g|a,(o;p;s;u;v;w;x;y;z)),
+	(g|a,(o;p;s;u;v;w;x;y;z),t)
 }
-

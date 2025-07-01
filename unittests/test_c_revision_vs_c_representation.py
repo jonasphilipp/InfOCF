@@ -1,19 +1,19 @@
 import random
 import unittest
 
-from pysmt.shortcuts import Symbol, Not
+import z3
+from pysmt.shortcuts import Not, Symbol
 from pysmt.typing import BOOL
 
-from inference.conditional import Conditional
 from inference.belief_base import BeliefBase
-from inference.preocf import PreOCF, CustomPreOCF
 from inference.c_revision import c_revision
-
-import z3
+from inference.conditional import Conditional
+from inference.preocf import CustomPreOCF, PreOCF
 
 # ---------------------------------------------------------------------------
 # Helper – compute Pareto front of η vectors (adapted from the example script)
 # ---------------------------------------------------------------------------
+
 
 def compute_pareto_front(belief_base: BeliefBase):
     """Return the list of Pareto-optimal η-vectors for *belief_base*."""
@@ -36,13 +36,15 @@ def compute_pareto_front(belief_base: BeliefBase):
         vec = tuple(m[v].as_long() for v in eta_vars)
         pareto_vectors.append(vec)
         # Block current model strictly (improve at least one objective)
-        opt.add(z3.Or(*[v < val for v, val in zip(eta_vars, vec)]))
+        opt.add(z3.Or(*[v < val for v, val in zip(eta_vars, vec, strict=False)]))
 
     return pareto_vectors
+
 
 # ---------------------------------------------------------------------------
 # Test case: γ⁻ (c-revision) must appear in η Pareto front (c-representation)
 # ---------------------------------------------------------------------------
+
 
 class TestCRevisionVsCRepresentation(unittest.TestCase):
     NUM_TRIALS = 100
@@ -67,7 +69,9 @@ class TestCRevisionVsCRepresentation(unittest.TestCase):
         random.seed(42)
         sig_vars = ["a", "b", "c"]
         # Precompute all-zero ranking function for the signature once.
-        all_zero_ranks = {format(i, f"0{len(sig_vars)}b"): 0 for i in range(2 ** len(sig_vars))}
+        all_zero_ranks = {
+            format(i, f"0{len(sig_vars)}b"): 0 for i in range(2 ** len(sig_vars))
+        }
 
         successes = 0
         attempts = 0
@@ -78,7 +82,9 @@ class TestCRevisionVsCRepresentation(unittest.TestCase):
 
             # Generate 3 random conditionals
             conditionals = [self._random_conditional(sig_vars, i + 1) for i in range(3)]
-            bb = BeliefBase(sig_vars, {c.index: c for c in conditionals}, f"rand_{attempts}")
+            bb = BeliefBase(
+                sig_vars, {c.index: c for c in conditionals}, f"rand_{attempts}"
+            )
 
             # Custom PreOCF with all-zero ranks
             preocf = CustomPreOCF(all_zero_ranks, bb, sig_vars)
@@ -113,4 +119,4 @@ class TestCRevisionVsCRepresentation(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main() 
+    unittest.main()

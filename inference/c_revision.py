@@ -1,10 +1,12 @@
-from inference.c_inference import freshVars, minima_encoding
-from inference.preocf import PreOCF
-from inference.conditional import Conditional
-from pysmt.shortcuts import Symbol, Plus, GE, GT, Int, Solver, Equals, And, Not
-from pysmt.typing import INT
-import z3
 import logging
+
+import z3
+from pysmt.shortcuts import GE, GT, Int, Plus, Solver, Symbol
+from pysmt.typing import INT
+
+from inference.c_inference import freshVars, minima_encoding
+from inference.conditional import Conditional
+from inference.preocf import PreOCF
 from infocf import get_logger
 
 # Configure module logger
@@ -17,6 +19,7 @@ ATTENTION: This file is not tested yet sufficiently, and the implementation is n
 # Cache for gamma± symbol objects (avoids recreating identical FNodes)
 _gamma_sym_cache: dict[str, "FNode"] = {}
 
+
 def _gamma(name: str):
     sym = _gamma_sym_cache.get(name)
     if sym is None:
@@ -24,71 +27,100 @@ def _gamma(name: str):
         _gamma_sym_cache[name] = sym
     return sym
 
-def compile(ranking_function: PreOCF, revision_conditionals: list[Conditional]) -> list[list[dict[str, list[int, list[int]]]]]:
+
+def compile(
+    ranking_function: PreOCF, revision_conditionals: list[Conditional]
+) -> list[list[dict[str, list[int, list[int]]]]]:
     outer_list = []
     for rev_cond in revision_conditionals:
         inner_list = [dict(), dict()]
         for world in ranking_function.ranks.keys():
-            if ranking_function.world_satisfies_conditionalization(world, rev_cond.make_A_then_B()):
+            if ranking_function.world_satisfies_conditionalization(
+                world, rev_cond.make_A_then_B()
+            ):
                 branch_index = 0
-            elif ranking_function.world_satisfies_conditionalization(world, rev_cond.make_A_then_not_B()):
+            elif ranking_function.world_satisfies_conditionalization(
+                world, rev_cond.make_A_then_not_B()
+            ):
                 branch_index = 1
             else:
                 continue
-            
-            inner_list[branch_index][world] = [ranking_function.rank_world(world), [], []]
-            
+
+            inner_list[branch_index][world] = [
+                ranking_function.rank_world(world),
+                [],
+                [],
+            ]
+
             for cond in revision_conditionals:
-                if ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_B()):
+                if ranking_function.world_satisfies_conditionalization(
+                    world, cond.make_A_then_B()
+                ):
                     inner_list[branch_index][world][1].append(cond.index)
-                elif ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_not_B()):
+                elif ranking_function.world_satisfies_conditionalization(
+                    world, cond.make_A_then_not_B()
+                ):
                     inner_list[branch_index][world][2].append(cond.index)
 
         outer_list.append(inner_list)
 
     return outer_list
 
+
 # Reference implementation (quadratic); kept for testing.
-def compile_alt(ranking_function: PreOCF, revision_conditionals: list[Conditional]) -> tuple[dict[int, list[int]], dict[int, list[int]]]:
+def compile_alt(
+    ranking_function: PreOCF, revision_conditionals: list[Conditional]
+) -> tuple[dict[int, list[int]], dict[int, list[int]]]:
     vMin = dict()
     fMin = dict()
 
     # Initialize dictionaries for all revision conditionals based on their index
     for rev_cond in revision_conditionals:
-        if not hasattr(rev_cond, 'index'):
-            raise ValueError(f"Revision conditional '{rev_cond.textRepresentation}' is missing the 'index' attribute.")
+        if not hasattr(rev_cond, "index"):
+            raise ValueError(
+                f"Revision conditional '{rev_cond.textRepresentation}' is missing the 'index' attribute."
+            )
         vMin[rev_cond.index] = []
         fMin[rev_cond.index] = []
 
     for rev_cond in revision_conditionals:
         # The key is now the conditional's own index
         key_index = rev_cond.index
-        
+
         for world in ranking_function.ranks.keys():
-            v_dict = ranking_function.world_satisfies_conditionalization(world, rev_cond.make_A_then_B())
-            f_dict = ranking_function.world_satisfies_conditionalization(world, rev_cond.make_A_then_not_B())
-            
+            v_dict = ranking_function.world_satisfies_conditionalization(
+                world, rev_cond.make_A_then_B()
+            )
+            f_dict = ranking_function.world_satisfies_conditionalization(
+                world, rev_cond.make_A_then_not_B()
+            )
+
             if not v_dict and not f_dict:
                 continue
 
             triple = [ranking_function.rank_world(world), [], []]
-            
+
             # Skip the leading conditional itself – only consider *other* conditionals
             for cond in revision_conditionals:
                 if cond.index == key_index:
                     continue
 
-                if ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_B()):    
+                if ranking_function.world_satisfies_conditionalization(
+                    world, cond.make_A_then_B()
+                ):
                     triple[1].append(cond.index)
-                elif ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_not_B()):
+                elif ranking_function.world_satisfies_conditionalization(
+                    world, cond.make_A_then_not_B()
+                ):
                     triple[2].append(cond.index)
-            
+
             if v_dict:
                 vMin[key_index].append(triple)
             elif f_dict:
                 fMin[key_index].append(triple)
 
     return vMin, fMin
+
 
 # Optimised implementation
 def compile_alt_fast(
@@ -131,9 +163,13 @@ def compile_alt_fast(
             mask = cond_masks[cond.index]
             if mask is None:
                 # Fallback to solver evaluation for complex formula
-                if ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_B()):
+                if ranking_function.world_satisfies_conditionalization(
+                    world, cond.make_A_then_B()
+                ):
                     accepted_list.append(cond.index)
-                elif ranking_function.world_satisfies_conditionalization(world, cond.make_A_then_not_B()):
+                elif ranking_function.world_satisfies_conditionalization(
+                    world, cond.make_A_then_not_B()
+                ):
                     rejected_list.append(cond.index)
             else:
                 a_idx, a_val, c_idx, c_val = mask
@@ -159,17 +195,20 @@ def compile_alt_fast(
 
     return vMin, fMin
 
-def symbolize_minima_expression(minima: dict[int, list], gamma_plus_zero: bool = False) -> dict[int, list]:
+
+def symbolize_minima_expression(
+    minima: dict[int, list], gamma_plus_zero: bool = False
+) -> dict[int, list]:
     """
     Convert minima expression to symbolic form.
     Input: dict mapping indices to lists of triples [rank, accepted_indices, rejected_indices]
     Output: dict mapping indices to lists of symbolic expressions
     """
     results = dict()
-    
+
     for index, triple_list in minima.items():
         results[index] = []
-        
+
         for triple in triple_list:
             if len(triple) < 3:
                 # Malformed entry, skip it silently.
@@ -178,7 +217,7 @@ def symbolize_minima_expression(minima: dict[int, list], gamma_plus_zero: bool =
             rank = triple[0]
             accepted_indices = triple[1]
             rejected_indices = triple[2]
-            
+
             # ------------------------------------------------------------------
             # When γ⁺ are fixed to zero, terms that only depend on γ⁺ would reduce
             # to zero and thus dominate the minima undesirably. Furthermore, if a
@@ -199,13 +238,13 @@ def symbolize_minima_expression(minima: dict[int, list], gamma_plus_zero: bool =
             # Build expression for rejected conditionals (γ⁻ part); this is the
             # essential component for our optimisation irrespective of γ⁺.
             if rejected_indices:
-                rejected_sum = Plus([_gamma(f'gamma-_{i}') for i in rejected_indices])
+                rejected_sum = Plus([_gamma(f"gamma-_{i}") for i in rejected_indices])
                 results[index].append(Plus([rejected_sum, Int(rank)]))
                 added = True
 
             # Include γ⁺ part only when they contribute (i.e. not fixed to zero).
             if accepted_indices and not gamma_plus_zero:
-                accepted_sum = Plus([_gamma(f'gamma+_{i}') for i in accepted_indices])
+                accepted_sum = Plus([_gamma(f"gamma+_{i}") for i in accepted_indices])
                 results[index].append(Plus([accepted_sum, Int(rank)]))
                 added = True
 
@@ -214,7 +253,7 @@ def symbolize_minima_expression(minima: dict[int, list], gamma_plus_zero: bool =
             # the minima calculation.
             if not added:
                 results[index].append(Int(rank))
-    
+
     return results
 
 
@@ -235,17 +274,20 @@ def encoding(gammas: dict, vSums: dict, fSums: dict) -> list:
     return csp
 
 
-def translate_to_csp(compilation: tuple[dict[int, list[int]], dict[int, list[int]]], gamma_plus_zero: bool = False) -> list:
+def translate_to_csp(
+    compilation: tuple[dict[int, list[int]], dict[int, list[int]]],
+    gamma_plus_zero: bool = False,
+) -> list:
     gammas = {}
     for i in compilation[0].keys():
         if gamma_plus_zero:
             plus_var = Int(0)
         else:
-            plus_var = _gamma(f'gamma+_{i}')
-        minus_var = _gamma(f'gamma-_{i}')
+            plus_var = _gamma(f"gamma+_{i}")
+        minus_var = _gamma(f"gamma-_{i}")
         gammas[i] = (plus_var, minus_var)
-    #defeat= = checkTautologies(self.epistemic_state['belief_base'].conditionals)
-    #if not defeat: return False
+    # defeat= = checkTautologies(self.epistemic_state['belief_base'].conditionals)
+    # if not defeat: return False
     gteZeros = []
     for gamma_plus, gamma_minus in gammas.values():
         # gamma_plus is constant 0 when gamma_plus_zero=True
@@ -257,6 +299,7 @@ def translate_to_csp(compilation: tuple[dict[int, list[int]], dict[int, list[int
     csp = encoding(gammas, vSums, fSums)
     csp.extend(gteZeros)
     return csp
+
 
 def solve_and_get_model(csp, minimize_vars: list[str] | None = None):
     """Return a model satisfying *csp* and Pareto-minimising *minimize_vars*.
@@ -272,7 +315,7 @@ def solve_and_get_model(csp, minimize_vars: list[str] | None = None):
 
     # Convert pysmt expressions to native z3 expressions so we can leverage
     # z3's *Optimize* capabilities.
-    pysmt_solver = Solver(name='z3')
+    pysmt_solver = Solver(name="z3")
     converter = pysmt_solver.converter
     z3_csp = [converter.convert(expr) for expr in csp]
 
@@ -327,9 +370,11 @@ def c_revision(
     model = solve_and_get_model(csp, minimize_vars)
     return model
 
+
 # ----------------------------------------------------------------------------
 # Helper: quick literal extraction for simple conjunctions of two literals
 # ----------------------------------------------------------------------------
+
 
 def _literal_info(node):
     """Return (var_name, required_val) if *node* is a literal, else None."""
@@ -340,6 +385,7 @@ def _literal_info(node):
     if node.is_not() and node.arg(0).is_symbol():
         return node.arg(0).symbol_name(), 0
     return None
+
 
 def _extract_cond_masks(cond, sig_index):
     """Return (a_idx, a_val, c_idx, c_val) or None if complex."""

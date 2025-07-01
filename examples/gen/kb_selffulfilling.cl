@@ -4,5 +4,5 @@ signature
 conditionals
 selffulfilling{
 (a; b; c | a),
-(!b | !b) 
+(!b | !b)
 }

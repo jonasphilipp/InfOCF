@@ -29,28 +29,28 @@
             # Python and modern package management
             python311
             uv                    # Fast Python package manager
-            
+
             # System build tools and libraries
             jdk11                 # Java for ANTLR
             gcc                   # C compiler for extensions
             cmake swig autoconf gperf  # Build tools
             gmp.dev zlib.dev      # Development libraries
-            
+
             # SAT/SMT Solvers (system level) - Rich ecosystem for research
             yices                 # Yices SMT solver
             z3                    # Z3 SMT solver (also via Python)
-            
+
             # Modern SMT Solvers
             cvc5                  # High-performance SMT solver
             boolector             # Bit-vector & array SMT solver
             opensmt               # General purpose SMT solver
-            
+
             # SAT Solvers - Various algorithms and optimizations
             glucose               # Modern parallel SAT solver
             lingeling             # Fast SAT solver
             minisat               # Classic compact SAT solver
             cadical               # Simplified satisfiability solver
-            
+
             # Specialized Solvers
             open-wbo              # MaxSAT and Pseudo-Boolean solver
           ];
@@ -66,34 +66,34 @@
 
             # Python environment with uv (fast and modern)
             echo "🚀 Setting up InfOCF environment with uv..."
-            
+
             # Create venv if it doesn't exist
             if [ ! -d ".venv" ]; then
               echo "Creating Python virtual environment..."
               uv venv .venv
             fi
-            
+
             # Activate environment
             source .venv/bin/activate
-            
+
             # Install project in development mode with all extras
             echo "Installing InfOCF with dependencies..."
             uv pip install -e ".[dev,solvers,testing]"
-            
+
             # Install Python bindings for system solvers (Nix-only enhancement)
             echo "🧮 Installing working solver Python bindings..."
             uv pip install yices==1.1.5        # Yices SMT solver bindings
             # Note: pyboolector needs system Boolector headers (complex build)
             # Note: PicoSAT/CUDD Python bindings not available on PyPI
             # Note: MathSAT (msat) requires license agreement and manual install
-            
+
             # Verify installation
             echo ""
             echo "✅ InfOCF Environment Ready!"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "Python: $(python --version)"
             echo "ANTLR: ${antlr4_13_2.version}"
-            
+
             if python -c "import infocf" 2>/dev/null; then
               echo "InfOCF: $(python -c 'import infocf; print(f"v{infocf.__version__}")')"
               echo ""
@@ -119,4 +119,3 @@
       }
     );
 }
-

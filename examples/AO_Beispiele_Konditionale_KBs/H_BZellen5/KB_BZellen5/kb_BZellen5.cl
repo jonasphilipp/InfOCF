@@ -3,9 +3,9 @@ signature
 
 conditionals
 BZELLEN5{
-	(n|b),		
-	(m|b),	
-	(b|l),	
-	(!m|l),	
-	(g|l)	
+	(n|b),
+	(m|b),
+	(b|l),
+	(!m|l),
+	(g|l)
 }

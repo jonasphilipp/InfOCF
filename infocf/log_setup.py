@@ -14,6 +14,7 @@ Usage
 The configuration honours the environment variable ``INFOCF_LOGLEVEL`` to
 control the minimum emitted log level globally (defaults to ``INFO``).
 """
+
 from __future__ import annotations
 
 import logging
@@ -74,7 +75,9 @@ def _default_config(base_level: str) -> Dict[str, Any]:
 _configured: bool = False  # guard against multiple initialisations
 
 
-def setup_logging(custom_config: Optional[Dict[str, Any]] = None, *, force: bool = False) -> None:
+def setup_logging(
+    custom_config: Optional[Dict[str, Any]] = None, *, force: bool = False
+) -> None:
     """Configure the logging system.
 
     This function should be called once early during program start-up. It is
@@ -126,4 +129,4 @@ def get_logger(name: Optional[str] = None) -> logging.Logger:  # noqa: D401
 if os.getenv("INFOCF_AUTO_LOG", "0") == "1":
     # Only auto-configure if explicitly requested to avoid surprises during
     # library usage or unit tests.
-    setup_logging() 
+    setup_logging()

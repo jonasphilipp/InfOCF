@@ -1,6 +1,6 @@
 # signature
 #    h,m,s,p,r
-# 
+#
 # conditionals
 # MALARIA6{
 #    ( !s | h ),
@@ -10,7 +10,7 @@
 #    ( !m | p ),
 #    ( m | (r,p) )
 # }
-# 
+#
 # systemw
 {
 ( ( h, m,!s,!p, r) -> (!h, m,!s, p, r) ),

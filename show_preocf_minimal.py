@@ -5,12 +5,8 @@ Minimal example of PreOCF usage, focused on the core functionality:
 3. Testing conditional acceptance
 """
 
-from parser.Wrappers import parse_belief_base, parse_queries
-from inference.belief_base import BeliefBase
 from inference.preocf import PreOCF
-from inference.conditional import Conditional
-from pysmt.shortcuts import Symbol, Not
-from pysmt.typing import BOOL
+from parser.Wrappers import parse_belief_base, parse_queries
 
 # Define a simple belief base (birds/penguins example)
 kb_string = """signature
@@ -44,9 +40,9 @@ preocf.compute_all_ranks()
 print("All world ranks computed")
 
 # Display ranks by value
-print(f"Ranks:")
+print("Ranks:")
 for world, rank in preocf.ranks.items():
-    print(f'  {world, rank}')           
+    print(f"  {world, rank}")
 
 # Test acceptance of some conditionals
 print("\nConditional acceptance:")
@@ -58,4 +54,4 @@ conditionals = queries.conditionals
 
 for cond in conditionals.values():
     accepted = preocf.conditional_acceptance(cond)
-    print(f"  {cond}: {'Accepted' if accepted else 'Rejected'}") 
+    print(f"  {cond}: {'Accepted' if accepted else 'Rejected'}")

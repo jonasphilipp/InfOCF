@@ -10,5 +10,5 @@ HIV5 {
 	(v|h),		% 2.Menschen, die sich mit HIV infiziert haben, werden normalerweise HIV-positiv.
 	(v|c),		% 3.Ein funktionierender CCR5-Rezeptor erlaubt es norma-lerweise, HIV-positiv zu werden.
 	(!v|!c),	% 4.Ein nicht funktionierender CCR5-Rezeptor erlaubt es normalerweise nicht, HIV-positiv zu werden.
-	(v|h,r,!c)	% 5.HIV-infizierte Menschen, die sich mit einem seltenen HIV-Virus infiziert haben, das den CXCR4-Rezeptor nutzt, werden normalerweise HIV-positiv. 
+	(v|h,r,!c)	% 5.HIV-infizierte Menschen, die sich mit einem seltenen HIV-Virus infiziert haben, das den CXCR4-Rezeptor nutzt, werden normalerweise HIV-positiv.
 }

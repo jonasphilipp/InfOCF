@@ -77,14 +77,14 @@ class CKBLexer(Lexer):
     modeNames = [ "DEFAULT_MODE" ]
 
     literalNames = [ "<INVALID>",
-            "'signature'", "','", "'conditionals'", "'{'", "'}'", "'('", 
+            "'signature'", "','", "'conditionals'", "'{'", "'}'", "'('",
             "'|'", "')'", "'!'", "';'" ]
 
     symbolicNames = [ "<INVALID>",
             "ID", "WS", "COMMENT", "BLOCKCOMMENT", "NEWLINE" ]
 
-    ruleNames = [ "T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6", 
-                  "T__7", "T__8", "T__9", "ID", "WS", "COMMENT", "BLOCKCOMMENT", 
+    ruleNames = [ "T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6",
+                  "T__7", "T__8", "T__9", "ID", "WS", "COMMENT", "BLOCKCOMMENT",
                   "NEWLINE" ]
 
     grammarFileName = "CKB.g4"
@@ -95,5 +95,3 @@ class CKBLexer(Lexer):
         self._interp = LexerATNSimulator(self, self.atn, self.decisionsToDFA, PredictionContextCache())
         self._actions = None
         self._predicates = None
-
-

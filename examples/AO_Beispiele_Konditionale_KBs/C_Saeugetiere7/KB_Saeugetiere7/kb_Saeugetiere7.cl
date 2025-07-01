@@ -3,12 +3,11 @@ signature
 
 conditionals
 SAEUGETIERE7{
-	(v|m),		
+	(v|m),
 	(c|m),
-	(u|m),		
-	(m|e),		
-	(!c|e),		
-	(m|k),		
-	(!v,!c|k)	
+	(u|m),
+	(m|e),
+	(!c|e),
+	(m|k),
+	(!v,!c|k)
 }
-
