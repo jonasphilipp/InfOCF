@@ -148,7 +148,7 @@ def print_pareto_front(pareto_vectors):
 
     print("\nPareto front of c-representation (η impacts):")
     for idx, vec in enumerate(pareto_vectors, 1):
-        vec_str = ", ".join(f"η{j+1}={val}" for j, val in enumerate(vec))
+        vec_str = ", ".join(f"η{j + 1}={val}" for j, val in enumerate(vec))
         print(f"  Solution {idx}: {vec_str}")
 
 
