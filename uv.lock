@@ -407,7 +407,6 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "python-sat" },
     { name = "pytz" },
-    { name = "setuptools" },
     { name = "six" },
     { name = "tzdata" },
     { name = "z3-solver" },
@@ -431,7 +430,9 @@ docs = [
 ]
 solvers = [
     { name = "cvc5" },
+    { name = "pysmt" },
     { name = "python-sat", extra = ["aiger", "pblib"] },
+    { name = "z3-solver" },
 ]
 testing = [
     { name = "coverage" },
@@ -443,7 +444,7 @@ testing = [
 
 [package.metadata]
 requires-dist = [
-    { name = "antlr4-python3-runtime", specifier = "==4.13.2" },
+    { name = "antlr4-python3-runtime", specifier = ">=4.13.2,<5.0.0" },
     { name = "bitvector", specifier = ">=3.0.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0.0" },
     { name = "coverage", marker = "extra == 'testing'", specifier = ">=7.0.0" },
@@ -459,6 +460,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.2.2" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.0.0" },
     { name = "pysmt", specifier = ">=0.9.6" },
+    { name = "pysmt", marker = "extra == 'solvers'", specifier = ">=0.9.5" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest", marker = "extra == 'testing'", specifier = ">=7.0.0" },
     { name = "pytest-benchmark", marker = "extra == 'testing'", specifier = ">=4.0.0" },
@@ -470,12 +472,12 @@ requires-dist = [
     { name = "python-sat", extras = ["pblib", "aiger"], marker = "extra == 'solvers'", specifier = ">=1.7.0" },
     { name = "pytz", specifier = ">=2024.2" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "setuptools", specifier = ">=80.9.0" },
     { name = "six", specifier = ">=1.16.0" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=6.0.0" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=1.2.0" },
     { name = "tzdata", specifier = ">=2024.1" },
     { name = "z3-solver", specifier = ">=4.13.0.0" },
+    { name = "z3-solver", marker = "extra == 'solvers'", specifier = ">=4.12.0" },
 ]
 provides-extras = ["dev", "solvers", "testing", "docs"]
 
@@ -1143,15 +1145,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/6f/1c/20cdb593783f8f411839ce749ec9ae9e4298c2b2079b40295c3e6e2089e1/ruff-0.12.1-py3-none-win32.whl", hash = "sha256:d973fa626d4c8267848755bd0414211a456e99e125dcab147f24daa9e991a245", size = 10519495, upload-time = "2025-06-26T20:34:08.718Z" },
     { url = "https://files.pythonhosted.org/packages/cf/56/7158bd8d3cf16394928f47c637d39a7d532268cd45220bdb6cd622985760/ruff-0.12.1-py3-none-win_amd64.whl", hash = "sha256:9e1123b1c033f77bd2590e4c1fe7e8ea72ef990a85d2484351d408224d603013", size = 11547485, upload-time = "2025-06-26T20:34:11.008Z" },
     { url = "https://files.pythonhosted.org/packages/91/d0/6902c0d017259439d6fd2fd9393cea1cfe30169940118b007d5e0ea7e954/ruff-0.12.1-py3-none-win_arm64.whl", hash = "sha256:78ad09a022c64c13cc6077707f036bab0fac8cd7088772dcd1e5be21c5002efc", size = 10691209, upload-time = "2025-06-26T20:34:12.928Z" },
-]
-
-[[package]]
-name = "setuptools"
-version = "80.9.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/18/5d/3bf57dcd21979b887f014ea83c24ae194cfcd12b9e0fda66b957c69d1fca/setuptools-80.9.0.tar.gz", hash = "sha256:f36b47402ecde768dbfafc46e8e4207b4360c654f1f3bb84475f0a28628fb19c", size = 1319958, upload-time = "2025-05-27T00:56:51.443Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl", hash = "sha256:062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922", size = 1201486, upload-time = "2025-05-27T00:56:49.664Z" },
 ]
 
 [[package]]
