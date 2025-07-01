@@ -5,7 +5,6 @@ greenlet>=3.1.0
 msgpack>=1.1.0
 numpy>=2.1.1
 pandas>=2.2.2
-PyBoolector>=3.2.4.20240823.1
 PySMT>=0.9.6
 python-dateutil>=2.9.0.post0
 python-sat>=1.8.dev13
