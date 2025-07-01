@@ -3,13 +3,12 @@ signature
 
 conditionals
 SAEUGETIERE8{
-	(v|m),		
+	(v|m),
 	(c|m),
 	(u|m),
-	(!o|m),			
-	(m|e),		
-	(!c|e),		
-	(m|k),		
-	(!v,!c|k)	
+	(!o|m),
+	(m|e),
+	(!c|e),
+	(m|k),
+	(!v,!c|k)
 }
-

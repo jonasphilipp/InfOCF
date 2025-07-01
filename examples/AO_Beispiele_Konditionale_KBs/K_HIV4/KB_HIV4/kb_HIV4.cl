@@ -1,5 +1,5 @@
 signature
- 	h,v,c,r	
+ 	h,v,c,r
 
 conditionals
 HIV4{
@@ -8,6 +8,3 @@ HIV4{
 	(!v|!c),
 	(v|!c,r)
 }
-
-
-

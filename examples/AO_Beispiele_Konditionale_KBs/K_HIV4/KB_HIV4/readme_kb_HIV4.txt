@@ -11,4 +11,3 @@ HIV4 {
 	(!v|!c),	% 3.Ein nicht funktionierender CCR5-Rezeptor erlaubt es normalerweise nicht, HIV-positiv zu werden.
 	(v|!c,r)	% 4.Ein nicht funktionierender CCR5-Rezeptor und ein seltenes HIV-Virus, das den CXCR4-Rezeptor nutzt, erlau-ben es normalerweise, HIV-positiv zu werden.
 }
-

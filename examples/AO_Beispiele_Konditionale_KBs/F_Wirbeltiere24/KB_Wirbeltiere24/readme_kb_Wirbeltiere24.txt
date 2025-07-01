@@ -46,5 +46,5 @@ WIRBELTIERE24 {
 	(w|h),		% 21.Fische sind Wirbeltiere.
 	(l|h),		% 22.Fische atmen typischerweise mit Kiemen.
 	(w|n),		% 23.Rundmäuler sind Wirbeltiere.
-	(!i|n)		% 24.Rundmäuler haben typischerweise keine Wirbelsäule. 
+	(!i|n)		% 24.Rundmäuler haben typischerweise keine Wirbelsäule.
 }

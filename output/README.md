@@ -3,32 +3,32 @@ Every benchmark instance of 'foiks_longest_cqueries.csv' is indenified by 4 numb
 (signature size,amount of conditonals,index ckb,index query). \
 'foiks_tough_queries.zip' contains the corresponding CKB's and query files.\
 For example: (signature size,amount of conditonals,index ckb,index query) = (60,60,46,3) \
-means that this result refers to 'randomTest_60_60_46.cl' and the third query in 'randomQueries_60_60_46.cl' 
+means that this result refers to 'randomTest_60_60_46.cl' and the third query in 'randomQueries_60_60_46.cl'
 which are contained in the file 'foiks_tough_queries.zip' after unzipping.
 All times refer only to c-inference. \
-While they do also contain a corresponding result for System Z and System P, 
+While they do also contain a corresponding result for System Z and System P,
 the times for those system were not measured.
 
 
 ## Naming legend for 'foiks_longest_cqueries.csv'
-### compile time ckb (ms) 
+### compile time ckb (ms)
 Refers to the combined time of 'compiling the CKB' and 'optimizing the CKB' using a maxsat-solver.
 Time in miliseconds, indicated with 'ms' in parenthesis.
 
-### compile time query (ms)	
+### compile time query (ms)
 Refers to the combined time of 'compiling the query' and 'optimizing the query' using a maxsat-solver.
 Time in miliseconds, indicated with 'ms' in parenthesis.
 
-### solve time query (ms)	
+### solve time query (ms)
 Refers to the time it took to solve the CSP that corresponds to the query and the CKB.
 Time in miliseconds, indicated with 'ms' in parenthesis.
 
-### result c representation	
+### result c representation
 Result of the c-inference that corresponds to the query and the CKB, obtained by solving the CSP.
 'sat' means the query does not follow.
 'unsat' means the query does follow.
 
-### result system z	
+### result system z
 Result of the 'System Z'-inference that corresponds to the query and the CKB.
 'False' means the query does not follow.
 'True' means the query does follow.
@@ -53,21 +53,21 @@ Contains queries compatibale with 'randomTest_a_b_c.cl'
 
 
 # Benchmarking results format cinf_sum_longest_queries.csv' and 'sum_archive.zip'
-'cinf_sum_longest_queries.csv' and 'sum_archive.zip' are strucutred in a similiar way. 
+'cinf_sum_longest_queries.csv' and 'sum_archive.zip' are strucutred in a similiar way.
 
 
 
 ## Naming legend for 'cinf_sum_longest_queries.csv'
 
-### preprocessing_time	
+### preprocessing_time
 Refers to the combined time of 'compiling the CKB' and 'optimizing the CKB' using a maxsat-solver.
-### inference_time	
+### inference_time
 Refers to the time it took to solve the CSP that corresponds to the query and the CKB.
-### translation_time	
+### translation_time
 Refers to the time it took to translate the internal representation of the CSP into an file in the smt2 format
-### preprocessing_timeout	
+### preprocessing_timeout
 indicates whether preprocessing ('compilation and optimization') hitted the timeout limit
-### inference_timeout	
+### inference_timeout
 indicates whether solving the CSP hitted the timeout limit
 ### belief_base
-Filename of the belief base 
+Filename of the belief base

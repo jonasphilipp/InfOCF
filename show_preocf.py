@@ -28,19 +28,21 @@ This showcase demonstrates all these features using the classic birds/penguins e
 """
 
 import os
-from inference import belief_base
-from parser.Wrappers import parse_belief_base, parse_queries, parse_formula
-from inference.belief_base import BeliefBase
-from inference.preocf import PreOCF, ranks2tpo, tpo2ranks
-from inference.conditional import Conditional
-from pysmt.shortcuts import Symbol, Not, And, Or
+
+from pysmt.shortcuts import And, Not, Symbol
 from pysmt.typing import BOOL
-from BitVector import BitVector
+
+from inference.belief_base import BeliefBase
+from inference.conditional import Conditional
+from inference.preocf import PreOCF, ranks2tpo, tpo2ranks
+from parser.Wrappers import parse_belief_base, parse_formula, parse_queries
 
 # First, let's load and prepare a belief base
 # We'll use the birds example which is small but illustrative
 print("=== Creating Belief Base ===")
-birds_kb_string = "signature\nb,p,f,w\n\nconditionals\nbirds{\n(f|b),\n(!f|p),\n(b|p),(w|b)\n}"
+birds_kb_string = (
+    "signature\nb,p,f,w\n\nconditionals\nbirds{\n(f|b),\n(!f|p),\n(b|p),(w|b)\n}"
+)
 
 # Parse the belief base string
 # Note: Filepaths (.cl files) can also be parsed
@@ -65,33 +67,37 @@ print()
 # Compute ranks for specific worlds
 print("=== Computing Ranks for Specific Worlds ===")
 # Initially worlds have None as their rank, we'll compute some specific ones
-worlds_to_check = ['1111', '0000', '1010', '0101']
+worlds_to_check = ["1111", "0000", "1010", "0101"]
 worlds_descriptions = [preocf_birds.bv2strtuple(w) for w in worlds_to_check]
 
 print("Before computing ranks:")
-print('With internal representation:')
+print("With internal representation:")
 for i, world in enumerate(worlds_to_check):
-    print(f'{world}: {preocf_birds.ranks[world]}')
+    print(f"{world}: {preocf_birds.ranks[world]}")
 print()
 
-print('With verbose representation (bitvec -> strtuple):')
+print("With verbose representation (bitvec -> strtuple):")
 for i, world in enumerate(worlds_to_check):
-    print(f"  World {world} {worlds_descriptions[i]}: Rank = {preocf_birds.ranks[world]}")
+    print(
+        f"  World {world} {worlds_descriptions[i]}: Rank = {preocf_birds.ranks[world]}"
+    )
 
 # Compute ranks for these worlds
 for world in worlds_to_check:
     preocf_birds.rank_world(world)
 
 print("\nAfter computing ranks:")
-print('With internal representation:')
+print("With internal representation:")
 for world in worlds_to_check:
-    print(f'{world}: {preocf_birds.ranks[world]}')
+    print(f"{world}: {preocf_birds.ranks[world]}")
 print()
 
-print('With verbose representation (bitvec -> strtuple):')
+print("With verbose representation (bitvec -> strtuple):")
 
 for i, world in enumerate(worlds_to_check):
-    print(f"  World {world} {worlds_descriptions[i]}: Rank = {preocf_birds.ranks[world]}")
+    print(
+        f"  World {world} {worlds_descriptions[i]}: Rank = {preocf_birds.ranks[world]}"
+    )
 print()
 print(f"Is OCF (all worlds ranked): {preocf_birds.is_ocf()}")
 print()
@@ -116,7 +122,7 @@ for rank, worlds in sorted(ranks_by_value.items()):
     print(f"  Rank {rank}: {len(worlds)} worlds (e.g., {worlds_desc})")
 print()
 
-# Show ranks in original and verbose format for whole dictionary 
+# Show ranks in original and verbose format for whole dictionary
 print("=== Original Representation ===")
 for world, rank in preocf_birds.ranks.items():
     print(world, rank)
@@ -169,7 +175,7 @@ print()
 print("=== Conditionalization ===")
 # Conditionalize on 'b' (bird) using parsed formula
 conditionalization = formulas["b"]
-print(f"Conditionalizing on formula: b")
+print("Conditionalizing on formula: b")
 
 # Filter worlds satisfying the conditionalization
 filtered_worlds = preocf_birds.filter_worlds_by_conditionalization(conditionalization)
@@ -198,7 +204,7 @@ print("=== Partial PreOCF → TPO (manual ranks only) ===")
 # Fresh instance to avoid full ranking side-effects
 partial_ocf = PreOCF.init_system_z(belief_base_birds)
 # Compute ranks for some worlds only
-for w in ['0000', '1111', '0101']:
+for w in ["0000", "1111", "0101"]:
     partial_ocf.rank_world(w)
 print(f"world, rank: {[(w, partial_ocf.ranks[w]) for w in ['0000', '1111', '0101']]}")
 print(f"Is OCF now? {partial_ocf.is_ocf()}")
@@ -214,11 +220,14 @@ print("=== Metadata Storage and Persistence ===")
 preocf_birds.save_meta("experiment_name", "Birds Knowledge Base Analysis")
 preocf_birds.save_meta("author", "PreOCF Demo")
 preocf_birds.save_meta("creation_date", "2024-01-15")
-preocf_birds.save_meta("analysis_results", {
-    "total_worlds": len(preocf_birds.ranks),
-    "ranking_system": preocf_birds.ranking_system,
-    "tpo_layers": len(tpo)
-})
+preocf_birds.save_meta(
+    "analysis_results",
+    {
+        "total_worlds": len(preocf_birds.ranks),
+        "ranking_system": preocf_birds.ranking_system,
+        "tpo_layers": len(tpo),
+    },
+)
 preocf_birds.save_meta("tpo_layers", tpo)
 
 print("Stored metadata:")
@@ -278,8 +287,8 @@ print(f"  Metadata keys: {list(loaded_preocf.metadata.keys())}")
 print(f"  Experiment name: {loaded_preocf.load_meta('experiment_name')}")
 
 # Test that ranks are preserved
-sample_worlds = ['1111', '0000', '1010']
-print(f"\nRank comparison for sample worlds:")
+sample_worlds = ["1111", "0000", "1010"]
+print("\nRank comparison for sample worlds:")
 for world in sample_worlds:
     orig_rank = preocf_birds.ranks[world]
     loaded_rank = loaded_preocf.ranks[world]
@@ -287,22 +296,23 @@ for world in sample_worlds:
     print(f"  World {world}: Original={orig_rank}, Loaded={loaded_rank} {match}")
 
 # Test conditional acceptance is preserved
-print(f"\nConditional acceptance comparison:")
+print("\nConditional acceptance comparison:")
 test_conditional = list(belief_base_birds.conditionals.values())[0]
 orig_acceptance = preocf_birds.conditional_acceptance(test_conditional)
 loaded_acceptance = loaded_preocf.conditional_acceptance(test_conditional)
 match = "✓" if orig_acceptance == loaded_acceptance else "✗"
-print(f"  {test_conditional}: Original={orig_acceptance}, Loaded={loaded_acceptance} {match}")
+print(
+    f"  {test_conditional}: Original={orig_acceptance}, Loaded={loaded_acceptance} {match}"
+)
 
 # Demonstrate state inspection with __getstate__
-print(f"\nObject state inspection:")
+print("\nObject state inspection:")
 state_dict = loaded_preocf.__getstate__()
 print(f"  State contains {len(state_dict)} attributes")
 print(f"  Key attributes: {[k for k in state_dict.keys() if not k.startswith('_')]}")
 print(f"  Internal attributes: {[k for k in state_dict.keys() if k.startswith('_')]}")
 
 # Clean up demonstration files
-import os
 for file in ["birds_metadata.json", "birds_preocf.pkl"]:
     if os.path.exists(file):
         os.remove(file)
@@ -319,135 +329,162 @@ try:
     preocf_random = PreOCF.init_random_min_c_rep(belief_base_birds)
     print(f"   Impact vector computed: {preocf_random._impacts}")
     print(f"   Impact vector length: {len(preocf_random._impacts)}")
-    
+
     # Demonstrate simple save/load with Python lists
     print("\n2. Simple Impact Save/Load (Python lists)...")
-    
+
     # Save impacts to a Python list
     saved_impacts = preocf_random.save_impacts()
     print(f"   Saved impacts: {saved_impacts}")
     print(f"   Type: {type(saved_impacts)}")
-    
+
     # Create a new instance and load the impacts
     print("\n   Creating new instance and loading impacts...")
     from inference.preocf import RandomMinCRepPreOCF
+
     preocf_loaded = RandomMinCRepPreOCF.__new__(RandomMinCRepPreOCF)
     ranks = PreOCF.create_bitvec_world_dict(belief_base_birds.signature)
-    PreOCF.__init__(preocf_loaded, ranks, belief_base_birds.signature,
-                   belief_base_birds.conditionals, 'random_min_c_rep', None)
+    PreOCF.__init__(
+        preocf_loaded,
+        ranks,
+        belief_base_birds.signature,
+        belief_base_birds.conditionals,
+        "random_min_c_rep",
+        None,
+    )
     preocf_loaded._csp = None
     preocf_loaded._optimizer = None
     preocf_loaded.load_impacts(saved_impacts)
-    
+
     print(f"   Loaded impacts: {preocf_loaded._impacts}")
     print(f"   Impacts match: {preocf_loaded._impacts == preocf_random._impacts}")
-    
+
     # Test that both instances produce identical ranks
     print("\n   Verifying rank computation consistency...")
-    test_worlds = ['0000', '1111', '1010', '0101']
+    test_worlds = ["0000", "1111", "1010", "0101"]
     for world in test_worlds:
         orig_rank = preocf_random.rank_world(world)
         loaded_rank = preocf_loaded.rank_world(world)
         match = "✓" if orig_rank == loaded_rank else "✗"
         print(f"   World {world}: Original={orig_rank}, Loaded={loaded_rank} {match}")
-    
+
     # Demonstrate factory method with list
     print("\n3. Factory Method with Impact List...")
     preocf_factory = RandomMinCRepPreOCF.init_with_impacts_list(
-        belief_base_birds, saved_impacts)
+        belief_base_birds, saved_impacts
+    )
     print(f"   Factory impacts: {preocf_factory._impacts}")
-    print(f"   Factory metadata: {preocf_factory.load_meta('impacts_loaded_from_list')}")
-    
+    print(
+        f"   Factory metadata: {preocf_factory.load_meta('impacts_loaded_from_list')}"
+    )
+
     # Demonstrate file-based export/import
     print("\n4. File-based Export/Import...")
-    
+
     # Export to JSON
     print("   Exporting impacts to JSON...")
     preocf_random.export_impacts("impacts_demo.json", fmt="json")
     print("   ✓ Exported to impacts_demo.json")
-    
+
     # Export to pickle
     print("   Exporting impacts to pickle...")
     preocf_random.export_impacts("impacts_demo.pkl", fmt="pickle")
     print("   ✓ Exported to impacts_demo.pkl")
-    
+
     # Import from JSON
     print("\n   Creating new instance and importing from JSON...")
     preocf_json_import = RandomMinCRepPreOCF.__new__(RandomMinCRepPreOCF)
     ranks = PreOCF.create_bitvec_world_dict(belief_base_birds.signature)
-    PreOCF.__init__(preocf_json_import, ranks, belief_base_birds.signature,
-                   belief_base_birds.conditionals, 'random_min_c_rep', None)
+    PreOCF.__init__(
+        preocf_json_import,
+        ranks,
+        belief_base_birds.signature,
+        belief_base_birds.conditionals,
+        "random_min_c_rep",
+        None,
+    )
     preocf_json_import._csp = None
     preocf_json_import._optimizer = None
     preocf_json_import.import_impacts("impacts_demo.json")
-    
+
     print(f"   JSON imported impacts: {preocf_json_import._impacts}")
     print(f"   Import source: {preocf_json_import.load_meta('impacts_imported_from')}")
-    
+
     # Import from pickle using factory method
     print("\n   Using factory method with pickle file...")
     preocf_pickle_factory = RandomMinCRepPreOCF.init_with_impacts(
-        belief_base_birds, "impacts_demo.pkl")
+        belief_base_birds, "impacts_demo.pkl"
+    )
     print(f"   Pickle factory impacts: {preocf_pickle_factory._impacts}")
-    
+
     # Performance comparison demonstration
     print("\n5. Performance Comparison...")
     import time
-    
+
     # Time the original computation
     print("   Timing original impact computation...")
     start_time = time.time()
     preocf_computed = PreOCF.init_random_min_c_rep(belief_base_birds)
     computation_time = time.time() - start_time
     print(f"   Original computation time: {computation_time:.4f} seconds")
-    
+
     # Time the loading from list
     print("   Timing impact loading from list...")
     start_time = time.time()
     preocf_list_loaded = RandomMinCRepPreOCF.init_with_impacts_list(
-        belief_base_birds, saved_impacts)
+        belief_base_birds, saved_impacts
+    )
     list_load_time = time.time() - start_time
     print(f"   List loading time: {list_load_time:.4f} seconds")
-    
+
     # Time the loading from file
     print("   Timing impact loading from file...")
     start_time = time.time()
     preocf_file_loaded = RandomMinCRepPreOCF.init_with_impacts(
-        belief_base_birds, "impacts_demo.json")
+        belief_base_birds, "impacts_demo.json"
+    )
     file_load_time = time.time() - start_time
     print(f"   File loading time: {file_load_time:.4f} seconds")
-    
+
     # Calculate speedup
     if list_load_time > 0:
         list_speedup = computation_time / list_load_time
         print(f"   List loading speedup: {list_speedup:.1f}x faster")
-    
+
     if file_load_time > 0:
         file_speedup = computation_time / file_load_time
         print(f"   File loading speedup: {file_speedup:.1f}x faster")
-    
+
     # Demonstrate validation
     print("\n6. Validation and Error Handling...")
-    
+
     # Test with mismatched belief base
     print("   Testing validation with different belief base...")
     simple_kb = "signature\na,b\n\nconditionals\nsimple{\n(a|b)\n}"
     simple_bb = parse_belief_base(simple_kb)
-    simple_belief_base = BeliefBase(simple_bb.signature, simple_bb.conditionals, 'simple')
-    
+    simple_belief_base = BeliefBase(
+        simple_bb.signature, simple_bb.conditionals, "simple"
+    )
+
     try:
         # This should fail due to size mismatch
         test_preocf = RandomMinCRepPreOCF.__new__(RandomMinCRepPreOCF)
         ranks = PreOCF.create_bitvec_world_dict(simple_belief_base.signature)
-        PreOCF.__init__(test_preocf, ranks, simple_belief_base.signature,
-                       simple_belief_base.conditionals, 'random_min_c_rep', None)
+        PreOCF.__init__(
+            test_preocf,
+            ranks,
+            simple_belief_base.signature,
+            simple_belief_base.conditionals,
+            "random_min_c_rep",
+            None,
+        )
         test_preocf._csp = None
         test_preocf._optimizer = None
         test_preocf.load_impacts(saved_impacts)
         print("   ✗ Validation failed to catch size mismatch")
     except ValueError as e:
         print(f"   ✓ Validation caught size mismatch: {str(e)[:50]}...")
-    
+
     # Test with invalid impact values
     print("   Testing validation with negative impacts...")
     try:
@@ -455,27 +492,35 @@ try:
         print("   ✗ Validation failed to catch negative values")
     except ValueError as e:
         print(f"   ✓ Validation caught negative values: {str(e)[:50]}...")
-    
+
     # Demonstrate metadata tracking
     print("\n7. Metadata Tracking...")
-    print(f"   List load metadata: {preocf_loaded.load_meta('impacts_loaded_from_list')}")
-    print(f"   List load timestamp: {preocf_loaded.load_meta('impacts_load_timestamp')}")
-    print(f"   File import source: {preocf_json_import.load_meta('impacts_imported_from')}")
-    print(f"   File import timestamp: {preocf_json_import.load_meta('impacts_import_timestamp')}")
-    
+    print(
+        f"   List load metadata: {preocf_loaded.load_meta('impacts_loaded_from_list')}"
+    )
+    print(
+        f"   List load timestamp: {preocf_loaded.load_meta('impacts_load_timestamp')}"
+    )
+    print(
+        f"   File import source: {preocf_json_import.load_meta('impacts_imported_from')}"
+    )
+    print(
+        f"   File import timestamp: {preocf_json_import.load_meta('impacts_import_timestamp')}"
+    )
+
     # Clean up demonstration files
     print("\n8. Cleaning up demonstration files...")
     for file in ["impacts_demo.json", "impacts_demo.pkl"]:
         if os.path.exists(file):
             os.remove(file)
             print(f"   Cleaned up: {file}")
-    
+
     print("\n✓ Impact vector persistence demonstration completed successfully!")
-    
+
 except Exception as e:
     print(f"\n✗ Impact persistence demonstration failed: {e}")
     print("This is expected if RandomMinCRepPreOCF dependencies are not available.")
-    
+
     # Clean up any partial files
     for file in ["impacts_demo.json", "impacts_demo.pkl"]:
         if os.path.exists(file):
@@ -483,9 +528,11 @@ except Exception as e:
 
 print()
 
+
 # Convert back to ranks with a different ranking function
 def custom_rank_function(layer_num):
     return layer_num * 10  # Multiply rank by 10
+
 
 custom_ranks = tpo2ranks(tpo, custom_rank_function)
 print("\nCustom ranks using function layer_num * 10:")
@@ -501,7 +548,7 @@ for rank, worlds in sorted(custom_ranks_by_value.items()):
 # Verify that the structure is preserved
 tpo_custom = ranks2tpo(custom_ranks)
 print("\nVerifying structure preservation:")
-for i, (orig_layer, custom_layer) in enumerate(zip(tpo, tpo_custom)):
+for i, (orig_layer, custom_layer) in enumerate(zip(tpo, tpo_custom, strict=False)):
     print(f"  Layer {i}: Same worlds = {orig_layer == custom_layer}")
 
 # Marginalization
@@ -510,7 +557,7 @@ print("Marginalizing the PreOCF by projecting out certain variables")
 print("Original signature:", preocf_birds.signature)
 
 # Marginalize by removing 'w' (wings) from the signature
-vars_to_remove = {'w'}
+vars_to_remove = {"w"}
 print(f"Variables to remove: {vars_to_remove}")
 
 # Create marginalized PreOCF
@@ -547,7 +594,9 @@ for orig_world in preocf_birds.ranks.keys():
 print(f"Matching original worlds: {matching_original_worlds}")
 print("Ranks of matching original worlds:")
 for world in matching_original_worlds:
-    print(f"  World {world} {preocf_birds.bv2strtuple(world)}: Rank = {preocf_birds.ranks[world]}")
+    print(
+        f"  World {world} {preocf_birds.bv2strtuple(world)}: Rank = {preocf_birds.ranks[world]}"
+    )
 
 # Initializing with Custom Ranks
 print("\n=== Custom OCF Initialization ===")
@@ -567,16 +616,16 @@ custom_ranks_dict = PreOCF.create_bitvec_world_dict(custom_belief_base.signature
 print(f"Created empty ranks dictionary with {len(custom_ranks_dict)} worlds")
 
 # World '00': a=False, b=False
-custom_ranks_dict['00'] = 1
+custom_ranks_dict["00"] = 1
 
 # World '01': a=False, b=True
-custom_ranks_dict['01'] = 1
+custom_ranks_dict["01"] = 1
 
 # World '10': a=True, b=False
-custom_ranks_dict['10'] = 0
+custom_ranks_dict["10"] = 0
 
-# World '11': a=True, b=True 
-custom_ranks_dict['11'] = 1
+# World '11': a=True, b=True
+custom_ranks_dict["11"] = 1
 
 # Create a PreOCF with these custom ranks
 custom_preocf = PreOCF.init_custom(custom_ranks_dict, custom_belief_base)
@@ -592,8 +641,8 @@ for world, rank in custom_preocf.ranks.items():
     print(f"  World {world} {world_desc}: Rank = {rank}")
 
 # Create symbols for checking conditional acceptance with custom PreOCF
-a = Symbol('a', BOOL)
-b = Symbol('b', BOOL)
+a = Symbol("a", BOOL)
+b = Symbol("b", BOOL)
 
 # Test acceptance of conditionals in our custom OCF
 print("\nConditional acceptance in custom OCF:")
@@ -601,7 +650,7 @@ custom_conditionals = [
     Conditional(b, a, "(b|a)"),
     Conditional(b, Not(a), "(b|!a)"),
     Conditional(Not(b), a, "(!b|a)"),
-    Conditional(Not(b), Not(a), "(!b|!a)")
+    Conditional(Not(b), Not(a), "(!b|!a)"),
 ]
 
 for cond in custom_conditionals:
@@ -618,7 +667,7 @@ for i, layer in enumerate(custom_tpo):
 # Bare Custom OCF Demo (no belief base or signature)
 print("\n=== Bare Custom OCF Demo ===")
 # Manually define a ranks dict
-bare_ranks = {'00': 2, '01': 0, '10': 1, '11': 3}
+bare_ranks = {"00": 2, "01": 0, "10": 1, "11": 3}
 # Initialize a custom PreOCF directly from ranks only
 bare_ocf = PreOCF.init_custom(bare_ranks)
 print("Signature:", bare_ocf.signature)
@@ -642,17 +691,25 @@ print("Bare OCF comment:", bare_ocf.load_meta("comment"))
 print("\n=== World Acceptance of Formulas ===")
 
 # Test acceptance of formulas in our custom OCF
-print("\nTesting formula acceptance in custom OCF:")    
+print("\nTesting formula acceptance in custom OCF:")
 
-new_custom_ocf = PreOCF.init_custom({}, None, ['a', 'b', 'c', 'd'])
+new_custom_ocf = PreOCF.init_custom({}, None, ["a", "b", "c", "d"])
 print(f"new_custom_ocf signature: {new_custom_ocf.signature}")
-formula_string = 'a,b,c,d'
+formula_string = "a,b,c,d"
 print(f"formula: {formula_string}")
 formula = parse_formula(formula_string)
-print(f"world 0000 satisfies formula {formula_string}: {new_custom_ocf.world_satisfies_conditionalization('0000', formula)}")
-print(f"world 0001 satisfies formula {formula_string}: {new_custom_ocf.world_satisfies_conditionalization('0001', formula)}")
-print(f"world 0011 satisfies formula {formula_string}: {new_custom_ocf.world_satisfies_conditionalization('0011', formula)}")
-print(f"world 1111 satisfies formula {formula_string}: {new_custom_ocf.world_satisfies_conditionalization('1111', formula)}") 
+print(
+    f"world 0000 satisfies formula {formula_string}: {new_custom_ocf.world_satisfies_conditionalization('0000', formula)}"
+)
+print(
+    f"world 0001 satisfies formula {formula_string}: {new_custom_ocf.world_satisfies_conditionalization('0001', formula)}"
+)
+print(
+    f"world 0011 satisfies formula {formula_string}: {new_custom_ocf.world_satisfies_conditionalization('0011', formula)}"
+)
+print(
+    f"world 1111 satisfies formula {formula_string}: {new_custom_ocf.world_satisfies_conditionalization('1111', formula)}"
+)
 
 
 #### This part is important for the student lars to me about
@@ -665,19 +722,33 @@ new_custom_ocf_birds = PreOCF.init_custom({}, belief_base_birds, [])
 print(f" belief base signature: {belief_base_birds.signature}")
 print(f"belief base conditionals: {belief_base_birds.conditionals}")
 
-# this is how you can create a formula that is the conjunction of all the negated falsifictions of all conditionals in a belief base  
-formula = And([belief_base_birds.conditionals[i].make_not_A_or_B() for i in belief_base_birds.conditionals])
+# this is how you can create a formula that is the conjunction of all the negated falsifictions of all conditionals in a belief base
+formula = And(
+    [
+        belief_base_birds.conditionals[i].make_not_A_or_B()
+        for i in belief_base_birds.conditionals
+    ]
+)
 
 # this is only to print the formula in a more readable format
 formula_string = str(formula)
 # exchange | for ; and & for , to match our syntax in print statement, this is not actually changing the formula
-formula_string = formula_string.replace('|', ';').replace('&', ',')
+formula_string = formula_string.replace("|", ";").replace("&", ",")
 print(f"formula: {formula_string}")
 
 # this is how you can check if a world satisfies a formula
-print(f"world 0000 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('0000', formula)}")
-print(f"world 0001 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('0001', formula)}")
-print(f"world 1011 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('1011', formula)}")
-print(f"world 1101 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('1101', formula)}")
-print(f"world 1111 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('1111', formula)}") 
-
+print(
+    f"world 0000 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('0000', formula)}"
+)
+print(
+    f"world 0001 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('0001', formula)}"
+)
+print(
+    f"world 1011 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('1011', formula)}"
+)
+print(
+    f"world 1101 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('1101', formula)}"
+)
+print(
+    f"world 1111 satisfies formula {formula_string}: {new_custom_ocf_birds.world_satisfies_conditionalization('1111', formula)}"
+)

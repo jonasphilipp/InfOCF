@@ -94,7 +94,7 @@ packages = ["infocf", "inference", "parser"]
 [tool.hatch.build.targets.sdist]
 include = [
     "/infocf",
-    "/inference", 
+    "/inference",
     "/parser",
     "/docs",
     "/examples",
@@ -170,7 +170,7 @@ __author__ = "Your Name"
 __email__ = "your.email@example.com"
 
 __all__ = [
-    "get_logger", 
+    "get_logger",
     "setup_logging",
 ]
 ```
@@ -211,18 +211,18 @@ __all__ = [
     if [ ! -d "venv" ]; then
       python -m venv venv
     fi
-    
+
     unset PYTHONPATH
     export PATH="$PWD/venv/bin:$PATH"
     source venv/bin/activate
 
     # Use uv for faster package installation
     pip install --upgrade pip uv
-    
+
     # Install packages from pyproject.toml
     echo "Installing InfOCF in development mode..."
     uv pip install -e ".[dev,solvers,testing]"
-    
+
     # Set up library paths
     export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH
     export Z3_LIBRARY_PATH=$(python -c "import z3; print(z3.__file__)")/lib
@@ -233,7 +233,7 @@ __all__ = [
     echo "Installing SMT solvers..."
     pysmt-install --msat --confirm-agreement || echo "MathSAT installation failed (optional)"
     pysmt-install --cvc5 --confirm-agreement || echo "CVC5 installation failed (optional)"
-    
+
     echo "✅ InfOCF development environment ready!"
     echo "Python version: $(python --version)"
     echo "ANTLR version: ${antlr4_13_2.version}"
@@ -313,7 +313,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Install uv
       uses: astral-sh/setup-uv@v2
       with:
@@ -324,13 +324,13 @@ jobs:
 
     - name: Install dependencies
       run: uv sync --extra testing --extra dev
-        
+
     - name: Install system dependencies (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
         sudo apt-get install -y yices2 || true
-        
+
     - name: Install system dependencies (macOS)
       if: matrix.os == 'macos-latest'
       run: brew install yices2 || true
@@ -473,34 +473,34 @@ Examples:
   infocf infer --method system-z examples/birds.cl "bird(tweety) -> flies(tweety)"
         """
     )
-    
+
     parser.add_argument("--version", action="version", version=f"InfOCF {__version__}")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
-    
+
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    
+
     # Parse command
     parse_parser = subparsers.add_parser("parse", help="Parse a .cl file")
     parse_parser.add_argument("file", type=Path, help="Path to .cl file")
-    
-    # Infer command  
+
+    # Infer command
     infer_parser = subparsers.add_parser("infer", help="Perform inference")
     infer_parser.add_argument("file", type=Path, help="Path to .cl file")
     infer_parser.add_argument("query", help="Query to evaluate")
     infer_parser.add_argument(
-        "--method", 
+        "--method",
         choices=["system-z", "system-w", "c-inference", "p-entailment"],
         default="system-z",
         help="Inference method to use"
     )
-    
+
     args = parser.parse_args()
-    
+
     if args.verbose:
         setup_logging(level="DEBUG")
     else:
         setup_logging(level="INFO")
-    
+
     if args.command == "parse":
         return cmd_parse(args.file)
     elif args.command == "infer":
@@ -514,7 +514,7 @@ def cmd_parse(file_path: Path) -> int:
     """Parse a .cl file and display the knowledge base."""
     try:
         from parser.myVisitor import parse_knowledge_base
-        
+
         print(f"Parsing {file_path}...")
         kb = parse_knowledge_base(str(file_path))
         print(f"Successfully parsed {len(kb)} conditionals")
@@ -530,10 +530,10 @@ def cmd_infer(file_path: Path, query: str, method: str) -> int:
     """Perform inference on a knowledge base."""
     try:
         from parser.myVisitor import parse_knowledge_base
-        
+
         print(f"Loading knowledge base from {file_path}...")
         kb = parse_knowledge_base(str(file_path))
-        
+
         print(f"Performing {method} inference...")
         print(f"Query: {query}")
         print(f"Method {method} not yet fully implemented in CLI")
@@ -559,31 +559,31 @@ from pathlib import Path
 
 class KnowledgeBase:
     """Wrapper for knowledge base operations."""
-    
+
     def __init__(self, conditionals: Optional[List] = None):
         self.conditionals = conditionals or []
-    
+
     @classmethod
     def from_file(cls, file_path: Path) -> "KnowledgeBase":
         """Load knowledge base from .cl file."""
         from parser.myVisitor import parse_knowledge_base
         conditionals = parse_knowledge_base(str(file_path))
         return cls(conditionals)
-    
+
     def __len__(self) -> int:
         return len(self.conditionals)
-    
+
     def __repr__(self) -> str:
         return f"KnowledgeBase({len(self.conditionals)} conditionals)"
 
 
 class InferenceEngine:
     """Main inference engine with multiple methods."""
-    
+
     def __init__(self, method: str = "system-z"):
         self.method = method
         self._engine = self._create_engine(method)
-    
+
     def _create_engine(self, method: str):
         """Create the appropriate inference engine."""
         if method == "system-z":
@@ -592,7 +592,7 @@ class InferenceEngine:
         # Add other methods as they become available
         else:
             raise ValueError(f"Unknown inference method: {method}")
-    
+
     def query(self, kb: KnowledgeBase, query: str) -> Any:
         """Perform inference query."""
         return self._engine.query(kb.conditionals, query)
@@ -621,21 +621,21 @@ def run_command(cmd: str) -> None:
 def main():
     """Prepare release."""
     print("🚀 Preparing InfOCF release...")
-    
+
     # Run tests
     print("\n1. Running tests...")
     run_command("uv run pytest unittests/ -v")
-    
+
     # Run linting
     print("\n2. Running linting...")
     run_command("uv run black --check infocf/ inference/ parser/")
     run_command("uv run isort --check infocf/ inference/ parser/")
     run_command("uv run flake8 infocf/ inference/ parser/")
-    
+
     # Build package
     print("\n3. Building package...")
     run_command("uv build")
-    
+
     print("\n✅ Release preparation complete!")
     print("Next steps:")
     print("  1. Update version in pyproject.toml")
@@ -661,7 +661,7 @@ if __name__ == "__main__":
 
 ### Immediate
 - ✅ Modern Python packaging standards
-- ✅ Cross-platform compatibility  
+- ✅ Cross-platform compatibility
 - ✅ Faster dependency resolution
 - ✅ Better development workflow
 

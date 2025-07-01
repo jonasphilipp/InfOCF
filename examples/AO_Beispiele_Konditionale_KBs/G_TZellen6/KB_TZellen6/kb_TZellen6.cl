@@ -3,10 +3,10 @@ signature
 
 conditionals
 TZELLEN6{
-	(d|t),		
-	(t|h),		
-	(v|h),		
-	(h|d,v),	
-	(t|z),		
-	(a|z)		
+	(d|t),
+	(t|h),
+	(v|h),
+	(h|d,v),
+	(t|z),
+	(a|z)
 }

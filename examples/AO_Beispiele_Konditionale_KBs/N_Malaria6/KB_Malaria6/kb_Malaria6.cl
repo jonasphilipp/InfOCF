@@ -4,15 +4,9 @@ signature
 conditionals
 MALARIA6{
 	(!s|h),
-	(m|!s),	
+	(m|!s),
 	(m|h),
-	(!m|s),	
+	(!m|s),
 	(!m|p),
 	(m|p,r)
 }
-
-
-
-
-
-

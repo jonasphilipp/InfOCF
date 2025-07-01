@@ -78,12 +78,12 @@ class CKBParser ( Parser ):
 
     sharedContextCache = PredictionContextCache()
 
-    literalNames = [ "<INVALID>", "'signature'", "','", "'conditionals'", 
+    literalNames = [ "<INVALID>", "'signature'", "','", "'conditionals'",
                      "'{'", "'}'", "'('", "'|'", "')'", "'!'", "';'" ]
 
-    symbolicNames = [ "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
-                      "<INVALID>", "<INVALID>", "<INVALID>", "ID", "WS", 
+    symbolicNames = [ "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>",
+                      "<INVALID>", "<INVALID>", "<INVALID>", "ID", "WS",
                       "COMMENT", "BLOCKCOMMENT", "NEWLINE" ]
 
     RULE_ckbs = 0
@@ -93,7 +93,7 @@ class CKBParser ( Parser ):
     RULE_condition = 4
     RULE_formula = 5
 
-    ruleNames =  [ "ckbs", "signature", "myid", "conditionals", "condition", 
+    ruleNames =  [ "ckbs", "signature", "myid", "conditionals", "condition",
                    "formula" ]
 
     EOF = Token.EOF
@@ -161,13 +161,13 @@ class CKBParser ( Parser ):
             self.enterOuterAlt(localctx, 1)
             self.state = 12
             self.signature()
-            self.state = 14 
+            self.state = 14
             self._errHandler.sync(self)
             _la = self._input.LA(1)
             while True:
                 self.state = 13
                 self.conditionals()
-                self.state = 16 
+                self.state = 16
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 if not (_la==3 or _la==15):
@@ -230,13 +230,13 @@ class CKBParser ( Parser ):
 
             self.state = 24
             self.match(CKBParser.T__0)
-            self.state = 26 
+            self.state = 26
             self._errHandler.sync(self)
             _la = self._input.LA(1)
             while True:
                 self.state = 25
                 self.match(CKBParser.NEWLINE)
-                self.state = 28 
+                self.state = 28
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 if not (_la==15):
@@ -382,13 +382,13 @@ class CKBParser ( Parser ):
 
                 self.state = 45
                 self.match(CKBParser.T__2)
-                self.state = 47 
+                self.state = 47
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 while True:
                     self.state = 46
                     self.match(CKBParser.NEWLINE)
-                    self.state = 49 
+                    self.state = 49
                     self._errHandler.sync(self)
                     _la = self._input.LA(1)
                     if not (_la==15):
@@ -426,7 +426,7 @@ class CKBParser ( Parser ):
                 while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
                     if _alt==1:
                         self.state = 66
-                        self.match(CKBParser.NEWLINE) 
+                        self.match(CKBParser.NEWLINE)
                     self.state = 71
                     self._errHandler.sync(self)
                     _alt = self._interp.adaptivePredict(self._input,8,self._ctx)
@@ -447,13 +447,13 @@ class CKBParser ( Parser ):
 
                 self.state = 78
                 self.match(CKBParser.T__2)
-                self.state = 80 
+                self.state = 80
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 while True:
                     self.state = 79
                     self.match(CKBParser.NEWLINE)
-                    self.state = 82 
+                    self.state = 82
                     self._errHandler.sync(self)
                     _la = self._input.LA(1)
                     if not (_la==15):
@@ -493,7 +493,7 @@ class CKBParser ( Parser ):
                 while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
                     if _alt==1:
                         self.state = 100
-                        self.match(CKBParser.NEWLINE) 
+                        self.match(CKBParser.NEWLINE)
                     self.state = 105
                     self._errHandler.sync(self)
                     _alt = self._interp.adaptivePredict(self._input,13,self._ctx)
@@ -504,7 +504,7 @@ class CKBParser ( Parser ):
                 while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
                     if _alt==1:
                         self.state = 106
-                        self.conditionals() 
+                        self.conditionals()
                     self.state = 111
                     self._errHandler.sync(self)
                     _alt = self._interp.adaptivePredict(self._input,14,self._ctx)
@@ -641,7 +641,7 @@ class CKBParser ( Parser ):
         def getRuleIndex(self):
             return CKBParser.RULE_formula
 
-     
+
         def copyFrom(self, ctx:ParserRuleContext):
             super().copyFrom(ctx)
 
@@ -825,7 +825,7 @@ class CKBParser ( Parser ):
                         localctx.right = self.formula(4)
                         pass
 
-             
+
                 self.state = 161
                 self._errHandler.sync(self)
                 _alt = self._interp.adaptivePredict(self._input,21,self._ctx)
@@ -853,12 +853,7 @@ class CKBParser ( Parser ):
     def formula_sempred(self, localctx:FormulaContext, predIndex:int):
             if predIndex == 0:
                 return self.precpred(self._ctx, 4)
-         
+
 
             if predIndex == 1:
                 return self.precpred(self._ctx, 3)
-         
-
-
-
-

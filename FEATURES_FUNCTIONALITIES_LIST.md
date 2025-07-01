@@ -47,7 +47,7 @@
 
 -inference with lexicographic inference
 
--inference with c-inference 
+-inference with c-inference
 
 -Tseitin CNF transformation of belief bases & queries
 

@@ -7,16 +7,15 @@ import logging
 # ---------------------------------------------------------------------------
 # Third-party
 # ---------------------------------------------------------------------------
-
-from pysmt.shortcuts import Solver, Implies, is_sat
+from pysmt.shortcuts import Implies, Solver, is_sat
 
 # ---------------------------------------------------------------------------
 # Project modules
 # ---------------------------------------------------------------------------
-
 from infocf import get_logger
 
 logger = get_logger(__name__)
+
 
 def toImplicit(conditionals):
     """
@@ -27,33 +26,38 @@ def toImplicit(conditionals):
 
 def checkTautologies(conditionals):
     conditionals = [i for i in conditionals.values()]
-    with Solver(name='z3'):
+    with Solver(name="z3"):
         for c in conditionals:
             case1 = is_sat(c.make_A_then_B())
             case2 = is_sat(c.make_A_then_not_B())
-            if not case1 or not case2: return True
+            if not case1 or not case2:
+                return True
 
 
-def consistency(ckb, solver='z3', weakly=False):
+def consistency(ckb, solver="z3", weakly=False):
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug("solver: %s", solver)
     conditionals = [i for i in ckb.conditionals.values()]
-    #partition is a list of lists
+    # partition is a list of lists
     partition = []
     ### We use the solver here, not the optimizer
     calls = 0
     levels = 0
     while True:
         with Solver(name=solver) as s:
-            #if no conditionals remain, the ckb is consistent 
+            # if no conditionals remain, the ckb is consistent
             if len(conditionals) == 0:
                 if weakly:
                     partition.append([])
                 if logger.isEnabledFor(logging.DEBUG):
-                    logger.debug("calls: %s, levels: %s, partition lengths: %s, status: consistent", 
-                                calls, levels, [len(i) for i in partition])
-                return partition, ([len(p) for p in partition],calls, levels)
-            levels +=1
+                    logger.debug(
+                        "calls: %s, levels: %s, partition lengths: %s, status: consistent",
+                        calls,
+                        levels,
+                        [len(i) for i in partition],
+                    )
+                return partition, ([len(p) for p in partition], calls, levels)
+            levels += 1
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug("levels: %s", levels)
             s.push()
@@ -64,7 +68,7 @@ def consistency(ckb, solver='z3', weakly=False):
             R = []
             C = []
             for c in conditionals:
-                calls+=1
+                calls += 1
                 s.push()
                 s.add_assertion(c.make_A_then_B())
                 if s.solve():
@@ -73,41 +77,45 @@ def consistency(ckb, solver='z3', weakly=False):
                     C.append(c)
                 s.pop()
             if R == []:
-                #we found no parition, the ckb is inconsistent
-                #Maybe throw an error instead?
+                # we found no parition, the ckb is inconsistent
+                # Maybe throw an error instead?
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.debug("calls: %s, levels: %s, status: False", calls, levels)
                 if weakly:
-                    # if weakly flag set and returend list hast non-empty list as last element, 
+                    # if weakly flag set and returend list hast non-empty list as last element,
                     # then belief base is only weakly consistent
                     partition.append(C)
-                    return partition, ([len(p) for p in partition],calls, levels)
+                    return partition, ([len(p) for p in partition], calls, levels)
                 else:
                     return False, ([len(p) for p in partition], calls, levels)
             partition.append(R)
             conditionals = C
-            #reset the solver sothat it wont consider the currently found partition anymore
+            # reset the solver sothat it wont consider the currently found partition anymore
             s.pop()
 
 
 def consistency_indices(ckb, solver, weakly=False):
     conditionals = [i for i in ckb.conditionals.keys()]
-    #partition is a list of lists
+    # partition is a list of lists
     partition = []
     ### We use the solver here, not the optimizer
     calls = 0
     levels = 0
     while True:
         with Solver(name=solver) as s:
-            #if no conditionals remain, the ckb is consistent 
+            # if no conditionals remain, the ckb is consistent
             if len(conditionals) == 0:
                 if weakly:
                     partition.append([])
                 if logger.isEnabledFor(logging.DEBUG):
-                    logger.debug("calls: %s, levels: %s, partition lengths: %s, status: consistent", 
-                                calls, levels, [len(i) for i in partition])
-                return partition, ([len(p) for p in partition],calls, levels)
-            levels +=1
+                    logger.debug(
+                        "calls: %s, levels: %s, partition lengths: %s, status: consistent",
+                        calls,
+                        levels,
+                        [len(i) for i in partition],
+                    )
+                return partition, ([len(p) for p in partition], calls, levels)
+            levels += 1
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug("levels: %s", levels)
             s.push()
@@ -118,7 +126,7 @@ def consistency_indices(ckb, solver, weakly=False):
             R = []
             C = []
             for i in conditionals:
-                calls+=1
+                calls += 1
                 s.push()
                 s.add_assertion(ckb.conditionals[i].make_A_then_B())
                 if s.solve():
@@ -129,17 +137,15 @@ def consistency_indices(ckb, solver, weakly=False):
             if R == []:
                 if weakly:
                     partition.append(C)
-                    return partition, ([len(p) for p in partition],calls, levels)
+                    return partition, ([len(p) for p in partition], calls, levels)
                 else:
                     return False, ([len(p) for p in partition], calls, levels)
             partition.append(R)
             conditionals = C
-            #reset the solver sothat it wont consider the currently found partition anymore
+            # reset the solver sothat it wont consider the currently found partition anymore
             s.pop()
 
+
 def set_core_minimize(s):
-    s.set("sat.core.minimize",True)  # For Bit-vector theories
-    #s.set("smt.core.minimize",True)  # For general SMT 
-
-
-
+    s.set("sat.core.minimize", True)  # For Bit-vector theories
+    # s.set("smt.core.minimize",True)  # For general SMT

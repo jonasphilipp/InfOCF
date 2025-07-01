@@ -1,7 +1,7 @@
 Signatur
 	h,			% 1.Menschen, die sich mit dem Malariaerreger infiziert haben (humans infected with malaria pathogen)
 	m,			% 2.Schwer an Malaria erkranken (to get seriously sick with malaria)
-	s,			% 3.Eine Sichelzellanämie-Variante des Hämoglobins haben (to have have sickle cell anemia version of hemoglobin gene) 
+	s,			% 3.Eine Sichelzellanämie-Variante des Hämoglobins haben (to have have sickle cell anemia version of hemoglobin gene)
 	p,			% 4.Eine Chemoprophylaxe anwenden
 	r			% 5.Das Vorliegen einer Resistenz gegen die Chemoprophy-laxe beim Malariaerreger
 
@@ -13,4 +13,3 @@ MALARIA5 {
 	(!m|p),		% 4.Die Anwendung einer Chemoprophylaxe erlaubt es nor-malerweise nicht, schwer an Malaria zu erkranken.
 	(m|p,r)		% 5.Die Anwendung einer Chemoprophylaxe und das Vorlie-gen einer Resistenz dagegen beim Malariaerreger erlauben es normalerweise, schwer an Malaria zu erkranken.
 }
-

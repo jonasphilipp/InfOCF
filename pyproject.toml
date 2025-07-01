@@ -245,6 +245,21 @@ ignore = [
     "E501",  # line too long, handled by black
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
+    # Research-friendly ignores
+    "F841",  # unused variables (common in research experimentation)
+    "B007",  # unused loop variables (common in research iteration)
+    "E721",  # type comparisons (research flexibility)
+    "E712",  # boolean comparisons (research readability)
+    "E711",  # None comparisons (research readability)
+    "C408",  # dict() vs {} (research verbosity preference)
+    "C416",  # list comprehensions (research readability)
+    "C419",  # unnecessary comprehensions (research clarity)
+    "B028",  # stacklevel warnings (research context)
+    "E741",  # ambiguous variable names (research math notation)
+    "F821",  # undefined name (research imports)
+    "E402",  # module imports (research organization)
+    "F403",  # star imports (research convenience)
+    "B006",  # mutable defaults (research patterns)
 ]
 
 [tool.ruff.lint.per-file-ignores]
