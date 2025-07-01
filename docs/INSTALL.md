@@ -1,38 +1,185 @@
 # Installation
 
-### This guide is meant for Linux users. For other operating systems check the resources below.
+InfOCF uses modern Python package management with `pyproject.toml` and supports multiple installation methods.
 
-Download the repository by cloning it or downloading the archive.
+## Prerequisites
 
-## Method 1: Installing packages using pip
+- **Python 3.11 or higher** is required
+- We recommend using **[uv](https://docs.astral.sh/uv/)** for the fastest and most reliable package management
 
-### Set up venv
-You can create a virtual environment using venv:
+## Method 1: Using uv (Recommended)
+
+[uv](https://docs.astral.sh/uv/) is a fast Python package and project manager that provides the best experience for InfOCF development.
+
+### Install uv
+
+If you don't have uv installed:
+
+```bash
+# On macOS and Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# On Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Alternative: Install via pip
+pip install uv
 ```
-python -m venv /path/to/new/virtual/environment
+
+### Clone and Set Up the Project
+
+```bash
+# Clone the repository
+git clone https://github.com/InfOCF-Team/InfOCF.git
+cd InfOCF
+
+# Create virtual environment and install dependencies
+uv sync
+
+# Activate the environment (optional, uv run handles this automatically)
+source .venv/bin/activate  # On Linux/macOS
+# or
+.venv\Scripts\activate     # On Windows
 ```
-Start your virtual environment using
+
+### Install Additional Dependencies (Optional)
+
+InfOCF offers several optional dependency groups:
+
+```bash
+# Install development tools (linting, formatting, testing)
+uv sync --extra dev
+
+# Install additional SAT/SMT solvers
+uv sync --extra solvers
+
+# Install documentation tools
+uv sync --extra docs
+
+# Install testing utilities
+uv sync --extra testing
+
+# Install everything
+uv sync --all-extras
 ```
-source /path/to/new/virtual/environment/bin/activate
+
+### Running InfOCF
+
+```bash
+# Run with uv (recommended - handles environment automatically)
+uv run infocf --system-check
+
+# Or activate environment first, then run directly
+source .venv/bin/activate
+infocf --system-check
 ```
-or connect it to your IDE. Some IDEs can set up venv for you.
 
-### Install required packages
+## Method 2: Using pip and venv
 
-The requirements listed in `requirements.txt` can be installed using pip in venv using the command
+If you prefer the traditional pip approach:
 
+### Set Up Virtual Environment
+
+```bash
+# Clone the repository
+git clone https://github.com/InfOCF-Team/InfOCF.git
+cd InfOCF
+
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+source venv/bin/activate  # On Linux/macOS
+# or
+venv\Scripts\activate     # On Windows
 ```
-pip install -r /path/to/requirements.txt
+
+### Install the Package
+
+```bash
+# Install in development mode with core dependencies
+pip install -e .
+
+# Install with optional dependencies
+pip install -e ".[dev,solvers,testing,docs]"
 ```
 
-The `requirements.txt` can be found at `/InfOCF-main`.
+## Method 3: Using nix
 
-We used python 3.11 while building this version of the library.
+For reproducible environments using the nix package manager:
 
-## Method 2: Using nix
-Optionally the whole environment can be installed using the nix package manager by simply running `nix develop` in the project dir containing the flake.nix file (or by running `nix develop .#withNeovim` if neovim with nodejs support for plugins is desired in environment).
+```bash
+# Clone the repository
+git clone https://github.com/InfOCF-Team/InfOCF.git
+cd InfOCF
+
+# Enter development environment
+nix develop
+```
+
+## Verifying Installation
+
+After installation, verify that everything works correctly:
+
+```bash
+# Check system status
+uv run infocf --system-check
+
+# View available inference operators
+uv run infocf --operators
+
+# Check solver availability
+uv run infocf --check-solvers
+```
+
+## Development Setup
+
+For development work, install the development dependencies:
+
+```bash
+# Using uv (recommended)
+uv sync --extra dev
+
+# Using pip
+pip install -e ".[dev]"
+```
+
+This includes tools for:
+- Code formatting (black, isort)
+- Linting (ruff, flake8, mypy)
+- Testing (pytest)
+- Pre-commit hooks
+
+## Troubleshooting
+
+### Missing SAT/SMT Solvers
+
+If you encounter solver-related issues, install additional solvers:
+
+```bash
+uv sync --extra solvers
+```
+
+### Python Version Issues
+
+Ensure you're using Python 3.11 or higher:
+
+```bash
+python --version
+uv run python --version
+```
+
+### Import Errors
+
+If you encounter import errors, ensure the package is installed in development mode:
+
+```bash
+uv sync  # This installs in development mode by default
+```
 
 ## Resources
-pip: https://pypi.org/project/pip/
 
-venv: https://docs.python.org/3/library/venv.html
+- [uv documentation](https://docs.astral.sh/uv/)
+- [pip documentation](https://pypi.org/project/pip/)
+- [venv documentation](https://docs.python.org/3/library/venv.html)
+- [nix documentation](https://nixos.org/learn.html)

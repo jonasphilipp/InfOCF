@@ -120,7 +120,6 @@ include = [
     "README.md",
     "LICENSE",
     "FEATURES_FUNCTIONALITIES_LIST.md",
-    "requirements.txt",
 ]
 exclude = [
     "/.git",
