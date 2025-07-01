@@ -1,26 +1,28 @@
-from antlr4 import *
-
-from .myVisitor import myVisitor
-from .CKBLexer import CKBLexer
-from .CKBParser import CKBParser
-import os
 import logging
-#from .QUERYLexer import QUERYLexer
-#from .QUERYParser import QUERYParser
-#from .myQueryVisitor import myQueryVisitor
+import os
 
-from inference.queries import Queries
-from inference.belief_base import BeliefBase
-
+from antlr4 import CommonTokenStream, InputStream
 from antlr4.error.ErrorListener import ErrorListener
 
+from inference.belief_base import BeliefBase
+
+# from .QUERYLexer import QUERYLexer
+# from .QUERYParser import QUERYParser
+# from .myQueryVisitor import myQueryVisitor
+from inference.queries import Queries
 from infocf import get_logger
 
+from .CKBLexer import CKBLexer
+from .CKBParser import CKBParser
+from .myVisitor import myVisitor
+
 logger = get_logger(__name__)
+
 
 class ThrowingErrorListener(ErrorListener):
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
         raise Exception(f"Syntax error at line {line}, column {column}: {msg}")
+
 
 def getParseTree(ckbs_string):
     stream = InputStream(ckbs_string)
@@ -39,7 +41,8 @@ def getParseTree(ckbs_string):
 
 def parse_belief_base(string: str) -> BeliefBase:
     if os.path.isfile(string):
-        with open(string) as f: file = f.read() 
+        with open(string) as f:
+            file = f.read()
         belief_base = parseCKB(file)
     else:
         belief_base = parseCKB(string)
@@ -48,7 +51,8 @@ def parse_belief_base(string: str) -> BeliefBase:
 
 def parse_queries(string: str) -> Queries:
     if os.path.isfile(string):
-        with open(string) as f: file = f.read() 
+        with open(string) as f:
+            file = f.read()
         queries = parse_queries_from_str(file)
     else:
         queries = parse_queries_from_str(string)
@@ -56,16 +60,19 @@ def parse_queries(string: str) -> Queries:
 
 
 def parse_queries_from_str(string: str) -> Queries:
-    if 'signature' and 'conditionals' in string:
+    if "signature" and "conditionals" in string:
         belief_base = parseCKB(string)
         queries = Queries(belief_base)
     else:
         query_dict = parseQuery(string)
-        if query_dict: queries = Queries(query_dict)
-    return queries #type: ignore
+        if query_dict:
+            queries = Queries(query_dict)
+    return queries  # type: ignore
+
 
 def parse_belief_base_from_str(string: str):
     return parseCKB(string)
+
 
 def parseCKB(ckbs_string):
     """
@@ -75,24 +82,25 @@ def parseCKB(ckbs_string):
     parser = CKBParser(stream)
     """
     if logger.isEnabledFor(logging.DEBUG):
-        logger.debug("Parsing CKB string: %s", ckbs_string[:100] + "..." if len(ckbs_string) > 100 else ckbs_string)
+        logger.debug(
+            "Parsing CKB string: %s",
+            ckbs_string[:100] + "..." if len(ckbs_string) > 100 else ckbs_string,
+        )
     tree = getParseTree(ckbs_string)
     visitor = myVisitor()
     ckbs = visitor.visit(tree)
     ckb = list(ckbs.values())[0]
     return ckb
 
-        
-
-
 
 def parseQuery(querystring):
-    ckb_template=f"signature \n a,b,c,d,e,f \n conditionals \n Querydummy \n {{ \n {querystring}\n }}" 
-    ckbquery=parseCKB(ckb_template)
+    ckb_template = f"signature \n a,b,c,d,e,f \n conditionals \n Querydummy \n {{ \n {querystring}\n }}"
+    ckbquery = parseCKB(ckb_template)
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug("Parsed query: %s", ckbquery.conditionals)
-    #query.__class__ = Queries
+    # query.__class__ = Queries
     return ckbquery.conditionals
+
 
 def parse_formula(string: str):
     """
@@ -101,10 +109,6 @@ def parse_formula(string: str):
     """
     # Use the grammar's native syntax directly
     s = string
-    from antlr4 import InputStream, CommonTokenStream
-    from .CKBLexer import CKBLexer
-    from .CKBParser import CKBParser
-    from .myVisitor import myVisitor
 
     # Setup parser with error listeners
     stream = InputStream(s)
@@ -122,4 +126,3 @@ def parse_formula(string: str):
     # Initialize sigcheck so visitVar can record variables without attribute errors
     visitor.sigcheck = []
     return visitor.visit(tree)
-
