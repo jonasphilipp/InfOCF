@@ -57,12 +57,12 @@ for index, row in df.iterrows():
     belief_base_filepath_full = os.path.join(BASE_DIR, belief_base_filepath)
     queries_filepath_full = os.path.join(BASE_DIR, queries_filepath)
     # parse belief_base/queries
-    assert os.path.isfile(
-        belief_base_filepath_full
-    ), f"{belief_base_filepath} is not a valid file"
-    assert os.path.isfile(
-        queries_filepath_full
-    ), f"{queries_filepath} is not a valid file"
+    assert os.path.isfile(belief_base_filepath_full), (
+        f"{belief_base_filepath} is not a valid file"
+    )
+    assert os.path.isfile(queries_filepath_full), (
+        f"{queries_filepath} is not a valid file"
+    )
     if "inconsistent" in belief_base_filepath:
         continue
 
