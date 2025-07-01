@@ -21,7 +21,8 @@ maintainers = [
     {name = "Jonas Haldimann"},
     {name = "Arthur Sanin"},
     {name = "Aron Spang"},
-    {name = "Lars-Phillip Spiegel"}
+    {name = "Lars-Phillip Spiegel"},
+    {name = "Martin von Berg"},
 ]
 keywords = [
     "reasoning",
@@ -79,12 +80,12 @@ dev = [
     "ruff>=0.1.0",
     "pre-commit>=3.0.0",
 ]
-  solvers = [
-      "cvc5>=1.1.2",
-      "z3-solver>=4.12.0",
-      "python-sat[pblib,aiger]>=1.7.0",
-      "pysmt>=0.9.5",
-  ]
+solvers = [
+    "cvc5>=1.1.2",
+    "z3-solver>=4.12.0",
+    "python-sat[pblib,aiger]>=1.7.0",
+    "pysmt>=0.9.5",
+]
 testing = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -96,10 +97,6 @@ docs = [
     "sphinx>=6.0.0",
     "sphinx-rtd-theme>=1.2.0",
     "myst-parser>=0.18.0",
-]
-# Optional solver bindings that may have system requirements
-experimental-solvers = [
-    "yices>=1.1.2",
 ]
 
 [project.scripts]
