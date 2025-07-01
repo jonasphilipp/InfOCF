@@ -1,0 +1,244 @@
+[build-system]
+requires = ["hatchling>=1.21.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "infocf"
+version = "0.1.0"
+description = "InfOCF - Reasoning With Conditional Belief Bases: A library for non-monotonic inference operators"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Christoph Beierle"},
+    {name = "Jonas Haldimann"},
+    {name = "Arthur Sanin"},
+    {name = "Leon Schwarzer"},
+    {name = "Aron Spang"},
+    {name = "Lars-Phillip Spiegel"},
+    {name = "Martin von Berg"},
+]
+maintainers = [
+    {name = "Jonas Haldimann"},
+    {name = "Arthur Sanin"},
+    {name = "Aron Spang"},
+    {name = "Lars-Phillip Spiegel"}
+]
+keywords = [
+    "reasoning", 
+    "conditional-logic", 
+    "sat-solving", 
+    "belief-bases", 
+    "artificial-intelligence",
+    "non-monotonic-reasoning",
+    "OCF",
+    "ranking-function",
+    "system-z",
+    "system-w",
+    "c-inference",
+    "p-entailment",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+requires-python = ">=3.11"
+
+dependencies = [
+    "antlr4-python3-runtime==4.13.2",
+    "z3-solver>=4.13.0.0",
+    "pysmt>=0.9.6",
+    "python-sat>=1.8.dev13",
+    "numpy>=2.1.1",
+    "pandas>=2.2.2",
+    "func-timeout>=4.3.5",
+    "python-dateutil>=2.9.0.post0",
+    "pytz>=2024.2",
+    "six>=1.16.0",
+    "tzdata>=2024.1",
+    "bitvector>=3.0.0",
+    "greenlet>=3.1.0",
+    "msgpack>=1.1.0",
+    "setuptools>=80.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+    "flake8>=6.0.0",
+    "ruff>=0.1.0",
+    "pre-commit>=3.0.0",
+]
+solvers = [
+      "cvc5>=1.1.2",
+      "python-sat[pblib,aiger]>=1.7.0",
+]
+testing = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-xdist>=3.0.0",
+    "coverage>=7.0.0",
+]
+docs = [
+    "sphinx>=6.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+    "myst-parser>=0.18.0",
+]
+
+[project.scripts]
+infocf = "infocf.cli:main"
+
+[project.urls]
+Homepage = "https://www.fernuni-hagen.de/wbs/research/infocf-web/"
+Repository = "https://github.com/jonasphilipp/InfOCF"
+
+[tool.hatch.build.targets.wheel]
+packages = ["infocf", "inference", "parser"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/infocf",
+    "/inference", 
+    "/parser",
+    "/docs",
+    "/examples",
+    "/unittests",
+    "README.md",
+    "LICENSE",
+    "FEATURES_FUNCTIONALITIES_LIST.md",
+    "requirements.txt",
+]
+exclude = [
+    "/.git",
+    "/output",
+    "/local",
+    "/.taskmaster",
+    "/.cursor",
+    "/.roo",
+    "/.__pycache__",
+    "/.pytest_cache",
+    "/.venv",
+    "/venv",
+    "/venv_*",
+    "/.solvers",
+    "*.nix",
+    "flake.*",
+    "birds_state.json",
+    "todo_*",
+    "*_local_helper.py",
+]
+
+# Tool configurations
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  parser/CKB.*\.py
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+skip = ["parser/CKB*.py"]
+known_first_party = ["infocf", "inference", "parser"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+    "parser/CKB.*\\.py$",
+    "venv/",
+    ".venv/",
+    "output/",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["unittests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+    "--tb=short",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "system_z: marks tests specific to System Z inference",
+    "system_w: marks tests specific to System W inference", 
+    "c_inference: marks tests specific to c-inference",
+    "p_entailment: marks tests specific to p-entailment",
+    "parser: marks tests for the parser module",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["infocf", "inference", "parser"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "parser/CKB*.py",
+    "venv/*",
+    ".venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+exclude = [
+    ".git",
+    "__pycache__",
+    "parser/CKB*.py",
+    "venv",
+    ".venv",
+    "output",
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"] 

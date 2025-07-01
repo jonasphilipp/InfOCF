@@ -1,27 +1,25 @@
-# core-env.nix - Updated for pyproject.toml integration
+# core-env-uv.nix - Alternative with uv for ultra-fast package management
 { pkgs, antlr4_13_2 }:
 
 {
   buildInputs = with pkgs; [
     python311
-    python311Packages.pip
+    # Use uv instead of pip for 10-100x faster package management
+    uv
     python311Packages.hatchling  # Build backend for pyproject.toml
-		jdk11
-		gmp.dev
-		cmake
-		swig
-		autoconf
-		gperf
-		glibc
-		glibc.bin
-		yices
-		gcc
-	  zlib
-		zlib.dev
-    # Optional: uv for faster package management
-    # Uncomment if you want to use uv instead of pip
-    # uv
-	];
+    jdk11
+    gmp.dev
+    cmake
+    swig
+    autoconf
+    gperf
+    glibc
+    glibc.bin
+    yices
+    gcc
+    zlib
+    zlib.dev
+  ];
 
   shellHook = ''
     export IN_NIX_FLAKE=1
@@ -29,61 +27,58 @@
     alias antlr4='java -jar ${antlr4_13_2}/share/java/antlr-${antlr4_13_2.version}-complete.jar'
     alias grun='java org.antlr.v4.gui.TestRig'
 
-    # Create and activate venv
-    if [ ! -d "venv" ]; then
-      python -m venv venv
+    # Create virtual environment with uv (much faster than venv)
+    if [ ! -d ".venv" ]; then
+      echo "Creating virtual environment with uv..."
+      uv venv .venv
     fi
-		
-    # Ensure pip and python use the venv
-    unset PYTHONPATH
-    export PATH="$PWD/venv/bin:$PATH"
-    
-		which python
-		source venv/bin/activate
-		which python
 
-    # Install/upgrade pip and build tools
-    pip install --upgrade pip
-    pip install --upgrade setuptools wheel hatchling
+    # Activate the virtual environment
+    source .venv/bin/activate
+    export PATH="$PWD/.venv/bin:$PATH"
     
-    echo "Installing InfOCF project dependencies..."
+    echo "Using Python: $(which python)"
+    echo "Python version: $(python --version)"
+
+    echo "Installing InfOCF project dependencies with uv..."
     
     # Check if pyproject.toml exists and install accordingly
     if [ -f "pyproject.toml" ]; then
-      echo "Found pyproject.toml - installing project in development mode..."
+      echo "Found pyproject.toml - installing project with uv..."
       
-      # Install the project in editable mode with development dependencies
-      pip install -e ".[dev,solvers,testing]"
+      # Install the project in development mode with uv (extremely fast)
+      uv pip install -e ".[dev,solvers,testing]"
       
       # Verify installation
       echo "Verifying installation..."
       python -c "import infocf; print(f'InfOCF version: {infocf.__version__}')"
       
     else
-      echo "pyproject.toml not found - falling back to requirements.txt..."
+      echo "pyproject.toml not found - installing core dependencies with uv..."
       
-      # Fallback to old method if pyproject.toml doesn't exist
-    pip install antlr4-python3-runtime==${antlr4_13_2.version}
-		pip install numpy
-		pip install z3-solver
-		pip install pandas
-		pip install func-timeout
-		pip install python-sat
-		pip install pysmt
-		pip install BitVector
-		pip install frozenlist
-
+      # Use uv to install dependencies (much faster than pip)
+      uv pip install \
+        "antlr4-python3-runtime==${antlr4_13_2.version}" \
+        numpy \
+        z3-solver \
+        pandas \
+        func-timeout \
+        python-sat \
+        pysmt \
+        BitVector \
+        frozenlist
+      
       # Install from requirements.txt if it exists
       if [ -f "requirements.txt" ]; then
-        pip install -r requirements.txt
+        uv pip install -r requirements.txt
       fi
     fi
 
     # Set up library paths for system solvers
-		export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH
-		export Z3_LIBRARY_PATH=$(python -c "import z3; print(z3.__file__)")/lib
+    export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH
+    export Z3_LIBRARY_PATH=$(python -c "import z3; print(z3.__file__)")/lib
     export LD_LIBRARY_PATH=${pkgs.yices}/lib:$LD_LIBRARY_PATH
-		export LD_LIBRARY_PATH=${pkgs.zlib}/lib:$LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH=${pkgs.zlib}/lib:$LD_LIBRARY_PATH
 
     # Install additional SAT/SMT solvers via pySMT
     echo "Installing additional SAT/SMT solvers..."
@@ -91,31 +86,31 @@
     # MathSAT
     if ! python -c "from pysmt.shortcuts import Solver; Solver('msat')" 2>/dev/null; then
       echo "Installing MathSAT..."
-		pysmt-install --msat --confirm-agreement
+      pysmt-install --msat --confirm-agreement
     else
       echo "MathSAT already installed"
     fi
-		
+    
     # CVC5
     if ! python -c "from pysmt.shortcuts import Solver; Solver('cvc5')" 2>/dev/null; then
       echo "Installing CVC5..."
-		pysmt-install --cvc5 --confirm-agreement
+      pysmt-install --cvc5 --confirm-agreement  
     else
       echo "CVC5 already installed"
     fi
-		
-    # Yices (Python bindings)
+    
+    # Yices (Python bindings) - use uv for speed
     if ! python -c "import yices" 2>/dev/null; then
-      echo "Installing Yices Python bindings..."
-		pip install yices
+      echo "Installing Yices Python bindings with uv..."
+      uv pip install yices
     else
       echo "Yices Python bindings already installed"
     fi
 
-    # PyBoolector
+    # PyBoolector - use uv for speed
     if ! python -c "import pyboolector" 2>/dev/null; then
-      echo "Installing PyBoolector..."
-		pip install PyBoolector
+      echo "Installing PyBoolector with uv..."
+      uv pip install PyBoolector
     else
       echo "PyBoolector already installed"
     fi
@@ -123,9 +118,10 @@
     # Display environment information
     echo ""
     echo "=================================================="
-    echo "InfOCF Development Environment Ready!"
+    echo "InfOCF Development Environment Ready! (uv edition)"
     echo "=================================================="
     echo "Python version: $(python --version)"
+    echo "Package manager: uv (ultra-fast!)"
     echo "ANTLR version: ${antlr4_13_2.version}"
     echo ""
     
@@ -156,5 +152,8 @@ except Exception as e:
     echo "To run system check: infocf --system-check"
     echo "To see all CLI options: infocf --help"
     echo "=================================================="
+    echo "Note: This environment uses uv for 10-100x faster"
+    echo "package management compared to pip!"
+    echo "=================================================="
   '';
-}
+} 
