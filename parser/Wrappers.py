@@ -10,7 +10,7 @@ from inference.belief_base import BeliefBase
 # from .QUERYParser import QUERYParser
 # from .myQueryVisitor import myQueryVisitor
 from inference.queries import Queries
-from infocf import get_logger
+from infocf.log_setup import get_logger
 
 from .CKBLexer import CKBLexer
 from .CKBParser import CKBParser

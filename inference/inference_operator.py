@@ -23,7 +23,7 @@ from inference.queries import Queries
 from inference.system_w import SystemW
 from inference.system_w_z3 import SystemWZ3
 from inference.system_z import SystemZ
-from infocf import get_logger
+from infocf.log_setup import get_logger
 
 logger = get_logger(__name__)
 
@@ -43,7 +43,11 @@ Returns:
 
 
 def create_epistemic_state(
-    belief_base: BeliefBase, inference_system: str, smt_solver: str, pmaxsat_solver: str
+    belief_base: BeliefBase,
+    inference_system: str,
+    smt_solver: str,
+    pmaxsat_solver: str,
+    weakly: bool,
 ) -> dict:
     epistemic_state = dict()
 
@@ -56,6 +60,7 @@ def create_epistemic_state(
     epistemic_state["preprocessing_timed_out"] = False
     epistemic_state["preprocessing_time"] = 0
     epistemic_state["kill_time"] = 0
+    epistemic_state["weakly"] = weakly
 
     return epistemic_state
 
@@ -184,6 +189,7 @@ class InferenceOperator:
         inference_system: str,
         smt_solver: str = "z3",
         pmaxsat_solver: str = "rc2",
+        weakly: bool = False,
     ) -> None:
         inference_system = inference_system.lower()
         smt_solver = smt_solver.lower()
@@ -192,11 +198,11 @@ class InferenceOperator:
         else:
             pmaxsat_solver = pmaxsat_solver.lower()
         available_solvers = get_env().factory.all_solvers().keys()
-        assert smt_solver in available_solvers, (
-            f"only {available_solvers} are available as solver"
-        )
+        assert (
+            smt_solver in available_solvers
+        ), f"only {available_solvers} are available as solver"
         self.epistemic_state = create_epistemic_state(
-            belief_base, inference_system, smt_solver, pmaxsat_solver
+            belief_base, inference_system, smt_solver, pmaxsat_solver, weakly
         )
 
     """

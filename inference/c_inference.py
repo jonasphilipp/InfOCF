@@ -21,7 +21,7 @@ from inference.conditional import Conditional
 from inference.inference import Inference
 from inference.optimizer import create_optimizer
 from inference.tseitin_transformation import TseitinTransformation
-from infocf import get_logger
+from infocf.log_setup import get_logger
 
 # Configure module logger
 logger = get_logger(__name__)
@@ -111,7 +111,7 @@ class CInference(Inference):
             logger.debug("csp extended %s", csp)
         return csp
 
-    def _preprocess_belief_base(self) -> None:
+    def _preprocess_belief_base(self, weakly: bool) -> None:
         # self._translation_start_belief_base()
         # for i, conditional in self.epistemic_state.belief_base.conditionals.items():
         #    translated_condtional = Conditional_z3.translate_from_existing(conditional)
@@ -126,7 +126,7 @@ class CInference(Inference):
         # self._translation_end_belief_base()
         # print("Translation done")
 
-    def _inference(self, query: Conditional) -> bool:
+    def _inference(self, query: Conditional, weakly: bool) -> bool:
         selffullfilling = True
         for conditional in self.epistemic_state["belief_base"].conditionals.values():
             if is_sat(And(conditional.antecedence, Not(conditional.consequence))):

@@ -21,6 +21,7 @@ epistemic_state_z_birds = create_epistemic_state(
     inference_system="system-z",
     smt_solver=smt_solver,
     pmaxsat_solver=pmaxsat_solver,
+    weakly=False,
 )
 
 cinference = CInference(epistemic_state_z_birds)

@@ -7,7 +7,7 @@ from pysmt.typing import INT
 from inference.c_inference import freshVars, minima_encoding
 from inference.conditional import Conditional
 from inference.preocf import PreOCF
-from infocf import get_logger
+from infocf.log_setup import get_logger
 
 # Configure module logger
 logger = get_logger(__name__)

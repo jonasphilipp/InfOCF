@@ -14,7 +14,7 @@ from z3 import And, Not
 # Project modules
 # ---------------------------------------------------------------------------
 from inference.conditional import Conditional
-from infocf import get_logger
+from infocf.log_setup import get_logger
 
 logger = get_logger(__name__)
 

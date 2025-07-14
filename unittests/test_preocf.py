@@ -291,7 +291,7 @@ class TestPreOCF(unittest.TestCase):
 
         # Create epistemic state dictionary for SystemZ
         epistemic_state = create_epistemic_state(
-            self.belief_base_birds, "system-z", "z3", ""
+            self.belief_base_birds, "system-z", "z3", "", weakly=False
         )
         sys_z = SystemZ(epistemic_state)
         sys_z.preprocess_belief_base(0)  # Preprocess without timeout

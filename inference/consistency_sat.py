@@ -12,7 +12,7 @@ from pysmt.shortcuts import Implies, Solver, is_sat
 # ---------------------------------------------------------------------------
 # Project modules
 # ---------------------------------------------------------------------------
-from infocf import get_logger
+from infocf.log_setup import get_logger
 
 logger = get_logger(__name__)
 

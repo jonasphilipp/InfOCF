@@ -12,7 +12,7 @@ from pysmt.typing import BOOL
 
 from inference.belief_base import BeliefBase
 from inference.conditional import Conditional
-from infocf import get_logger
+from infocf.log_setup import get_logger
 
 # ---------------------------------------------------------------------------
 # Project modules

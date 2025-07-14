@@ -11,12 +11,12 @@ from pysmt.shortcuts import Not, Solver, Symbol
 from pysmt.typing import BOOL
 from z3 import Optimize, sat, z3
 
-from inference import c_inference
 from inference.belief_base import BeliefBase
+from inference.c_inference import CInference
 from inference.conditional import Conditional
 from inference.consistency_sat import consistency
 from inference.inference_operator import create_epistemic_state
-from infocf import get_logger
+from infocf.log_setup import get_logger
 
 # Create a logger object
 logger = get_logger(__name__)
@@ -517,9 +517,9 @@ class RandomMinCRepPreOCF(PreOCF):
         conditionals = belief_base.conditionals
         super().__init__(ranks, signature, conditionals, "random_min_c_rep", metadata)
         epistemic_state = create_epistemic_state(
-            belief_base, "c-inference", "z3", "rc2"
+            belief_base, "c-inference", "z3", "rc2", weakly=False
         )
-        c_inf = c_inference.CInference(epistemic_state)
+        c_inf = CInference(epistemic_state)
         c_inf.preprocess_belief_base(0)
         self._csp = c_inf.base_csp
         pysmt_solver = Solver(name="z3")

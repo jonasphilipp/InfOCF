@@ -8,7 +8,7 @@ from inference.conditional import Conditional
 from inference.conditional_z3 import Conditional_z3
 from inference.consistency_sat import consistency
 from inference.inference import Inference
-from infocf import get_logger
+from infocf.log_setup import get_logger
 
 logger = get_logger(__name__)
 
@@ -33,7 +33,7 @@ class LexInfZ3(Inference):
         partition in epistemic_state
     """
 
-    def _preprocess_belief_base(self) -> None:
+    def _preprocess_belief_base(self, weakly: bool) -> None:
         partition, _ = consistency(
             self.epistemic_state["belief_base"], self.epistemic_state["smt_solver"]
         )
@@ -64,7 +64,7 @@ class LexInfZ3(Inference):
         result boolean
     """
 
-    def _inference(self, query: Conditional) -> bool:
+    def _inference(self, query: Conditional, weakly: bool) -> bool:
         # self._translation_start()
         query_z3 = Conditional_z3.translate_from_existing(query)
         # self._translation_end()

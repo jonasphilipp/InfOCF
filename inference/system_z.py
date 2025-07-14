@@ -15,7 +15,7 @@ from pysmt.shortcuts import Not, Solver
 from inference.conditional import Conditional
 from inference.consistency_sat import consistency
 from inference.inference import Inference
-from infocf import get_logger
+from infocf.log_setup import get_logger
 
 logger = get_logger(__name__)
 
@@ -32,10 +32,11 @@ class SystemZ(Inference):
         partition in epistemic_state
     """
 
-    def _preprocess_belief_base(self) -> None:
+    def _preprocess_belief_base(self, weakly: bool) -> None:
         partition, _ = consistency(
             self.epistemic_state["belief_base"],
             solver=self.epistemic_state["smt_solver"],
+            weakly=weakly,
         )
         if not partition:
             warn("belief base inconsistent")
@@ -56,12 +57,24 @@ class SystemZ(Inference):
         result boolean
     """
 
-    def _inference(self, query: Conditional) -> bool:
+    def _inference(self, query: Conditional, weakly: bool) -> bool:
         assert self.epistemic_state["partition"], "belief_base inconsistent"
         solver = Solver(name=self.epistemic_state["smt_solver"])
-        result = self._rec_inference(
-            solver, len(self.epistemic_state["partition"]) - 1, query
-        )  # type: ignore
+        if not weakly:
+            result = self._rec_inference(
+                solver, len(self.epistemic_state["partition"]) - 1, query
+            )  # type: ignore
+        else:
+            taut_solver = Solver(name=self.epistemic_state["smt_solver"])
+            taut_solver.add_assertion(query.antecedence)
+            for c in self.epistemic_state["partition"][-1]:
+                taut_solver.add_assertion(Not(c.make_not_A_or_B()))
+            if not taut_solver.solve():
+                return True
+            result = self._rec_inference(
+                solver, len(self.epistemic_state["partition"]) - 2, query
+            )  # type: ignore
+
         return result
 
     """

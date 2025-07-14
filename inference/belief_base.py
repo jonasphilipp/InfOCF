@@ -8,9 +8,6 @@
 # ---------------------------------------------------------------------------
 
 from inference.conditional import Conditional
-from infocf import get_logger
-
-logger = get_logger(__name__)
 
 
 class BeliefBase:

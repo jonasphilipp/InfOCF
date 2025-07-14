@@ -19,7 +19,7 @@ from inference.consistency_sat import consistency_indices
 from inference.inference import Inference
 from inference.optimizer import create_optimizer
 from inference.tseitin_transformation import TseitinTransformation
-from infocf import get_logger
+from infocf.log_setup import get_logger
 
 logger = get_logger(__name__)
 
@@ -36,9 +36,11 @@ class LexInf(Inference):
         partition in epistemic_state
     """
 
-    def _preprocess_belief_base(self) -> None:
+    def _preprocess_belief_base(self, weakly: bool) -> None:
         self.epistemic_state["partition"], _ = consistency_indices(
-            self.epistemic_state["belief_base"], self.epistemic_state["smt_solver"]
+            self.epistemic_state["belief_base"],
+            self.epistemic_state["smt_solver"],
+            self.epistemic_state["weakly"],
         )
         if not self.epistemic_state["partition"]:
             warn("belief base inconsistent")
@@ -60,7 +62,7 @@ class LexInf(Inference):
         result boolean
     """
 
-    def _inference(self, query: Conditional) -> bool:
+    def _inference(self, query: Conditional, weakly: bool) -> bool:
         # self._inference_start()
         # self._translation_start()
         tseitin_transformation = TseitinTransformation(self.epistemic_state)
@@ -71,9 +73,17 @@ class LexInf(Inference):
         wcnf_f = WCNF()
         [wcnf_v.append(c) for c in self.epistemic_state["v_cnf_dict"][0]]
         [wcnf_f.append(c) for c in self.epistemic_state["f_cnf_dict"][0]]
-        result = self._rec_inference(
-            wcnf_v, wcnf_f, len(self.epistemic_state["partition"]) - 1
-        )
+        if not weakly:
+            result = self._rec_inference(
+                wcnf_v, wcnf_f, len(self.epistemic_state["partition"]) - 1
+            )
+        else:
+            for index in self.epistemic_state["partition"][-1]:
+                [wcnf_v.append(c) for c in self.epistemic_state["nf_cnf_dict"][index]]
+                [wcnf_f.append(c) for c in self.epistemic_state["nf_cnf_dict"][index]]
+            result = self._rec_inference(
+                wcnf_v, wcnf_f, len(self.epistemic_state["partition"]) - 2
+            )
         # self._inference_end()
         return result
 

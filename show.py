@@ -59,9 +59,15 @@ for j in [60]:
                 "examples", "random_large", f"randomTest_{i}_{j}_{l}.cl"
             )
             queries_filename = os.path.join(
-                "examples", "random_large", f"randomQueries_{i}_{j}_{l}.cl"
+                "examples", "random_large", f"randomQueries_{i}_{j}_{l}.clq"
             )
-
+            # assert that belief_base_filename and queries_filename exist
+            assert os.path.exists(
+                belief_base_filename
+            ), f"belief_base_filename {belief_base_filename} does not exist"
+            assert os.path.exists(
+                queries_filename
+            ), f"queries_filename {queries_filename} does not exist"
             # parse belief_base/queries
             belief_base = parse_belief_base(belief_base_filename)
             queries = parse_queries(queries_filename)

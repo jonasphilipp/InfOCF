@@ -12,9 +12,6 @@ from pysmt.shortcuts import And, Not, Or
 # ---------------------------------------------------------------------------
 # Project modules
 # ---------------------------------------------------------------------------
-from infocf import get_logger
-
-logger = get_logger(__name__)
 
 
 class Conditional:

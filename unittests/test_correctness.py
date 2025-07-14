@@ -93,20 +93,14 @@ class InferenceCorrectnessTest(unittest.TestCase):
 
                         # For each inference system, run the inference operator and collect results.
                         for inference_system in self.inference_systems:
-                            if inference_system == "lex_inf":
-                                inference_operator = InferenceOperator(
-                                    belief_base,
-                                    inference_system=inference_system,
-                                    smt_solver=self.smt_solver,
-                                    pmaxsat_solver="z3",
-                                )
-                            else:
-                                inference_operator = InferenceOperator(
-                                    belief_base,
-                                    inference_system=inference_system,
-                                    smt_solver=self.smt_solver,
-                                    pmaxsat_solver=self.pmaxsat_solver,
-                                )
+                            inference_operator = InferenceOperator(
+                                belief_base,
+                                inference_system=inference_system,
+                                smt_solver=self.smt_solver,
+                                pmaxsat_solver=self.pmaxsat_solver,
+                                weakly=True,
+                            )
+
                             print(
                                 f"{inference_system:<20} on {belief_base_filepath}, {queries_filepath}"
                             )

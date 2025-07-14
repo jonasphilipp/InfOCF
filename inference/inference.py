@@ -13,7 +13,7 @@ from pysmt.shortcuts import And, Not, is_unsat
 # ---------------------------------------------------------------------------
 from inference.conditional import Conditional
 from inference.consistency_sat import consistency
-from infocf import get_logger
+from infocf.log_setup import get_logger
 
 logger = get_logger(__name__)
 
@@ -51,6 +51,7 @@ class Inference(ABC):
                     "preprocessing_time_ms": self.epistemic_state["preprocessing_time"],
                     "belief_base_name": self.epistemic_state["belief_base"].name,
                     "inference_system": self.epistemic_state["inference_system"],
+                    "weakly": self.epistemic_state["weakly"],
                 },
             )
             return
@@ -68,7 +69,7 @@ class Inference(ABC):
             self.epistemic_state["kill_time"] = 0
         try:
             preprocessing_start_time = perf_counter_ns() / 1e6
-            self._preprocess_belief_base()
+            self._preprocess_belief_base(self.epistemic_state["weakly"])
             self.epistemic_state["preprocessing_time"] += (
                 perf_counter_ns() / 1e6 - preprocessing_start_time
             )
@@ -175,6 +176,7 @@ class Inference(ABC):
                 else 0,
                 "multi_inference": multi_inference,
                 "inference_system": self.epistemic_state["inference_system"],
+                "weakly": self.epistemic_state["weakly"],
             },
         )
 
@@ -291,7 +293,10 @@ class Inference(ABC):
         except Exception as e:
             raise e
 
-    def general_inference(self, query: Conditional):
+    def general_inference(self, query: Conditional, weakly: bool = None):
+        if weakly is None:
+            weakly = self.epistemic_state.get("weakly", False)
+
         if is_unsat(query.antecedence) or is_unsat(
             And(query.antecedence, Not(query.consequence))
         ):
@@ -301,12 +306,12 @@ class Inference(ABC):
             logger.debug("general_inference query inconsistent")
             return False
         else:
-            return self._inference(query)
+            return self._inference(query, weakly)
 
     @abstractmethod
-    def _inference(self, query: Conditional) -> bool:
+    def _inference(self, query: Conditional, weakly: bool) -> bool:
         pass
 
     @abstractmethod
-    def _preprocess_belief_base(self) -> None:
+    def _preprocess_belief_base(self, weakly: bool) -> None:
         pass

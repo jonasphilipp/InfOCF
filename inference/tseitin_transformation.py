@@ -5,9 +5,6 @@ from pysmt.shortcuts import Solver
 from z3 import z3
 
 from inference.conditional import Conditional
-from infocf import get_logger
-
-logger = get_logger(__name__)
 
 
 class TseitinTransformation:
