@@ -774,9 +774,7 @@ print()
 
 # C-revision with gamma_plus_zero=True
 print("3. C-revision with gamma_plus fixed to zero (gamma_plus_zero=True)...")
-print(
-    "This focuses on finding minimal gamma_minus parameters, matching c-representation eta-vectors."
-)
+print("This focuses on finding minimal gamma_minus parameters.")
 model_gamma_plus_zero = c_revision(
     uniform_preocf, revision_conditionals, gamma_plus_zero=True
 )
@@ -797,7 +795,7 @@ print()
 # Compare to c-representation
 print("4. Comparison to c-representation...")
 print(
-    "When gamma_plus is fixed to 0, c-revision should produce eta-vectors from c-representation."
+    "When gamma_plus is fixed to 0, input ranking is uniform 0, c-revision should produce eta-vectors from c-representation with same conditionals."
 )
 
 try:
@@ -816,7 +814,7 @@ try:
             eta_tuple = tuple(eta_vector)
             if eta_tuple == gamma_minus_minimal:
                 print(
-                    "✓ Perfect match: C-revision gamma_minus equals c-representation eta-vector!"
+                    "Perfect match: C-revision gamma_minus equals c-representation eta-vector!"
                 )
             else:
                 print(

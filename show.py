@@ -31,7 +31,7 @@ inference_timeout = 0
 # In the provided nix flake induced environment this includes:
 # z3, yices, msat, cvc5, ...
 smt_solver = "z3"
-alt_smt_solver = "cvc5"
+alt_smt_solver = "z3"
 
 
 # We can also select an partial maxsat solver. Currently only only z3 and rc2 are implemented. Other
