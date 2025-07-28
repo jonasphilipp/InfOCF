@@ -79,6 +79,8 @@ dev = [
     "flake8>=6.0.0",
     "ruff>=0.1.0",
     "pre-commit>=3.0.0",
+    "twine>=4.0.0",
+    "build>=0.10.0",
 ]
 solvers = [
     "cvc5>=1.1.2",
@@ -260,3 +262,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+
+[dependency-groups]
+dev = [
+    "twine>=6.1.0",
+]
