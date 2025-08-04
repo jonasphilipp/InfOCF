@@ -160,7 +160,11 @@ class PreOCF(ABC):
     def save_ocf(
         self, path: str | pathlib.Path, *, protocol: int = pickle.HIGHEST_PROTOCOL
     ) -> None:
-        """Serialize the entire PreOCF object to *path* via pickle so it can be restored later without manual bookkeeping."""
+        """Serialize the entire PreOCF object to *path* via pickle so it can be restored later without manual bookkeeping.
+
+        Security Note: Saved OCF files use pickle format for complete object preservation.
+        Only share these files with trusted collaborators in your research environment.
+        """
         path = pathlib.Path(path)
 
         # Temporarily remove non-picklable objects for serialization
@@ -184,8 +188,26 @@ class PreOCF(ABC):
                 setattr(self, attr, value)
 
     @staticmethod
-    def load_ocf(path: str | pathlib.Path) -> "PreOCF":
-        """Deserialize a PreOCF instance previously written by `save_ocf`."""
+    def load_ocf(path: str | pathlib.Path, *, trusted: bool = False) -> "PreOCF":
+        """Deserialize a PreOCF instance previously written by `save_ocf`.
+
+        Security Note: Only load OCF files from trusted sources. This method uses
+        pickle deserialization which can execute arbitrary code if the file is malicious.
+
+        Args:
+            path: Path to the pickled PreOCF file
+            trusted: Set to True to acknowledge you trust the source of this file
+        """
+        if not trusted:
+            import warnings
+
+            warnings.warn(
+                "Loading OCF files uses pickle deserialization which can be unsafe. "
+                "Only load files from trusted sources. Set trusted=True to suppress this warning.",
+                UserWarning,
+                stacklevel=2,
+            )
+
         path = pathlib.Path(path)
         with path.open("rb") as fd:
             obj = pickle.load(fd)
