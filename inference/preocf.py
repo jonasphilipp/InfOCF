@@ -109,9 +109,10 @@ class PreOCF(ABC):
 
     # ------------------------------------------------------------------
     # Disk-level persistence helpers (JSON / pickle)
+    # Security: Save methods default to JSON for safety, load methods support both
     # ------------------------------------------------------------------
-    def save_metadata(self, path: str | pathlib.Path, fmt: str = "pickle") -> None:
-        """Dump the internal metadata dict to *path*."""
+    def save_metadata(self, path: str | pathlib.Path, fmt: str = "json") -> None:
+        """Dump the internal metadata dict to *path*. Defaults to JSON for security."""
         path = pathlib.Path(path)
         if fmt == "pickle":
             with path.open("wb") as fd:
