@@ -75,9 +75,12 @@ dev = [
     "pytest-cov>=4.0.0",
     "black>=23.0.0",
     "isort>=5.12.0",
-    "mypy>=1.0.0",
+    "mypy==1.13.0",  # Pin to match pre-commit version
     "flake8>=6.0.0",
-    "ruff>=0.1.0",
+    "ruff==0.8.4",   # Pin to match pre-commit version
+    "bandit==1.7.10", # Security linting, matches pre-commit version
+    "pip-audit==2.7.3", # Dependency vulnerability scanning, matches pre-commit version
+    "pydocstyle==6.3.0", # Documentation style checking (manual)
     "pre-commit>=3.0.0",
     "twine>=4.0.0",
     "build>=0.10.0",
@@ -262,6 +265,17 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+
+[tool.pydocstyle]
+convention = "numpy"
+add-ignore = [
+    "D100",  # Missing docstring in public module
+    "D104",  # Missing docstring in public package
+    "D213",  # Multi-line docstring summary should start at the second line
+    "D203",  # 1 blank line required before class docstring
+]
+match = "(?!.*test_).*\\.py"
+match-dir = "(?!unittests).*"
 
 [dependency-groups]
 dev = [

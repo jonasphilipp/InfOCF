@@ -53,6 +53,18 @@ jobs:
         mypy --install-types --non-interactive . || echo "MyPy issues found but not blocking CI"
       continue-on-error: true  # Don't fail on type issues for research codebase
 
+    - name: Security linting with Bandit
+      run: |
+        source .venv/bin/activate
+        bandit -r . --format custom --skip B101,B601,B301,B403 --exclude unittests/ || echo "Bandit security issues found but not blocking CI"
+      continue-on-error: true  # Don't fail on security issues for research codebase
+
+    - name: Dependency vulnerability scan with pip-audit
+      run: |
+        source .venv/bin/activate
+        pip-audit --desc || echo "pip-audit found vulnerabilities but not blocking CI"
+      continue-on-error: true  # Don't fail on vulnerabilities for research codebase
+
   # Job 2: Core algorithm and functionality tests
   core-tests:
     runs-on: ubuntu-latest

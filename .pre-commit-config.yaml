@@ -3,9 +3,9 @@
 # Run: pre-commit run --all-files (to run on all files)
 
 repos:
-  # Ruff - Ultra-fast Python linter and formatter
+  # Ruff - Ultra-fast Python linter and formatter (version synced with pyproject.toml)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+    rev: v0.8.4  # Keep in sync with pyproject.toml ruff version
     hooks:
       # Run the linter
       - id: ruff
@@ -48,3 +48,30 @@ repos:
         args: [--ignore-missing-imports, --no-strict-optional]
         # Make it non-blocking - continue even if it fails
         stages: [manual]  # Only run when explicitly called
+
+  # Security linting tools
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        name: Bandit security linting
+        args: ['--format', 'custom', '--skip', 'B101,B601,B301,B403']
+        exclude: 'unittests/.*'  # Skip test files
+
+  # pip-audit for dependency vulnerability scanning
+  - repo: https://github.com/pypa/pip-audit
+    rev: v2.7.3
+    hooks:
+      - id: pip-audit
+        name: pip-audit (dependency vulnerability scan)
+        args: ['--desc']
+
+  # Additional optional hooks (run manually)
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        name: Docstring style checking
+        args: ['--convention=numpy']
+        stages: [manual]  # Only run when explicitly called
+        exclude: 'parser/CKB.*\.py$'

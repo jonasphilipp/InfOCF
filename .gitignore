@@ -212,4 +212,7 @@ node_modules/
 .env.example
 .roo
 .cursor
+.cursorignore
 .taskmaster
+test_pypi*
+TESTING*
