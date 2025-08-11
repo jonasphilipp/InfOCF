@@ -28,8 +28,31 @@ class InferenceCorrectnessTest(unittest.TestCase):
             "lex_inf",
             "c-inference",
         ]
+        # Registry: map semantic systems to concrete implementations/variants
+        # Each variant may override pmaxsat_solver; smt_solver and weakly are kept from class settings
+        cls.IMPLEMENTATIONS = {
+            "p-entailment": [{"label": "default"}],
+            "system-z": [{"label": "default"}],
+            "system-w": [
+                {"label": "rc2", "pmaxsat_solver": "rc2"},
+                {"label": "z3", "pmaxsat_solver": "z3"},
+            ],
+            "lex_inf": [
+                {"label": "rc2", "pmaxsat_solver": "rc2"},
+                {"label": "z3", "pmaxsat_solver": "z3"},
+            ],
+            "c-inference": [{"label": "rc2", "pmaxsat_solver": "rc2"}],
+        }
         cls.excluded_systems = []  # list any inference systems that should be excluded
-        cls.test_sets = ["example_testing_results.csv"]
+
+        # Prefer a small curated CSV if available; fall back to the large one
+        small_csv = os.path.join(
+            os.path.dirname(__file__), "example_testing_results_small.csv"
+        )
+        if os.path.isfile(small_csv):
+            cls.test_sets = ["example_testing_results_small.csv"]
+        else:
+            cls.test_sets = ["example_testing_results.csv"]
         cls.SKIP_CONDITIONS = ["inconsistent", "empty"]
 
         # Timeouts in seconds (0 means no timeout)
@@ -91,29 +114,37 @@ class InferenceCorrectnessTest(unittest.TestCase):
                         belief_base = parse_belief_base(belief_base_filepath_full)
                         queries = parse_queries(queries_filepath_full)
 
-                        # For each inference system, run the inference operator and collect results.
+                        # For each inference system, run all registered implementation variants
                         for inference_system in self.inference_systems:
-                            inference_operator = InferenceOperator(
-                                belief_base,
-                                inference_system=inference_system,
-                                smt_solver=self.smt_solver,
-                                pmaxsat_solver=self.pmaxsat_solver,
-                                weakly=True,
+                            variants = self.IMPLEMENTATIONS.get(
+                                inference_system, [{"label": "default"}]
                             )
+                            for variant in variants:
+                                pmaxsat_solver = variant.get(
+                                    "pmaxsat_solver", self.pmaxsat_solver
+                                )
 
-                            print(
-                                f"{inference_system:<20} on {belief_base_filepath}, {queries_filepath}"
-                            )
-                            results = inference_operator.inference(
-                                queries,
-                                total_timeout=self.total_timeout,
-                                preprocessing_timeout=self.preprocessing_timeout,
-                                inference_timeout=self.inference_timeout,
-                                multi_inference=self.multi_inference,
-                            )
-                            collected_results = pd.concat(
-                                [collected_results, results], ignore_index=True
-                            )
+                                inference_operator = InferenceOperator(
+                                    belief_base,
+                                    inference_system=inference_system,
+                                    smt_solver=self.smt_solver,
+                                    pmaxsat_solver=pmaxsat_solver,
+                                    weakly=True,
+                                )
+
+                                print(
+                                    f"{inference_system:<12} variant={variant.get('label','default'):<6} pmaxsat={pmaxsat_solver or '-':<3} on {belief_base_filepath}, {queries_filepath}"
+                                )
+                                results = inference_operator.inference(
+                                    queries,
+                                    total_timeout=self.total_timeout,
+                                    preprocessing_timeout=self.preprocessing_timeout,
+                                    inference_timeout=self.inference_timeout,
+                                    multi_inference=self.multi_inference,
+                                )
+                                collected_results = pd.concat(
+                                    [collected_results, results], ignore_index=True
+                                )
 
                     # Filter the collected results for the current test case
                     current_result = collected_results[
@@ -145,12 +176,18 @@ class InferenceCorrectnessTest(unittest.TestCase):
                             if inference_system in self.excluded_systems:
                                 print("Result not compared, inference system excluded")
                             else:
-                                self.assertEqual(
-                                    system_results.iloc[0]["result"],
-                                    row["result"],
-                                    f"Result mismatch for belief_base: {row['belief_base']}, query: {row['query']}, "
-                                    f"inference_system: {inference_system}. Expected: {row['result']}, "
-                                    f"Got: {system_results.iloc[0]['result']}",
+                                # Validate that ALL registered variants for this system match the expected result
+                                mismatches = system_results[
+                                    system_results["result"] != row["result"]
+                                ]
+                                self.assertTrue(
+                                    mismatches.empty,
+                                    (
+                                        f"At least one variant mismatched for belief_base: {row['belief_base']}, "
+                                        f"query: {row['query']}, inference_system: {inference_system}. "
+                                        f"Expected: {row['result']}. Mismatches (pmaxsat_solver -> result): "
+                                        f"{mismatches[['pmaxsat_solver','result']].to_dict('records')}"
+                                    ),
                                 )
                             last_index = index
 

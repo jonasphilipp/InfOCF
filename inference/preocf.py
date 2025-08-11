@@ -112,12 +112,25 @@ class PreOCF(ABC):
     # Security: Save methods default to JSON for safety, load methods support both
     # ------------------------------------------------------------------
     def save_metadata(self, path: str | pathlib.Path, fmt: str = "json") -> None:
-        """Dump the internal metadata dict to *path*. Defaults to JSON for security."""
+        """Dump the internal metadata dict to *path*.
+
+        Format selection:
+        - If the file extension is ".json" or ".pkl"/".pickle", the extension determines the format.
+        - Otherwise, the explicit fmt argument is used (defaults to JSON).
+        """
         path = pathlib.Path(path)
-        if fmt == "pickle":
+        # Infer format from path suffix when possible
+        if path.suffix.lower() == ".json":
+            target_fmt = "json"
+        elif path.suffix.lower() in {".pkl", ".pickle"}:
+            target_fmt = "pickle"
+        else:
+            target_fmt = fmt
+
+        if target_fmt == "pickle":
             with path.open("wb") as fd:
                 pickle.dump(self._metadata, fd)
-        elif fmt == "json":
+        elif target_fmt == "json":
             try:
                 with path.open("w") as fd:
                     json.dump(self._metadata, fd, indent=2, default=str)

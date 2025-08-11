@@ -81,11 +81,14 @@ def consistency(ckb, solver="z3", weakly=False):
                 # Maybe throw an error instead?
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.debug("calls: %s, levels: %s, status: False", calls, levels)
+                # if weakly flag set and returend list hast non-empty list as last element,
+                # then belief base is only weakly consistent
                 if weakly:
-                    # if weakly flag set and returend list hast non-empty list as last element,
-                    # then belief base is only weakly consistent
-                    partition.append(C)
-                    return partition, ([len(p) for p in partition], calls, levels)
+                    if len(partition) == 0:
+                        return False, ([len(C)], calls, levels)
+                    else:
+                        partition.append(C)
+                        return partition, ([len(p) for p in partition], calls, levels)
                 else:
                     return False, ([len(p) for p in partition], calls, levels)
             partition.append(R)
@@ -136,8 +139,11 @@ def consistency_indices(ckb, solver, weakly=False):
                 s.pop()
             if R == []:
                 if weakly:
-                    partition.append(C)
-                    return partition, ([len(p) for p in partition], calls, levels)
+                    if len(partition) == 0:
+                        return False, ([len(C)], calls, levels)
+                    else:
+                        partition.append(C)
+                        return partition, ([len(p) for p in partition], calls, levels)
                 else:
                     return False, ([len(p) for p in partition], calls, levels)
             partition.append(R)
