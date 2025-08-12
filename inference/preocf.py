@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 
 from BitVector import BitVector
 from pysmt.fnode import FNode
-from pysmt.shortcuts import Not, Solver, Symbol
+from pysmt.shortcuts import And, Not, Solver, Symbol
 from pysmt.typing import BOOL
 from z3 import Optimize, sat, z3
 
@@ -234,6 +234,85 @@ class PreOCF(ABC):
                 setattr(obj, attr, None)
 
         return obj
+
+    # ------------------------------------------------------------------
+    # Worlds restriction by facts (quality-of-life feature)
+    # ------------------------------------------------------------------
+    def clone(self) -> "PreOCF":
+        """Return a shallow clone of this instance, preserving subclass type and state."""
+        new_obj = self.__class__.__new__(self.__class__)
+        # Reuse our own state helpers to ensure future fields are preserved
+        new_obj.__setstate__(self.__getstate__())
+        return new_obj
+
+    def _normalize_facts(self, facts: object) -> FNode:
+        """Convert different 'facts' inputs into a single pysmt FNode.
+
+        Accepted formats:
+        - FNode: returned as-is
+        - dict[str, int|bool]: variable assignments; 1/True means variable, 0/False means ¬variable
+        - list[FNode] | tuple[FNode]: conjunction of all items
+        """
+        # FNode provided directly
+        if isinstance(facts, FNode):
+            return facts
+
+        # Conjunction of provided FNodes
+        if isinstance(facts, (list, tuple)):
+            if not facts:
+                raise ValueError("facts list/tuple must not be empty")
+            if not all(isinstance(x, FNode) for x in facts):
+                raise TypeError("all facts in list/tuple must be pysmt FNode instances")
+            return And(*facts)
+
+        # Mapping var -> {0,1} or {False,True}
+        if isinstance(facts, dict):
+            clauses: list[FNode] = []
+            for var_name, value in facts.items():
+                if var_name not in self.signature:
+                    raise ValueError(f"unknown variable in facts: {var_name}")
+                # Accept ints and bools
+                if value in (1, True):
+                    clauses.append(Symbol(var_name, BOOL))
+                elif value in (0, False):
+                    clauses.append(Not(Symbol(var_name, BOOL)))
+                else:
+                    raise ValueError(
+                        f"invalid value for variable '{var_name}': {value} (expected 0/1 or bool)"
+                    )
+            if not clauses:
+                raise ValueError("facts dict must contain at least one assignment")
+            return And(*clauses)
+
+        raise TypeError(
+            "facts must be a pysmt FNode, a list/tuple of FNodes, or a dict[str, 0|1|bool]"
+        )
+
+    def apply_facts(self, facts: object) -> None:
+        """Statefully restrict the possible worlds to those satisfying given facts.
+
+        The method filters `self.ranks` in-place, keeping only worlds that satisfy
+        the provided facts. Rank values for kept worlds are preserved.
+
+        Args:
+            facts: FNode, list/tuple of FNodes (conjoined), or dict of variable assignments
+        """
+        formula = self._normalize_facts(facts)
+        permitted = set(self.filter_worlds_by_conditionalization(formula))
+        # Filter ranks in-place semantics by replacing dict with a filtered copy
+        self.ranks = {w: self.ranks[w] for w in self.ranks.keys() if w in permitted}
+        # Keep a small trace for consumers
+        self.save_meta("facts_applied", True)
+
+    def with_facts(self, facts: object) -> "PreOCF":
+        """Return a new instance (same subclass) whose worlds satisfy the given facts.
+
+        The returned instance shares all settings/behaviour with `self` but exposes a
+        restricted `ranks` keyset corresponding to worlds that satisfy `facts`.
+        """
+        clone = self.clone()
+        clone.apply_facts(facts)
+        return clone
 
     @classmethod
     def init_system_z(
