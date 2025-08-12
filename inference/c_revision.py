@@ -152,7 +152,6 @@ def compile_alt_fast(
 
     # Evaluate each world once.
     for world in ranking_function.ranks.keys():
-        rank_val = ranking_function.rank_world(world)
         # cache world bits as ints
         bits = [int(b) for b in world]
 
@@ -178,6 +177,13 @@ def compile_alt_fast(
                         accepted_list.append(cond.index)
                     else:
                         rejected_list.append(cond.index)
+
+        # Skip rank computation entirely if this world contributes to no branch
+        if not accepted_list and not rejected_list:
+            continue
+
+        # Compute rank only for contributing worlds (lazy evaluation)
+        rank_val = ranking_function.rank_world(world)
 
         acc_set = set(accepted_list)
         rej_set = set(rejected_list)
