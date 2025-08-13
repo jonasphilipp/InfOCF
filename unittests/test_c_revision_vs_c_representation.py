@@ -11,12 +11,12 @@ from inference.conditional import Conditional
 from inference.preocf import CustomPreOCF, PreOCF
 
 # ---------------------------------------------------------------------------
-# Helper – compute Pareto front of η vectors (adapted from the example script)
+# Helper – compute Pareto front of eta vectors (adapted from the example script)
 # ---------------------------------------------------------------------------
 
 
 def compute_pareto_front(belief_base: BeliefBase):
-    """Return the list of Pareto-optimal η-vectors for *belief_base*."""
+    """Return the list of Pareto-optimal eta-vectors for *belief_base*."""
     # RandomMinCRepPreOCF internally constructs the base CSP we need.
     preocf_c = PreOCF.init_random_min_c_rep(belief_base)
 
@@ -42,7 +42,7 @@ def compute_pareto_front(belief_base: BeliefBase):
 
 
 # ---------------------------------------------------------------------------
-# Test case: γ⁻ (c-revision) must appear in η Pareto front (c-representation)
+# Test case: gamma_minus (c-revision) must appear in eta Pareto front (c-representation)
 # ---------------------------------------------------------------------------
 
 
@@ -89,26 +89,26 @@ class TestCRevisionVsCRepresentation(unittest.TestCase):
             # Custom PreOCF with all-zero ranks
             preocf = CustomPreOCF(all_zero_ranks, bb, sig_vars)
 
-            # Run c-revision with γ⁺ fixed to 0
+            # Run c-revision with gamma_plus fixed to 0
             model = c_revision(preocf, conditionals, gamma_plus_zero=True)
             if model is None:
-                # No feasible γ vector – skip this KB instance
+                # No feasible gamma vector – skip this KB instance
                 continue
 
             gamma_minus_vec = tuple(model[f"gamma-_{i + 1}"] for i in range(3))
 
-            # Compute Pareto front of η vectors (may raise if unsat)
+            # Compute Pareto front of eta vectors (may raise if unsat)
             try:
                 pareto_vecs = compute_pareto_front(bb)
             except ValueError:
-                # No η vector – skip to next attempt
+                # No eta vector – skip to next attempt
                 continue
 
             if gamma_minus_vec in pareto_vecs:
                 successes += 1
             else:
                 self.fail(
-                    f"Mismatch on attempt {attempts}: γ⁻ {gamma_minus_vec} not in η Pareto {pareto_vecs}"
+                    f"Mismatch on attempt {attempts}: gamma_minus {gamma_minus_vec} not in eta Pareto {pareto_vecs}"
                 )
 
         self.assertEqual(

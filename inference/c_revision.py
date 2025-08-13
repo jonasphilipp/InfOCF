@@ -225,36 +225,36 @@ def symbolize_minima_expression(
             rejected_indices = triple[2]
 
             # ------------------------------------------------------------------
-            # When γ⁺ are fixed to zero, terms that only depend on γ⁺ would reduce
+            # When gamma_plus are fixed to zero, terms that only depend on gamma_plus would reduce
             # to zero and thus dominate the minima undesirably. Furthermore, if a
             # world does not violate any conditional (no rejected indices) it will
             # again yield a rank-only cost of zero.  This special-case is handled
-            # by *skipping* such triples altogether – except when γ⁺ are *not* all
-            # fixed to zero, in which case the γ⁺ variables still have influence.
+            # by *skipping* such triples altogether – except when gamma_plus are *not* all
+            # fixed to zero, in which case the gamma_plus variables still have influence.
             # ------------------------------------------------------------------
-            # NOTE: We no longer skip γ⁺-only triples because, with γ⁺ fixed to 0, they
+            # NOTE: We no longer skip gamma_plus-only triples because, with gamma_plus fixed to 0, they
             #       translate to a *plain* rank cost of 0 – exactly what the original
             #       c-representation requires for some fMin sets.  Omitting them made
-            #       γ⁻ vectors too small (e.g. γ⁻₂=1 instead of 2).  The downstream
-            #       logic already replaces γ⁺-terms with the bare rank when
+            #       gamma_minus vectors too small (e.g. gamma_minus_2=1 instead of 2).  The downstream
+            #       logic already replaces gamma_plus-terms with the bare rank when
             #       gamma_plus_zero=True, so there is no risk of undervaluing costs.
 
             added = False
 
-            # Build expression for rejected conditionals (γ⁻ part); this is the
-            # essential component for our optimisation irrespective of γ⁺.
+            # Build expression for rejected conditionals (gamma_minus part); this is the
+            # essential component for our optimisation irrespective of gamma_plus.
             if rejected_indices:
                 rejected_sum = Plus([_gamma(f"gamma-_{i}") for i in rejected_indices])
                 results[index].append(Plus([rejected_sum, Int(rank)]))
                 added = True
 
-            # Include γ⁺ part only when they contribute (i.e. not fixed to zero).
+            # Include gamma_plus part only when they contribute (i.e. not fixed to zero).
             if accepted_indices and not gamma_plus_zero:
                 accepted_sum = Plus([_gamma(f"gamma+_{i}") for i in accepted_indices])
                 results[index].append(Plus([accepted_sum, Int(rank)]))
                 added = True
 
-            # If this triple yielded no expression (e.g. γ⁺ fixed to 0 AND no γ⁻
+            # If this triple yielded no expression (e.g. gamma_plus fixed to 0 AND no gamma_minus
             # violations), fall back to the plain rank so every triple influences
             # the minima calculation.
             if not added:
@@ -283,23 +283,35 @@ def encoding(gammas: dict, vSums: dict, fSums: dict) -> list:
 def translate_to_csp(
     compilation: tuple[dict[int, list[int]], dict[int, list[int]]],
     gamma_plus_zero: bool = False,
+    fixed_gamma_plus: dict[int, int] | None = None,
+    fixed_gamma_minus: dict[int, int] | None = None,
 ) -> list:
     gammas = {}
     for i in compilation[0].keys():
-        if gamma_plus_zero:
+        # Determine gamma_plus variable/constant
+        if fixed_gamma_plus and i in fixed_gamma_plus:
+            plus_var = Int(int(fixed_gamma_plus[i]))
+        elif gamma_plus_zero:
             plus_var = Int(0)
         else:
             plus_var = _gamma(f"gamma+_{i}")
-        minus_var = _gamma(f"gamma-_{i}")
+
+        # Determine gamma_minus variable/constant
+        if fixed_gamma_minus and i in fixed_gamma_minus:
+            minus_var = Int(int(fixed_gamma_minus[i]))
+        else:
+            minus_var = _gamma(f"gamma-_{i}")
+
         gammas[i] = (plus_var, minus_var)
     # defeat= = checkTautologies(self.epistemic_state['belief_base'].conditionals)
     # if not defeat: return False
     gteZeros = []
     for gamma_plus, gamma_minus in gammas.values():
-        # gamma_plus is constant 0 when gamma_plus_zero=True
-        if not gamma_plus_zero:
+        # Add non-negativity constraints only for symbolic variables (not constants)
+        if getattr(gamma_plus, "is_symbol", lambda: False)():
             gteZeros.append(GE(gamma_plus, Int(0)))
-        gteZeros.append(GE(gamma_minus, Int(0)))
+        if getattr(gamma_minus, "is_symbol", lambda: False)():
+            gteZeros.append(GE(gamma_minus, Int(0)))
     vSums = symbolize_minima_expression(compilation[0], gamma_plus_zero)
     fSums = symbolize_minima_expression(compilation[1], gamma_plus_zero)
     csp = encoding(gammas, vSums, fSums)
@@ -359,21 +371,50 @@ def c_revision(
     ranking_function: PreOCF,
     revision_conditionals: list[Conditional],
     gamma_plus_zero: bool = False,
+    fixed_gamma_minus: dict[int, int] | None = None,
+    fixed_gamma_plus: dict[int, int] | None = None,
 ):
-    """Compute γ⁺/γ⁻ parameters according to c-revision semantics.
+    """Compute gamma_plus/gamma_minus parameters according to c-revision semantics.
 
-    When *gamma_plus_zero* is *True*, γ⁺ variables are fixed to 0 and the
-    optimiser will calculate a Pareto-minimal γ⁻ vector.  This should match the
-    η-vector of the c-representation given an all-zero initial ranking.
+    When *gamma_plus_zero* is *True*, gamma_plus variables are fixed to 0 and the
+    optimiser will calculate a Pareto-minimal gamma_minus vector.  This should match the
+    eta-vector of the c-representation given an all-zero initial ranking.
     """
 
     compilation = _compile_backend(ranking_function, revision_conditionals)
-    csp = translate_to_csp(compilation, gamma_plus_zero)
+    csp = translate_to_csp(
+        compilation,
+        gamma_plus_zero,
+        fixed_gamma_plus=fixed_gamma_plus,
+        fixed_gamma_minus=fixed_gamma_minus,
+    )
 
-    # Assemble the list of γ⁻ variables to be minimised.
-    minimize_vars = [f"gamma-_{cond.index}" for cond in revision_conditionals]
+    # Assemble the list of gamma_minus variables to be minimised.
+    minimize_vars = [
+        f"gamma-_{cond.index}"
+        for cond in revision_conditionals
+        if not (fixed_gamma_minus and cond.index in fixed_gamma_minus)
+    ]
 
     model = solve_and_get_model(csp, minimize_vars)
+
+    # Ensure fixed gamma values appear in the returned model dictionary
+    if model is not None:
+        if fixed_gamma_minus:
+            for i, val in fixed_gamma_minus.items():
+                model[f"gamma-_{i}"] = int(val)
+        if fixed_gamma_plus:
+            for i, val in fixed_gamma_plus.items():
+                model[f"gamma+_{i}"] = int(val)
+        if gamma_plus_zero:
+            # Also surface gamma_plus=0 for completeness if requested globally and not fixed explicitly
+            for cond in revision_conditionals:
+                key = f"gamma+_{cond.index}"
+                if key not in model and not (
+                    fixed_gamma_plus and cond.index in fixed_gamma_plus
+                ):
+                    model[key] = 0
+
     return model
 
 

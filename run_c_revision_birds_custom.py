@@ -92,14 +92,14 @@ def print_results(model, revision_conditionals):
 
 
 def calculate_pareto_front(belief_base):
-    """Compute the Pareto front of η-vectors for the given belief base.
+    """Compute the Pareto front of eta-vectors for the given belief base.
 
     The Pareto front is derived from the optimisation problem that defines
     the c-representation (RandomMinCRep).  Each vector corresponds to one
-    set of minimal η values (impacts) such that all KB constraints hold.
+    set of minimal eta values (impacts) such that all KB constraints hold.
 
     Returns:
-        list[tuple[int, ...]] | None – A list of η-vectors or *None* if the
+        list[tuple[int, ...]] | None – A list of eta-vectors or *None* if the
         computation failed (e.g. due to missing external dependencies).
     """
 
@@ -121,7 +121,7 @@ def calculate_pareto_front(belief_base):
     # Add base CSP (already converted to native z3 expressions).
     opt.add(*preocf_c._csp)
 
-    # Tell the optimiser to minimise every η variable.
+    # Tell the optimiser to minimise every eta variable.
     for v in eta_vars:
         opt.minimize(v)
 
@@ -141,14 +141,14 @@ def calculate_pareto_front(belief_base):
 
 
 def print_pareto_front(pareto_vectors):
-    """Pretty-print the list of Pareto η-vectors."""
+    """Pretty-print the list of Pareto eta-vectors."""
     if not pareto_vectors:
-        print("\nNo Pareto-optimal η-vectors found (or computation skipped).")
+        print("\nNo Pareto-optimal eta-vectors found (or computation skipped).")
         return
 
-    print("\nPareto front of c-representation (η impacts):")
+    print("\nPareto front of c-representation (eta impacts):")
     for idx, vec in enumerate(pareto_vectors, 1):
-        vec_str = ", ".join(f"η{j + 1}={val}" for j, val in enumerate(vec))
+        vec_str = ", ".join(f"eta{j + 1}={val}" for j, val in enumerate(vec))
         print(f"  Solution {idx}: {vec_str}")
 
 

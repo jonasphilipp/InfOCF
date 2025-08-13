@@ -858,6 +858,48 @@ print("- C-revision bridges between different approaches to belief change")
 print()
 
 
+# --- Fixed gamma showcase: add a new conditional and pin its gamma value ---
+print("=== Fixed Gamma Showcase ===")
+print("Demonstrating how to add a new revision conditional and fix its gamma value.")
+
+# Create a simple new revision conditional over existing birds signature (e.g., (f|p))
+f_sym = Symbol("f", BOOL)
+p_sym = Symbol("p", BOOL)
+new_cond = Conditional(f_sym, p_sym, "(f|p)")
+new_cond.index = len(revision_conditionals) + 1
+
+extended_revision_conditionals = revision_conditionals + [new_cond]
+
+print(f"Added new conditional at index {new_cond.index}: {new_cond}")
+print(
+    "Fixing gamma_minus for the new conditional to 2 while keeping gamma_plus fixed to 0 (gamma_plus_zero=True)..."
+)
+
+from inference.c_revision import c_revision as c_revision_fn
+
+model_fixed = c_revision_fn(
+    uniform_preocf,
+    extended_revision_conditionals,
+    gamma_plus_zero=True,
+    fixed_gamma_minus={new_cond.index: 2},
+)
+
+if model_fixed:
+    gamma_minus_fixed_vec = tuple(
+        model_fixed.get(f"gamma-_{i}", 0)
+        for i in range(1, len(extended_revision_conditionals) + 1)
+    )
+    print(f"  gamma_minus (with fixed entry): {gamma_minus_fixed_vec}")
+    print(
+        f"  Confirm fixed value: gamma-_{{{new_cond.index}}} = {model_fixed.get(f'gamma-_{new_cond.index}')}"
+    )
+else:
+    print(
+        "No feasible model found with fixed gamma value (this should be rare for this demo)."
+    )
+print()
+
+
 #### This part is important for the student lars told me about
 
 
