@@ -712,6 +712,37 @@ print(
 )
 
 
+# Facts Application (apply_facts / with_facts)
+print("\n=== Facts Application (apply_facts / with_facts) ===")
+
+# Non-destructive filtering using with_facts and a dict of assignments
+print("Using with_facts (non-destructive) with facts: {'b': 1, 'p': 0}")
+filtered_preocf = preocf_birds.with_facts({"b": 1, "p": 0})
+print(
+    f"Original worlds: {len(preocf_birds.ranks)} | Filtered worlds: {len(filtered_preocf.ranks)}"
+)
+
+# Ensure ranks can still be computed on the restricted instance
+filtered_preocf.compute_all_ranks()
+sample = list(filtered_preocf.ranks.items())[:3]
+for world, rank in sample:
+    print(f"  world {world} {filtered_preocf.bv2strtuple(world)} -> rank {rank}")
+
+# In-place filtering using apply_facts with a pysmt formula
+print("\nUsing apply_facts (in-place) with formula: b & w")
+facts_formula = And([Symbol("b", BOOL), Symbol("w", BOOL)])
+
+# Work on a clone to keep original demo state unchanged
+preocf_clone = preocf_birds.clone()
+print(f"Clone before: {len(preocf_clone.ranks)} worlds")
+preocf_clone.apply_facts(facts_formula)
+print(f"Clone after:  {len(preocf_clone.ranks)} worlds")
+preocf_clone.compute_all_ranks()
+sample2 = list(preocf_clone.ranks.items())[:3]
+for world, rank in sample2:
+    print(f"  world {world} {preocf_clone.bv2strtuple(world)} -> rank {rank}")
+
+
 ### Show c-revision ###
 
 print("\n\n")
