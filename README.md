@@ -32,3 +32,18 @@ To install InfOCF follow the steps in the [installation guide](docs/INSTALL.md).
 The usage of InfOCF is demonstrated in [show.py](show.py).
 
 A small example showing how to get started can be found in [show_minimal.py](show_minimal.py).
+
+#### Incremental c-revision compilation (advanced)
+
+This repository includes an incremental compilation path for c-revision that avoids full recompilation when adding new revision conditionals.
+
+- Demo: see the "Incremental c-revision compilation demo" section in [show_preocf.py](show_preocf.py)
+- Benchmark script: `benchmarks/benchmark_incremental_c_revision.py`
+
+To run the benchmark:
+
+```bash
+uv run python benchmarks/benchmark_incremental_c_revision.py
+```
+
+It prints mean times over a few configurations and the speedup factor of the incremental approach compared to full recomputation.

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 import z3
@@ -16,7 +18,7 @@ logger = get_logger(__name__)
 ATTENTION: This file is not tested yet sufficiently, and the implementation is not complete.
 """
 
-# Cache for gamma± symbol objects (avoids recreating identical FNodes)
+# Cache for gamma symbol objects (avoids recreating identical FNodes)
 _gamma_sym_cache: dict[str, "FNode"] = {}
 
 
@@ -373,6 +375,8 @@ def c_revision(
     gamma_plus_zero: bool = False,
     fixed_gamma_minus: dict[int, int] | None = None,
     fixed_gamma_plus: dict[int, int] | None = None,
+    *,
+    model: "CRevisionModel" | None = None,
 ):
     """Compute gamma_plus/gamma_minus parameters according to c-revision semantics.
 
@@ -381,13 +385,21 @@ def c_revision(
     eta-vector of the c-representation given an all-zero initial ranking.
     """
 
-    compilation = _compile_backend(ranking_function, revision_conditionals)
-    csp = translate_to_csp(
-        compilation,
-        gamma_plus_zero,
-        fixed_gamma_plus=fixed_gamma_plus,
-        fixed_gamma_minus=fixed_gamma_minus,
-    )
+    if model is None:
+        compilation = _compile_backend(ranking_function, revision_conditionals)
+        csp = translate_to_csp(
+            compilation,
+            gamma_plus_zero,
+            fixed_gamma_plus=fixed_gamma_plus,
+            fixed_gamma_minus=fixed_gamma_minus,
+        )
+    else:
+        # Reuse incremental model caches
+        csp = model.to_csp(
+            gamma_plus_zero=gamma_plus_zero,
+            fixed_gamma_plus=fixed_gamma_plus,
+            fixed_gamma_minus=fixed_gamma_minus,
+        )
 
     # Assemble the list of gamma_minus variables to be minimised.
     minimize_vars = [

@@ -899,6 +899,66 @@ else:
     )
 print()
 
+# --- Incremental c-revision compilation demo ---
+print("=== Incremental c-revision compilation demo ===")
+print(
+    "Comparing full recompute vs incremental caches for a short sequence of additions."
+)
+
+from inference.c_revision import compile_alt_fast
+from inference.c_revision_model import CRevisionModel
+
+# Small signature and all-zero ranks
+sig_demo = ["a", "b", "c"]
+preocf_demo = PreOCF.init_custom(
+    {format(i, "03b"): 0 for i in range(8)}, signature=sig_demo
+)
+
+# Base conditionals
+from pysmt.shortcuts import Not, Symbol
+from pysmt.typing import BOOL
+
+a = Symbol("a", BOOL)
+b = Symbol("b", BOOL)
+c = Symbol("c", BOOL)
+base_conds = []
+tmp = Conditional(b, a, "(b|a)")
+tmp.index = 1
+base_conds.append(tmp)
+tmp = Conditional(Not(b), a, "(!b|a)")
+tmp.index = 2
+base_conds.append(tmp)
+
+add_conds = []
+tmp = Conditional(c, a, "(c|a)")
+tmp.index = 3
+add_conds.append(tmp)
+tmp = Conditional(Not(c), b, "(!c|b)")
+tmp.index = 4
+add_conds.append(tmp)
+
+import time
+
+t0 = time.perf_counter()
+conds_seq = base_conds[:]
+for cond in add_conds:
+    conds_seq.append(cond)
+    _ = compile_alt_fast(preocf_demo, conds_seq)
+full_time = (time.perf_counter() - t0) * 1000.0
+
+model = CRevisionModel.from_preocf_and_conditionals(preocf_demo, base_conds)
+t0 = time.perf_counter()
+for cond in add_conds:
+    model.add_conditional(cond)
+    _ = model.to_compilation()
+incr_time = (time.perf_counter() - t0) * 1000.0
+
+speedup = full_time / incr_time if incr_time else float("inf")
+print(f"Full recompute time: {full_time:.2f} ms")
+print(f"Incremental time:   {incr_time:.2f} ms")
+print(f"Speedup:            {speedup:.2f}x")
+print()
+
 
 #### This part is important for the student lars told me about
 
