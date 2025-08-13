@@ -217,3 +217,8 @@ node_modules/
 test_pypi*
 TESTING*
 MIGRATION*
+.archive
+
+# Task files
+# tasks.json
+# tasks/
