@@ -4,6 +4,9 @@ on:
   push:
     tags: [ "v*" ]
 
+permissions:
+  contents: write
+
 jobs:
   build-release:
     runs-on: ubuntu-latest
@@ -20,9 +23,6 @@ jobs:
 
     - name: Set up Python
       run: uv python install 3.12
-
-    - name: Install build tooling
-      run: uv pip install build
 
     - name: Extract version from pyproject.toml
       id: extract_version
@@ -43,7 +43,7 @@ jobs:
         fi
 
     - name: Build distributions (sdist and wheel)
-      run: uv run python -m build
+      run: uv run --with build python -m build
 
     - name: Create GitHub Release and upload artifacts
       uses: softprops/action-gh-release@v2
