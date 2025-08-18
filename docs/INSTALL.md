@@ -7,8 +7,6 @@ InfOCF uses modern Python package management with `pyproject.toml` and supports 
 - **Python 3.11 or higher** is required
 - We recommend using **[uv](https://docs.astral.sh/uv/)** for the fastest and most reliable package management
 
-<!-- Moved venv note below uv section to reduce cognitive load when skimming -->
-
 ## Method 1: Using uv (Recommended)
 
 [uv](https://docs.astral.sh/uv/) is a fast Python package and project manager that provides the best experience for InfOCF development.
@@ -76,17 +74,6 @@ source .venv/bin/activate
 infocf --system-check
 ```
 
-### Virtual environment for pip installs (recommended)
-
-If you use `pip` directly (Methods 2 and 3), create and activate a virtual environment first:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate   # Linux/macOS
-# or
-.venv\Scripts\activate     # Windows
-```
-
 ## Method 2: Using pip and venv
 
 If you prefer the traditional pip approach:
@@ -122,6 +109,8 @@ pip install -e ".[dev,solvers,testing,docs]"
 Use prebuilt wheels attached to GitHub Releases (no local build needed).
 
 Replace the version in the URL with the latest tag (for example `v2.1.1a0`).
+
+Virtual environment usage is recommend for pip install (see Method 2).
 
 ```bash
 # Install with optional solver extras (recommended)
