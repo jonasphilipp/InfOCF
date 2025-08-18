@@ -117,6 +117,34 @@ cd InfOCF
 nix develop
 ```
 
+## Method 4: Install from GitHub Release wheel
+
+Use prebuilt wheels attached to GitHub Releases (no local build needed).
+
+Replace the version in the URL with the latest tag (for example `v2.1.1a0`).
+
+```bash
+# Install with optional solver extras (recommended)
+pip install 'infocf[solvers] @ https://github.com/jonasphilipp/InfOCF/releases/download/v2.1.1a0/infocf-2.1.1a0-py3-none-any.whl'
+
+# Or install the core package only
+pip install https://github.com/jonasphilipp/InfOCF/releases/download/v2.1.1a0/infocf-2.1.1a0-py3-none-any.whl
+
+# Global CLI via pipx
+pipx install 'infocf[solvers] @ https://github.com/jonasphilipp/InfOCF/releases/download/v2.1.1a0/infocf-2.1.1a0-py3-none-any.whl'
+```
+
+### Verify (wheel install)
+
+```bash
+# CLI
+infocf --version
+infocf --system-check
+
+# Python import
+python -c "import infocf; print(infocf.__version__)"
+```
+
 ## Verifying Installation
 
 After installation, verify that everything works correctly:
