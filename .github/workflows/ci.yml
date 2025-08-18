@@ -37,6 +37,27 @@ jobs:
         source .venv/bin/activate
         uv pip install -e ".[dev,testing]"
 
+    - name: Extract project version from pyproject.toml
+      id: extract_version
+      run: |
+        python - <<'PY' > .version
+        import tomllib
+        print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])
+        PY
+        echo "version=$(cat .version)" >> $GITHUB_OUTPUT
+
+    - name: Validate installed package version matches pyproject
+      run: |
+        source .venv/bin/activate
+        PY_VER="${{ steps.extract_version.outputs.version }}"
+        python - <<PY
+        import infocf, sys
+        expected = "${PY_VER}"
+        actual = infocf.__version__
+        print(f"pyproject={expected}, package={actual}")
+        sys.exit(0 if actual == expected else 1)
+        PY
+
     - name: Run Ruff linting
       run: |
         source .venv/bin/activate
