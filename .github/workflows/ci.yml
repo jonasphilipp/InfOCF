@@ -226,3 +226,90 @@ jobs:
         else
           echo "❌ Some CI checks failed. Please review the results above." >> $GITHUB_STEP_SUMMARY
         fi
+
+  # Job 5: Auto-tag after CI success (on push only)
+  auto-tag-after-ci:
+    needs: [code-quality, core-tests, installation-validation]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Extract version from pyproject.toml
+        id: extract_version
+        run: |
+          python - <<'PY' > .version
+          import tomllib
+          print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])
+          PY
+          echo "version=$(cat .version)" >> $GITHUB_OUTPUT
+
+      - name: Detect pre-release flag from version
+        id: flags
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          echo "Detected version: $VERSION"
+          if echo "$VERSION" | grep -Eq '(a|b|rc|dev)[0-9]+'; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Gate by branch and version type
+        id: gate
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          PRERELEASE="${{ steps.flags.outputs.prerelease }}"
+          echo "Branch: $BRANCH / Pre-release: $PRERELEASE"
+          SHOULD="false"
+          if [ "$BRANCH" = "main" ]; then
+            SHOULD="true"
+          fi
+          if [ "$BRANCH" = "feature/ocf" ] && [ "$PRERELEASE" = "true" ]; then
+            SHOULD="true"
+          fi
+          echo "should_tag=$SHOULD" >> $GITHUB_OUTPUT
+
+      - name: Determine tag name and check existence
+        id: tag_check
+        run: |
+          TAG="v${{ steps.extract_version.outputs.version }}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          git fetch --tags --quiet
+          if git tag -l | grep -qx "$TAG"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            if git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
+              echo "exists=true" >> $GITHUB_OUTPUT
+            else
+              echo "exists=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Create and push tag
+        if: steps.gate.outputs.should_tag == 'true' && steps.tag_check.outputs.exists == 'false'
+        run: |
+          TAG="${{ steps.tag_check.outputs.tag }}"
+          echo "Creating and pushing tag: $TAG"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "${{ steps.flags.outputs.prerelease }}" = "true" ]; then
+            MSG="pre-release: $TAG"
+          else
+            MSG="release: $TAG"
+          fi
+          git tag -a "$TAG" -m "$MSG"
+          git push origin "$TAG"
