@@ -42,6 +42,18 @@ jobs:
           exit 1
         fi
 
+    - name: Detect pre-release flag from version
+      id: flags
+      run: |
+        VERSION="${{ steps.extract_version.outputs.version }}"
+        echo "Detected version: $VERSION"
+        # Treat a*, b*, rc*, and dev* as pre-releases (PEP 440)
+        if echo "$VERSION" | grep -Eq '(^|[^0-9])(a|b|rc|dev)[0-9]+'; then
+          echo "prerelease=true" >> $GITHUB_OUTPUT
+        else
+          echo "prerelease=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Build distributions (sdist and wheel)
       run: uv run --with build python -m build
 
@@ -50,5 +62,6 @@ jobs:
       with:
         files: dist/*
         name: infocf v${{ steps.extract_version.outputs.version }}
+        prerelease: ${{ steps.flags.outputs.prerelease == 'true' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

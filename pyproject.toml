@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "infocf"
-version = "2.1.1a1"
+version = "2.1.1a2"
 description = "InfOCF - Reasoning With Conditional Belief Bases: A library for non-monotonic inference operators"
 readme = "README.md"
 license = {text = "MIT"}
