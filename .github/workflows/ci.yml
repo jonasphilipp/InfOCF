@@ -313,3 +313,19 @@ jobs:
           fi
           git tag -a "$TAG" -m "$MSG"
           git push origin "$TAG"
+
+      - name: Build distributions (sdist and wheel)
+        if: steps.gate.outputs.should_tag == 'true'
+        run: |
+          uv run --with build python -m build
+
+      - name: Create GitHub Release and upload artifacts
+        if: steps.gate.outputs.should_tag == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          tag_name: ${{ steps.tag_check.outputs.tag }}
+          name: infocf ${{ steps.tag_check.outputs.tag }}
+          prerelease: ${{ steps.flags.outputs.prerelease == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
