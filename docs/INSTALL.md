@@ -44,13 +44,13 @@ source .venv/bin/activate  # On Linux/macOS
 
 ### Install Additional Dependencies (Optional)
 
-InfOCF offers several optional dependency groups:
+InfOCF offers several optional dependency groups. The core package works out of the box; use extras only if you need them. Note: the python-sat pblib extra is installed automatically on non-Windows and skipped on Windows.
 
 ```bash
 # Install development tools (linting, formatting, testing)
 uv sync --extra dev
 
-# Install additional SAT/SMT solvers
+# Install additional SAT/SMT solvers (optional, only if you need extra backends)
 uv sync --extra solvers
 
 # Install documentation tools
@@ -100,8 +100,11 @@ venv\Scripts\activate     # On Windows
 # Install in development mode with core dependencies
 pip install -e .
 
-# Install with optional dependencies
-pip install -e ".[dev,solvers,testing,docs]"
+# Install with optional dependencies (choose as needed)
+pip install -e ".[dev,testing,docs]"
+
+# Install solver extras only if you need additional backends
+pip install -e ".[solvers]"
 ```
 
 ## Method 3: Install from GitHub Release wheel
@@ -113,13 +116,16 @@ Replace the version in the URL with the latest tag (for example `v2.1.1a0`).
 Virtual environment usage is recommend for pip install (see Method 2).
 
 ```bash
-# Install with optional solver extras (recommended)
-pip install 'infocf[solvers] @ https://github.com/jonasphilipp/InfOCF/releases/download/v2.1.1a0/infocf-2.1.1a0-py3-none-any.whl'
-
-# Or install the core package only
+# Install the core package (default)
 pip install https://github.com/jonasphilipp/InfOCF/releases/download/v2.1.1a0/infocf-2.1.1a0-py3-none-any.whl
 
-# Global CLI via pipx
+# Optionally install with solver extras if you need additional solvers
+pip install 'infocf[solvers] @ https://github.com/jonasphilipp/InfOCF/releases/download/v2.1.1a0/infocf-2.1.1a0-py3-none-any.whl'
+
+# Global CLI via pipx (core)
+pipx install https://github.com/jonasphilipp/InfOCF/releases/download/v2.1.1a0/infocf-2.1.1a0-py3-none-any.whl
+
+# Global CLI via pipx with optional solver extras
 pipx install 'infocf[solvers] @ https://github.com/jonasphilipp/InfOCF/releases/download/v2.1.1a0/infocf-2.1.1a0-py3-none-any.whl'
 ```
 
@@ -181,14 +187,6 @@ This includes tools for:
 - Pre-commit hooks
 
 ## Troubleshooting
-
-### Missing SAT/SMT Solvers
-
-If you encounter solver-related issues, install additional solvers:
-
-```bash
-uv sync --extra solvers
-```
 
 ### Python Version Issues
 
