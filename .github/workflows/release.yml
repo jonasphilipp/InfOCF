@@ -1,8 +1,10 @@
 name: Build and Release Wheels
 
 on:
+  # Primary trigger: a tag push
   push:
     tags: [ "v*" ]
+  # Secondary trigger: when auto-tag completes (in case tag push was implicit)
   workflow_run:
     workflows: [ "Auto Tag From pyproject Version" ]
     types: [ completed ]
@@ -18,6 +20,11 @@ permissions:
 
 jobs:
   build-release:
+    # Ensure we only publish if CI for that commit succeeded
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     name: Build sdist and wheel, attach to GitHub Release
 

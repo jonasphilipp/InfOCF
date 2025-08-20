@@ -1,8 +1,11 @@
 name: Auto Tag From pyproject Version
 
 on:
-  push:
-    branches: [ "main", "feature/ocf" ]
+  # Run after CI completes to ensure tests passed
+  workflow_run:
+    workflows: [ "InfOCF CI" ]
+    types: [ completed ]
+  # Manual override/testing
   workflow_dispatch:
 
 permissions:
@@ -10,12 +13,18 @@ permissions:
 
 jobs:
   auto-tag:
+    # Only proceed automatically when CI succeeded; always allow manual runs
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    env:
+      BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.ref_name || github.event.workflow_run.head_branch }}
+      SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # fetch tags and full history
+          ref: ${{ env.SHA }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
@@ -50,7 +59,7 @@ jobs:
       - name: Gate tagging by branch and version type
         id: gate
         run: |
-          BRANCH="${GITHUB_REF_NAME}"
+          BRANCH="${BRANCH}"
           PRERELEASE="${{ steps.flags.outputs.prerelease }}"
           echo "Branch: $BRANCH / Pre-release: $PRERELEASE"
           SHOULD="false"
@@ -94,22 +103,6 @@ jobs:
           fi
           git tag -a "$TAG" -m "$MSG"
           git push origin "$TAG"
-
-      - name: Build distributions (sdist and wheel)
-        if: steps.tag_check.outputs.exists == 'false' && steps.gate.outputs.should_tag == 'true'
-        run: |
-          uv run --with build python -m build
-
-      - name: Create GitHub Release and upload artifacts
-        if: steps.tag_check.outputs.exists == 'false' && steps.gate.outputs.should_tag == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          tag_name: ${{ steps.tag_check.outputs.tag }}
-          name: infocf ${{ steps.tag_check.outputs.tag }}
-          prerelease: ${{ steps.flags.outputs.prerelease == 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Skip notice
         if: steps.tag_check.outputs.exists == 'true' || steps.gate.outputs.should_tag != 'true'
