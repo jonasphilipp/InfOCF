@@ -1,0 +1,54 @@
+name: Update INSTALL.md Version References
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  bump-install-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine default branch
+        id: repo
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const {data} = await github.rest.repos.get({owner, repo});
+            core.setOutput('default_branch', data.default_branch);
+
+      - name: Checkout default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.repo.outputs.default_branch }}
+          fetch-depth: 0
+
+      - name: Update version references in docs/INSTALL.md
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          VER="${TAG#v}"
+          FILE="docs/INSTALL.md"
+          echo "Updating $FILE to tag=$TAG ver=$VER"
+
+          # Update example tag text like: for example `v2.1.1a0`
+          sed -i -E "s/for example `v[0-9A-Za-z\.-]+`/for example `${TAG}`/g" "$FILE"
+
+          # Update GitHub release wheel URLs to the new tag and wheel filename
+          # Matches both pip and pipx lines (core and [solvers])
+          sed -i -E "s|(releases/download/)v[0-9A-Za-z\.-]+/(infocf-)[0-9A-Za-z\.-]+(-py3-none-any\.whl)|\1${TAG}/\2${VER}\3|g" "$FILE"
+
+          if git diff --quiet -- "$FILE"; then
+            echo "No changes needed in $FILE"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$FILE"
+          git commit -m "docs: update INSTALL.md to ${TAG} [skip ci]"
+          git push
