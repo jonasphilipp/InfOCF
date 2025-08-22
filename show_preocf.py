@@ -29,8 +29,7 @@ This showcase demonstrates all these features using the classic birds/penguins e
 
 import os
 
-from pysmt.shortcuts import And, Not, Symbol
-from pysmt.typing import BOOL
+from pysmt.shortcuts import And
 
 from inference.belief_base import BeliefBase
 from inference.conditional import Conditional
@@ -640,20 +639,12 @@ for world, rank in custom_preocf.ranks.items():
     world_desc = custom_preocf.bv2strtuple(world)
     print(f"  World {world} {world_desc}: Rank = {rank}")
 
-# Create symbols for checking conditional acceptance with custom PreOCF
-a = Symbol("a", BOOL)
-b = Symbol("b", BOOL)
+from parser.Wrappers import parse_queries as parse_queries_custom
 
 # Test acceptance of conditionals in our custom OCF
 print("\nConditional acceptance in custom OCF:")
-custom_conditionals = [
-    Conditional(b, a, "(b|a)"),
-    Conditional(b, Not(a), "(b|!a)"),
-    Conditional(Not(b), a, "(!b|a)"),
-    Conditional(Not(b), Not(a), "(!b|!a)"),
-]
-
-for cond in custom_conditionals:
+custom_queries = parse_queries_custom("(b|a),(b|!a),(!b|a),(!b|!a)")
+for cond in custom_queries.conditionals.values():
     accepted = custom_preocf.conditional_acceptance(cond)
     print(f"  {cond}: {'Accepted' if accepted else 'Rejected'}")
 
@@ -712,35 +703,66 @@ print(
 )
 
 
-# Facts Application (apply_facts / with_facts)
-print("\n=== Facts Application (apply_facts / with_facts) ===")
+# Facts Application (conditionalization-based)
+print("\n=== Facts Application (conditionalization-based) ===")
 
-# Non-destructive filtering using with_facts and a dict of assignments
-print("Using with_facts (non-destructive) with facts: {'b': 1, 'p': 0}")
-filtered_preocf = preocf_birds.with_facts({"b": 1, "p": 0})
+# Non-destructive filtering by building a formula and constructing a new PreOCF
+print("Using conditionalization (non-destructive) with facts: {'b': 1, 'p': 0}")
+facts_formula_np = parse_formula("b,!p")
+filtered_ranks = preocf_birds.compute_conditionalization(facts_formula_np)
+filtered_preocf = PreOCF.init_custom(filtered_ranks, belief_base_birds)
 print(
     f"Original worlds: {len(preocf_birds.ranks)} | Filtered worlds: {len(filtered_preocf.ranks)}"
 )
 
-# Ensure ranks can still be computed on the restricted instance
+# Ensure ranks exist and preview a few entries
 filtered_preocf.compute_all_ranks()
 sample = list(filtered_preocf.ranks.items())[:3]
 for world, rank in sample:
     print(f"  world {world} {filtered_preocf.bv2strtuple(world)} -> rank {rank}")
 
-# In-place filtering using apply_facts with a pysmt formula
-print("\nUsing apply_facts (in-place) with formula: b & w")
-facts_formula = And([Symbol("b", BOOL), Symbol("w", BOOL)])
-
-# Work on a clone to keep original demo state unchanged
-preocf_clone = preocf_birds.clone()
-print(f"Clone before: {len(preocf_clone.ranks)} worlds")
-preocf_clone.apply_facts(facts_formula)
-print(f"Clone after:  {len(preocf_clone.ranks)} worlds")
-preocf_clone.compute_all_ranks()
-sample2 = list(preocf_clone.ranks.items())[:3]
+# Demonstrate filtering with another formula (no in-place mutation)
+print("\nUsing conditionalization with formula: b & w")
+facts_formula = parse_formula("b,w")
+print(f"Before: {len(preocf_birds.ranks)} worlds")
+filtered_ranks_2 = preocf_birds.compute_conditionalization(facts_formula)
+filtered_preocf_2 = PreOCF.init_custom(filtered_ranks_2, belief_base_birds)
+print(f"After:  {len(filtered_preocf_2.ranks)} worlds")
+filtered_preocf_2.compute_all_ranks()
+sample2 = list(filtered_preocf_2.ranks.items())[:3]
 for world, rank in sample2:
-    print(f"  world {world} {preocf_clone.bv2strtuple(world)} -> rank {rank}")
+    print(f"  world {world} {filtered_preocf_2.bv2strtuple(world)} -> rank {rank}")
+
+
+print("\n=== System Z with Facts (weak consistency) ===")
+print(
+    "Enforcing facts: {'b': 1, 'p': 0} via (Bottom | !fact) conditionals in last layer"
+)
+try:
+    sz_with_facts = PreOCF.init_system_z(belief_base_birds, facts={"b": 1, "p": 0})
+    # Show partition sizes and last layer contents (should include the fact conditionals)
+    part_sizes = [len(layer) for layer in sz_with_facts._z_partition]
+    print("Partition layer sizes:", part_sizes)
+    last_layer = sz_with_facts._z_partition[-1] if sz_with_facts._z_partition else []
+    preview = ", ".join(str(c) for c in last_layer[: min(3, len(last_layer))])
+    print("Last layer preview:", preview)
+
+    # Optional: show that violating worlds are penalized
+    sz_with_facts.compute_all_ranks()
+    # Find one world that violates b=1 or p=0, and one that satisfies both
+    violating = next(
+        (w for w in sz_with_facts.ranks if w[0] == "0" or w[1] == "1"), None
+    )
+    satisfying = next(
+        (w for w in sz_with_facts.ranks if w[0] == "1" and w[1] == "0"), None
+    )
+    if violating and satisfying:
+        print(
+            f"satisfying world {satisfying} rank={sz_with_facts.ranks[satisfying]} |"
+            f" violating world {violating} rank={sz_with_facts.ranks[violating]}"
+        )
+except ValueError as e:
+    print("Facts inconsistent:", e)
 
 
 ### Show c-revision ###
@@ -893,10 +915,8 @@ print()
 print("=== Fixed Gamma Showcase ===")
 print("Demonstrating how to add a new revision conditional and fix its gamma value.")
 
-# Create a simple new revision conditional over existing birds signature (e.g., (f|p))
-f_sym = Symbol("f", BOOL)
-p_sym = Symbol("p", BOOL)
-new_cond = Conditional(f_sym, p_sym, "(f|p)")
+# Create a simple new revision conditional over existing birds signature via parser (e.g., (f|p))
+new_cond = list(parse_queries("(f|p)").conditionals.values())[0]
 new_cond.index = len(revision_conditionals) + 1
 
 extended_revision_conditionals = revision_conditionals + [new_cond]
@@ -946,27 +966,16 @@ preocf_demo = PreOCF.init_custom(
 )
 
 # Base conditionals
-from pysmt.shortcuts import Not, Symbol
-from pysmt.typing import BOOL
+from parser.Wrappers import parse_queries as pq_inc
 
-a = Symbol("a", BOOL)
-b = Symbol("b", BOOL)
-c = Symbol("c", BOOL)
-base_conds = []
-tmp = Conditional(b, a, "(b|a)")
-tmp.index = 1
-base_conds.append(tmp)
-tmp = Conditional(Not(b), a, "(!b|a)")
-tmp.index = 2
-base_conds.append(tmp)
+base_conds = list(pq_inc("(b|a),(!b|a)").conditionals.values())
+add_conds = list(pq_inc("(c|a),(!c|b)").conditionals.values())
 
-add_conds = []
-tmp = Conditional(c, a, "(c|a)")
-tmp.index = 3
-add_conds.append(tmp)
-tmp = Conditional(Not(c), b, "(!c|b)")
-tmp.index = 4
-add_conds.append(tmp)
+# Ensure each conditional carries a unique index as required by c-revision APIs
+for i, cond in enumerate(base_conds, start=1):
+    cond.index = i
+for j, cond in enumerate(add_conds, start=len(base_conds) + 1):
+    cond.index = j
 
 import time
 

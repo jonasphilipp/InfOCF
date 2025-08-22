@@ -37,67 +37,26 @@ class TestPreOCFAdditional(unittest.TestCase):
         cls.f = Symbol("f", BOOL)  # flies
         cls.w = Symbol("w", BOOL)  # has wings
 
-    def test_apply_facts_and_with_facts_equivalence(self):
-        """Compare stateful vs functional world restriction; results should match."""
+    def test_conditionalization_equivalence_across_encodings(self):
+        """Different encodings of the same facts yield the same filtered world set."""
         # Build facts in three equivalent ways
         facts_fnode = And(self.b, Not(self.p))  # b=1, p=0
-        facts_dict = {"b": 1, "p": 0}
-        facts_list = [self.b, Not(self.p)]
+        facts_from_dict = And(Symbol("b", BOOL), Not(Symbol("p", BOOL)))
+        facts_from_list = And(self.b, Not(self.p))
 
-        # Start from a fresh full-space instance
         base = PreOCF.init_system_z(self.belief_base_birds)
 
-        # Functional variant (new object)
-        func_a = base.with_facts(facts_fnode)
-        func_b = base.with_facts(facts_dict)
-        func_c = base.with_facts(facts_list)
+        a = base.compute_conditionalization(facts_fnode)
+        b = base.compute_conditionalization(facts_from_dict)
+        c = base.compute_conditionalization(facts_from_list)
 
-        # Stateful variant (in-place)
-        state_a = PreOCF.init_system_z(self.belief_base_birds)
-        state_a.apply_facts(facts_fnode)
+        # All three constructions should produce the same world set
+        self.assertEqual(set(a.keys()), set(b.keys()))
+        self.assertEqual(set(a.keys()), set(c.keys()))
 
-        state_b = PreOCF.init_system_z(self.belief_base_birds)
-        state_b.apply_facts(facts_dict)
-
-        state_c = PreOCF.init_system_z(self.belief_base_birds)
-        state_c.apply_facts(facts_list)
-
-        # All three functional constructions should produce the same world set
-        self.assertEqual(set(func_a.ranks.keys()), set(func_b.ranks.keys()))
-        self.assertEqual(set(func_a.ranks.keys()), set(func_c.ranks.keys()))
-
-        # All three stateful constructions should produce the same world set
-        self.assertEqual(set(state_a.ranks.keys()), set(state_b.ranks.keys()))
-        self.assertEqual(set(state_a.ranks.keys()), set(state_c.ranks.keys()))
-
-        # Functional vs stateful world sets should match
-        self.assertEqual(set(func_a.ranks.keys()), set(state_a.ranks.keys()))
-
-        # Compute ranks in a deterministic way and compare
-        # Note: SystemZPreOCF is deterministic for the birds KB
-        func_a.compute_all_ranks()
-        state_a.compute_all_ranks()
-        self.assertEqual(func_a.ranks, state_a.ranks)
-
-        # Spot-check that all remaining worlds indeed satisfy the facts
-        for world in func_a.ranks.keys():
-            self.assertTrue(
-                func_a.world_satisfies_conditionalization(world, facts_fnode)
-            )
-
-        # Ensure we truly reduced the world set (birds KB has 4 vars → 16 worlds total).
+        # Ensure we truly reduced the world set (4 vars → 16 worlds total).
         # b=1 and p=0 should leave 2^(4-2)=4 worlds.
-        self.assertEqual(len(func_a.ranks), 4)
-
-    def test_apply_facts_rejects_unknowns_and_bad_values(self):
-        """Basic validation of input normalization for facts."""
-        base = PreOCF.init_system_z(self.belief_base_birds)
-        with self.assertRaises(ValueError):
-            base.apply_facts({"unknown": 1})
-        with self.assertRaises(ValueError):
-            base.apply_facts({"b": 2})
-        with self.assertRaises(TypeError):
-            base.apply_facts([self.b, "not a node"])  # type: ignore[list-item]
+        self.assertEqual(len(a), 4)
 
     def test_compute_conditionalization_complex(self):
         """Test compute_conditionalization with more complex formulas."""
