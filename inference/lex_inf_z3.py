@@ -2,7 +2,7 @@ import logging
 from time import perf_counter
 from warnings import warn
 
-from z3 import Optimize, Or, is_true, unsat, z3
+from z3 import Optimize, Or, Solver, is_true, unsat, z3
 
 from inference.conditional import Conditional
 from inference.conditional_z3 import Conditional_z3
@@ -35,7 +35,9 @@ class LexInfZ3(Inference):
 
     def _preprocess_belief_base(self, weakly: bool) -> None:
         partition, _ = consistency(
-            self.epistemic_state["belief_base"], self.epistemic_state["smt_solver"]
+            self.epistemic_state["belief_base"],
+            self.epistemic_state["smt_solver"],
+            weakly=weakly,
         )
         if not partition:
             warn("belief base inconsistent")
@@ -76,9 +78,29 @@ class LexInfZ3(Inference):
         opt_f.set(
             timeout=int(1000 * (self.epistemic_state["kill_time"] - perf_counter()))
         )
-        result = self._rec_inference(
-            opt_v, opt_f, len(self.epistemic_state["partition"]) - 1, query_z3
-        )
+        if not weakly:
+            result = self._rec_inference(
+                opt_v, opt_f, len(self.epistemic_state["partition"]) - 1, query_z3
+            )
+        else:
+            # Vacuity checks against last-layer constraints
+            taut_solver = Solver()
+            taut_solver.add(query_z3.antecedence)
+            for c in self.epistemic_state["partition"][-1]:
+                taut_solver.add(c.make_not_A_or_B())
+            if taut_solver.check() == unsat:
+                return True
+
+            contra_solver = Solver()
+            contra_solver.add(query_z3.make_A_then_not_B())
+            for c in self.epistemic_state["partition"][-1]:
+                contra_solver.add(c.make_not_A_or_B())
+            if contra_solver.check() == unsat:
+                return True
+
+            result = self._rec_inference(
+                opt_v, opt_f, len(self.epistemic_state["partition"]) - 2, query_z3
+            )
         # self._inference_end()
         return result
 

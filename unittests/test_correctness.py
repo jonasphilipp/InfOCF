@@ -46,13 +46,38 @@ class InferenceCorrectnessTest(unittest.TestCase):
         cls.excluded_systems = []  # list any inference systems that should be excluded
 
         # Prefer a small curated CSV if available; fall back to the large one
+        env_size = os.environ.get("INFOCF_CORRECTNESS_SIZE", "").lower()
         small_csv = os.path.join(
             os.path.dirname(__file__), "example_testing_results_small.csv"
         )
-        if os.path.isfile(small_csv):
-            cls.test_sets = ["example_testing_results_small.csv"]
-        else:
+        large_csv = os.path.join(
+            os.path.dirname(__file__), "example_testing_results.csv"
+        )
+
+        if env_size in {"large", "big"}:
             cls.test_sets = ["example_testing_results.csv"]
+        elif env_size in {"small", "tiny"}:
+            # If explicitly small is requested but the file is missing, fall back to large
+            cls.test_sets = (
+                ["example_testing_results_small.csv"]
+                if os.path.isfile(small_csv)
+                else ["example_testing_results.csv"]
+            )
+        elif env_size in {"both", "all"}:
+            # Run both when available, small first for quicker feedback
+            sets = []
+            if os.path.isfile(small_csv):
+                sets.append("example_testing_results_small.csv")
+            if os.path.isfile(large_csv):
+                sets.append("example_testing_results.csv")
+            # If neither exists (unlikely), default to large name and let the test assert existence later
+            cls.test_sets = sets or ["example_testing_results.csv"]
+        else:
+            # Default behavior preserved: prefer small if present, otherwise large
+            if os.path.isfile(small_csv):
+                cls.test_sets = ["example_testing_results_small.csv"]
+            else:
+                cls.test_sets = ["example_testing_results.csv"]
         cls.SKIP_CONDITIONS = ["inconsistent", "empty"]
 
         # Timeouts in seconds (0 means no timeout)

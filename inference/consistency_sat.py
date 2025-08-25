@@ -77,19 +77,25 @@ def consistency(ckb, solver="z3", weakly=False):
                     C.append(c)
                 s.pop()
             if R == []:
-                # we found no parition, the ckb is inconsistent
-                # Maybe throw an error instead?
+                # No tolerated rules at this level.
+                # Distinguish between: (a) knowledge itself inconsistent → weakly-inconsistent
+                # and (b) knowledge consistent → last layer for weakly-consistency.
                 if logger.isEnabledFor(logging.DEBUG):
-                    logger.debug("calls: %s, levels: %s, status: False", calls, levels)
-                # if weakly flag set and returend list hast non-empty list as last element,
-                # then belief base is only weakly consistent
+                    logger.debug(
+                        "calls: %s, levels: %s, status: no tolerated rules",
+                        calls,
+                        levels,
+                    )
                 if weakly:
-                    if len(partition) == 0:
+                    knowledge_sat = s.solve()
+                    if not knowledge_sat:
+                        # Even the A→B knowledge is inconsistent → genuinely inconsistent
                         return False, ([len(C)], calls, levels)
-                    else:
-                        partition.append(C)
-                        return partition, ([len(p) for p in partition], calls, levels)
+                    # Knowledge consistent: treat remaining conditionals as last weak layer
+                    partition.append(C)
+                    return partition, ([len(p) for p in partition], calls, levels)
                 else:
+                    # Standard mode: inconsistent
                     return False, ([len(p) for p in partition], calls, levels)
             partition.append(R)
             conditionals = C
@@ -139,11 +145,11 @@ def consistency_indices(ckb, solver, weakly=False):
                 s.pop()
             if R == []:
                 if weakly:
-                    if len(partition) == 0:
+                    knowledge_sat = s.solve()
+                    if not knowledge_sat:
                         return False, ([len(C)], calls, levels)
-                    else:
-                        partition.append(C)
-                        return partition, ([len(p) for p in partition], calls, levels)
+                    partition.append(C)
+                    return partition, ([len(p) for p in partition], calls, levels)
                 else:
                     return False, ([len(p) for p in partition], calls, levels)
             partition.append(R)

@@ -9,6 +9,7 @@ from warnings import warn
 # Third-party
 # ---------------------------------------------------------------------------
 from pysat.formula import WCNF
+from pysmt.shortcuts import And, Not, Solver, is_unsat
 
 from inference.conditional import Conditional
 from inference.consistency_sat import consistency_indices
@@ -63,6 +64,15 @@ class LexInf(Inference):
     """
 
     def _inference(self, query: Conditional, weakly: bool) -> bool:
+        # In strict mode, allow standard vacuity short-cuts; in weakly mode we consider
+        # last-layer constraints, so skip the global short-cuts here.
+        if not weakly:
+            if is_unsat(query.antecedence) or is_unsat(
+                And(query.antecedence, Not(query.consequence))
+            ):
+                return True
+            if is_unsat(And(query.antecedence, query.consequence)):
+                return False
         # self._inference_start()
         # self._translation_start()
         tseitin_transformation = TseitinTransformation(self.epistemic_state)
@@ -78,6 +88,29 @@ class LexInf(Inference):
                 wcnf_v, wcnf_f, len(self.epistemic_state["partition"]) - 1
             )
         else:
+            # Vacuity checks using only last-layer constraints (align with System Z/W)
+            taut_solver = Solver(name=self.epistemic_state["smt_solver"])
+            taut_solver.add_assertion(query.antecedence)
+            for index in self.epistemic_state["partition"][-1]:
+                taut_solver.add_assertion(
+                    self.epistemic_state["belief_base"]
+                    .conditionals[index]
+                    .make_not_A_or_B()
+                )
+            if not taut_solver.solve():
+                return True
+
+            contra_solver = Solver(name=self.epistemic_state["smt_solver"])
+            contra_solver.add_assertion(query.make_A_then_not_B())
+            for index in self.epistemic_state["partition"][-1]:
+                contra_solver.add_assertion(
+                    self.epistemic_state["belief_base"]
+                    .conditionals[index]
+                    .make_not_A_or_B()
+                )
+            if not contra_solver.solve():
+                return True
+
             for index in self.epistemic_state["partition"][-1]:
                 [wcnf_v.append(c) for c in self.epistemic_state["nf_cnf_dict"][index]]
                 [wcnf_f.append(c) for c in self.epistemic_state["nf_cnf_dict"][index]]

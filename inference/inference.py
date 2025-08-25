@@ -60,7 +60,9 @@ class Inference(ABC):
         empty = len(self.epistemic_state["belief_base"].conditionals) == 0
         assert not empty, "belief base empty"
         cons, _ = consistency(
-            self.epistemic_state["belief_base"], self.epistemic_state["smt_solver"]
+            self.epistemic_state["belief_base"],
+            solver=self.epistemic_state["smt_solver"],
+            weakly=self.epistemic_state.get("weakly", False),
         )
         assert cons != False, "belief base inconsistent"
         if preprocessing_timeout:
@@ -302,9 +304,6 @@ class Inference(ABC):
         ):
             logger.debug("general_inference query selffullfilling")
             return True
-        elif is_unsat(And(query.antecedence, query.consequence)):
-            logger.debug("general_inference query inconsistent")
-            return False
         else:
             return self._inference(query, weakly)
 

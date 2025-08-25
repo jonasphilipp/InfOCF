@@ -68,9 +68,12 @@ class SystemZ(Inference):
             taut_solver = Solver(name=self.epistemic_state["smt_solver"])
             taut_solver.add_assertion(query.antecedence)
             for c in self.epistemic_state["partition"][-1]:
-                taut_solver.add_assertion(Not(c.make_not_A_or_B()))
+                taut_solver.add_assertion(c.make_not_A_or_B())
             if not taut_solver.solve():
                 return True
+            for c in self.epistemic_state["partition"][-1]:
+                solver.add_assertion(c.make_not_A_or_B())
+                solver.push()
             result = self._rec_inference(
                 solver, len(self.epistemic_state["partition"]) - 2, query
             )  # type: ignore

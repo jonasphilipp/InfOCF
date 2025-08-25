@@ -8,7 +8,7 @@
 # ---------------------------------------------------------------------------
 
 from pysmt.shortcuts import Solver
-from z3 import And, Not
+from z3 import And, Not, Or
 
 # ---------------------------------------------------------------------------
 # Project modules
@@ -31,6 +31,9 @@ class Conditional_z3(Conditional):
 
     def make_A_then_not_B(self):
         return And(self.antecedence, Not(self.consequence))
+
+    def make_not_A_or_B(self):
+        return Or(Not(self.antecedence), self.consequence)
 
     @classmethod
     def translate_from_existing(cls, existing):
