@@ -587,7 +587,7 @@ wheels = [
 
 [[package]]
 name = "infocf"
-version = "2.1.1a9"
+version = "2.1.1a10"
 source = { editable = "." }
 dependencies = [
     { name = "antlr4-python3-runtime" },
