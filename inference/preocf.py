@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 
 from BitVector import BitVector
 from pysmt.fnode import FNode
-from pysmt.shortcuts import FALSE, Not, Solver, Symbol
+from pysmt.shortcuts import FALSE, Not, Solver, Symbol, get_free_variables
 from pysmt.typing import BOOL
 from z3 import Optimize, sat, z3
 
@@ -17,6 +17,7 @@ from inference.conditional import Conditional
 from inference.consistency_sat import consistency
 from inference.inference_operator import create_epistemic_state
 from infocf.log_setup import get_logger
+from parser.Wrappers import parse_formula
 
 # Create a logger object
 logger = get_logger(__name__)
@@ -241,7 +242,7 @@ class PreOCF(ABC):
         belief_base: BeliefBase,
         signature: list = None,
         metadata: dict[str, object] = None,
-        facts: dict[str, int | bool] | None = None,
+        facts: list[str | FNode] | None = None,
     ) -> "PreOCF":
         return SystemZPreOCF(belief_base, signature, metadata, facts=facts)
 
@@ -507,7 +508,7 @@ class SystemZPreOCF(PreOCF):
         signature: list = None,
         metadata: dict[str, object] = None,
         *,
-        facts: dict[str, int | bool] | None = None,
+        facts: list[str | FNode] | None = None,
     ):
         if signature is None:
             signature = belief_base.signature
@@ -517,27 +518,45 @@ class SystemZPreOCF(PreOCF):
         conditionals = belief_base.conditionals
         super().__init__(ranks, signature, conditionals, "system-z", metadata)
 
-        # If facts provided, augment the belief base with (Bottom | not fact) as weakly-placed constraints.
+        # If facts provided, augment the belief base with (Bottom | ¬φ) as weakly-placed constraints,
+        # where each φ is a formula asserted by the user (negate φ yourself to assert falsehood).
         if facts:
             # Validate variables and build additional fact conditionals
             fact_conditionals: dict[int, Conditional] = {}
             next_index = max(conditionals.keys(), default=0) + 1
-            for var_name, value in facts.items():
-                if var_name not in signature:
-                    raise ValueError(f"unknown variable in facts: {var_name}")
-                # Build (FALSE | ~var) for var==True; (Bottom | var) for var==False
-                if value in (1, True):
-                    antecedent = Not(Symbol(var_name, BOOL))
-                elif value in (0, False):
-                    antecedent = Symbol(var_name, BOOL)
+            for entry in facts:
+                # Parse entry to a pysmt formula (FNode)
+                if isinstance(entry, FNode):
+                    phi = entry
+                    display = str(phi)
+                elif isinstance(entry, str):
+                    phi = parse_formula(entry)
+                    display = entry
                 else:
-                    raise ValueError(
-                        f"invalid value for variable '{var_name}': {value} (expected 0/1 or bool)"
+                    raise TypeError(
+                        "facts entries must be formula strings or pysmt FNode objects"
                     )
+
+                # Validate variables used in the formula against the signature
+                free_vars = {v.symbol_name() for v in get_free_variables(phi)}
+                unknown_vars = free_vars.difference(set(signature))
+                if unknown_vars:
+                    raise ValueError(
+                        f"unknown variable(s) in facts formula: {sorted(unknown_vars)}"
+                    )
+
+                # Build (FALSE | ¬φ) to penalize ¬φ worlds, making φ preferred
+                antecedent = Not(phi)
+
+                # Pretty-print antecedent using project syntax: '|' -> ';', '&' -> ','
+                antecedent_str = str(antecedent)
+                antecedent_str = antecedent_str.replace(" | ", "; ")
+                antecedent_str = antecedent_str.replace(" & ", ", ")
+
                 fact_cond = Conditional(
                     consequence=FALSE(),
                     antecedence=antecedent,
-                    textRepresentation=f"(Bottom|{('!' + var_name) if value in (1, True) else var_name})",
+                    textRepresentation=f"(Bottom|{antecedent_str})",
                 )
                 fact_cond.index = next_index  # type: ignore[attr-defined]
                 fact_conditionals[next_index] = fact_cond

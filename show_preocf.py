@@ -29,7 +29,7 @@ This showcase demonstrates all these features using the classic birds/penguins e
 
 import os
 
-from pysmt.shortcuts import And
+from pysmt.shortcuts import And, Not
 
 from inference.belief_base import BeliefBase
 from inference.conditional import Conditional
@@ -703,63 +703,99 @@ print(
 )
 
 
-# Facts Application (conditionalization-based)
-print("\n=== Facts Application (conditionalization-based) ===")
-
-# Non-destructive filtering by building a formula and constructing a new PreOCF
-print("Using conditionalization (non-destructive) with facts: {'b': 1, 'p': 0}")
-facts_formula_np = parse_formula("b,!p")
-filtered_ranks = preocf_birds.compute_conditionalization(facts_formula_np)
-filtered_preocf = PreOCF.init_custom(filtered_ranks, belief_base_birds)
-print(
-    f"Original worlds: {len(preocf_birds.ranks)} | Filtered worlds: {len(filtered_preocf.ranks)}"
-)
-
-# Ensure ranks exist and preview a few entries
-filtered_preocf.compute_all_ranks()
-sample = list(filtered_preocf.ranks.items())[:3]
-for world, rank in sample:
-    print(f"  world {world} {filtered_preocf.bv2strtuple(world)} -> rank {rank}")
-
-# Demonstrate filtering with another formula (no in-place mutation)
-print("\nUsing conditionalization with formula: b & w")
-facts_formula = parse_formula("b,w")
-print(f"Before: {len(preocf_birds.ranks)} worlds")
-filtered_ranks_2 = preocf_birds.compute_conditionalization(facts_formula)
-filtered_preocf_2 = PreOCF.init_custom(filtered_ranks_2, belief_base_birds)
-print(f"After:  {len(filtered_preocf_2.ranks)} worlds")
-filtered_preocf_2.compute_all_ranks()
-sample2 = list(filtered_preocf_2.ranks.items())[:3]
-for world, rank in sample2:
-    print(f"  world {world} {filtered_preocf_2.bv2strtuple(world)} -> rank {rank}")
-
-
-print("\n=== System Z with Facts (weak consistency) ===")
-print(
-    "Enforcing facts: {'b': 1, 'p': 0} via (Bottom | !fact) conditionals in last layer"
-)
+print("\n=== System Z with Facts ===")
+print("Belief base (birds) recap:")
+print("  Signature:", belief_base_birds.signature)
+print("  Conditionals:")
+for idx, cond in belief_base_birds.conditionals.items():
+    print(f"    {idx}: {cond}")
 try:
-    sz_with_facts = PreOCF.init_system_z(belief_base_birds, facts={"b": 1, "p": 0})
-    # Show partition sizes and last layer contents (should include the fact conditionals)
-    part_sizes = [len(layer) for layer in sz_with_facts._z_partition]
+    # Example A: Atomic facts (baseline)
+    print("Example A: Atomic facts ['b', '!p']")
+    sz_atomic = PreOCF.init_system_z(belief_base_birds, facts=["b", "!p"])
+    print("Signature:", sz_atomic.signature)
+    part_sizes = [len(layer) for layer in sz_atomic._z_partition]
     print("Partition layer sizes:", part_sizes)
-    last_layer = sz_with_facts._z_partition[-1] if sz_with_facts._z_partition else []
-    preview = ", ".join(str(c) for c in last_layer[: min(3, len(last_layer))])
-    print("Last layer preview:", preview)
-
-    # Optional: show that violating worlds are penalized
-    sz_with_facts.compute_all_ranks()
-    # Find one world that violates b=1 or p=0, and one that satisfies both
-    violating = next(
-        (w for w in sz_with_facts.ranks if w[0] == "0" or w[1] == "1"), None
-    )
-    satisfying = next(
-        (w for w in sz_with_facts.ranks if w[0] == "1" and w[1] == "0"), None
-    )
-    if violating and satisfying:
+    print("All layers:")
+    for i, layer in enumerate(sz_atomic._z_partition):
+        print(f"  Layer {i}: " + ", ".join(str(c) for c in layer))
+    sz_atomic.compute_all_ranks()
+    formula_a = parse_formula("b,!p")
+    sat_ws_a = sz_atomic.filter_worlds_by_conditionalization(formula_a)
+    viol_ws_a = sz_atomic.filter_worlds_by_conditionalization(Not(formula_a))
+    sat_a = sat_ws_a[0] if sat_ws_a else None
+    viol_a = viol_ws_a[0] if viol_ws_a else None
+    if sat_a and viol_a:
         print(
-            f"satisfying world {satisfying} rank={sz_with_facts.ranks[satisfying]} |"
-            f" violating world {violating} rank={sz_with_facts.ranks[violating]}"
+            f"  satisfying world {sat_a} rank={sz_atomic.ranks[sat_a]} |"
+            f" violating world {viol_a} rank={sz_atomic.ranks[viol_a]}"
+        )
+    print()
+
+    # Example B: Conjunctive fact b and w set to True via 'b,w'
+    print("Example B: Conjunctive fact 'b,w' (require birds with wings)")
+    sz_conj = PreOCF.init_system_z(belief_base_birds, facts=["b,w"])
+    print("Signature:", sz_conj.signature)
+    part_sizes_c = [len(layer) for layer in sz_conj._z_partition]
+    print("Partition layer sizes:", part_sizes_c)
+    print("All layers:")
+    for i, layer in enumerate(sz_conj._z_partition):
+        print(f"  Layer {i}: " + ", ".join(str(c) for c in layer))
+    sz_conj.compute_all_ranks()
+    formula_b = parse_formula("b,w")
+    sat_ws_b = sz_conj.filter_worlds_by_conditionalization(formula_b)
+    viol_ws_b = sz_conj.filter_worlds_by_conditionalization(Not(formula_b))
+    sat_b = sat_ws_b[0] if sat_ws_b else None
+    viol_b = viol_ws_b[0] if viol_ws_b else None
+    if sat_b and viol_b:
+        print(
+            f"  satisfying world {sat_b} rank={sz_conj.ranks[sat_b]} |"
+            f" violating world {viol_b} rank={sz_conj.ranks[viol_b]}"
+        )
+    print()
+
+    # Example C: Disjunctive fact p or f set to False via '!(p;f)' (forbid p or f)
+    print("Example C: Disjunctive fact '!(p;f)' (forbid p or f)")
+    sz_disj = PreOCF.init_system_z(belief_base_birds, facts=["!(p;f)"])
+    print("Signature:", sz_disj.signature)
+    part_sizes_d = [len(layer) for layer in sz_disj._z_partition]
+    print("Partition layer sizes:", part_sizes_d)
+    print("All layers:")
+    for i, layer in enumerate(sz_disj._z_partition):
+        print(f"  Layer {i}: " + ", ".join(str(c) for c in layer))
+    sz_disj.compute_all_ranks()
+    formula_c = parse_formula("!(p;f)")
+    sat_ws_c = sz_disj.filter_worlds_by_conditionalization(formula_c)
+    viol_ws_c = sz_disj.filter_worlds_by_conditionalization(Not(formula_c))
+    sat_c = sat_ws_c[0] if sat_ws_c else None
+    viol_c = viol_ws_c[0] if viol_ws_c else None
+    if sat_c and viol_c:
+        print(
+            f"  satisfying world {sat_c} rank={sz_disj.ranks[sat_c]} |"
+            f" violating world {viol_c} rank={sz_disj.ranks[viol_c]}"
+        )
+    print()
+
+    # Example D: Combined complex facts using string and FNode keys
+    print("Example D: Combined facts ['b,f', '!(p;f)'] ")
+    facts_combined = ["b,f", "!(p;f)"]
+    sz_combo = PreOCF.init_system_z(belief_base_birds, facts=facts_combined)
+    print("Signature:", sz_combo.signature)
+    part_sizes_x = [len(layer) for layer in sz_combo._z_partition]
+    print("Partition layer sizes:", part_sizes_x)
+    print("All layers:")
+    for i, layer in enumerate(sz_combo._z_partition):
+        print(f"  Layer {i}: " + ", ".join(str(c) for c in layer))
+    sz_combo.compute_all_ranks()
+    formula_d = And(parse_formula("b,f"), parse_formula("!(p;f)"))
+    sat_ws_d = sz_combo.filter_worlds_by_conditionalization(formula_d)
+    viol_ws_d = sz_combo.filter_worlds_by_conditionalization(Not(formula_d))
+    sat_d = sat_ws_d[0] if sat_ws_d else None
+    viol_d = viol_ws_d[0] if viol_ws_d else None
+    if sat_d and viol_d:
+        print(
+            f"  satisfying world {sat_d} rank={sz_combo.ranks[sat_d]} |"
+            f" violating world {viol_d} rank={sz_combo.ranks[viol_d]}"
         )
 except ValueError as e:
     print("Facts inconsistent:", e)
