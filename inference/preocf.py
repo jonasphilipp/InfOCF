@@ -243,8 +243,12 @@ class PreOCF(ABC):
         signature: list = None,
         metadata: dict[str, object] = None,
         facts: list[str | FNode] | None = None,
+        *,
+        extended: bool | None = None,
     ) -> "PreOCF":
-        return SystemZPreOCF(belief_base, signature, metadata, facts=facts)
+        return SystemZPreOCF(
+            belief_base, signature, metadata, facts=facts, extended=extended
+        )
 
     @classmethod
     def init_random_min_c_rep(
@@ -509,6 +513,7 @@ class SystemZPreOCF(PreOCF):
         metadata: dict[str, object] = None,
         *,
         facts: list[str | FNode] | None = None,
+        extended: bool | None = None,
     ):
         if signature is None:
             signature = belief_base.signature
@@ -521,6 +526,15 @@ class SystemZPreOCF(PreOCF):
         # If facts provided, augment the belief base with (Bottom | ¬φ) as weakly-placed constraints,
         # where each φ is a formula asserted by the user (negate φ yourself to assert falsehood).
         if facts:
+            # Determine extended mode: infer True when unspecified, otherwise use the explicit value
+            computed_extended = extended if extended is not None else True
+            self.save_meta("z_extended_inferred_from_facts", extended is None)
+            self.save_meta("z_extended_user_explicit", extended is not None)
+            self.save_meta("z_facts_present", True)
+            if extended is False:
+                logger.warning(
+                    "Facts are intended for extended semantics; proceeding with extended=False as requested"
+                )
             # Validate variables and build additional fact conditionals
             fact_conditionals: dict[int, Conditional] = {}
             next_index = max(conditionals.keys(), default=0) + 1
@@ -570,16 +584,38 @@ class SystemZPreOCF(PreOCF):
             )
 
             # Compute partition with weakly=True; raise if inconsistent (False returned)
-            part, stats = consistency(augmented_bb, weakly=True)
+            part, stats = consistency(augmented_bb, weakly=computed_extended)
             if part is False:
                 raise ValueError(
                     "Provided facts are jointly inconsistent with each other or the base belief base"
                 )
             self._z_partition = part
-        else:
-            self._z_partition, _ = consistency(
-                BeliefBase(signature, conditionals, "z-partition")
+            # Record partition mode and stats for later consumers
+            self.save_meta("z_partition_extended", bool(computed_extended))
+            self.save_meta(
+                "z_partition_stats",
+                {"layers": stats[0], "calls": stats[1], "levels": stats[2]},
             )
+            self.save_meta("z_partition_source", "augmented_with_facts")
+        else:
+            # Determine extended mode: default to False when unspecified and no facts
+            computed_extended = extended if extended is not None else False
+            self.save_meta("z_extended_inferred_from_facts", False)
+            self.save_meta("z_extended_user_explicit", extended is not None)
+            self.save_meta("z_facts_present", False)
+            # Compute partition in base or extended mode depending on flag
+            part, stats = consistency(
+                BeliefBase(signature, conditionals, "z-partition"),
+                weakly=computed_extended,
+            )
+            self._z_partition = part
+            # Record partition mode and stats for later consumers
+            self.save_meta("z_partition_extended", bool(computed_extended))
+            self.save_meta(
+                "z_partition_stats",
+                {"layers": stats[0], "calls": stats[1], "levels": stats[2]},
+            )
+            self.save_meta("z_partition_source", "base")
 
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
         if force_calculation or self.ranks[world] is None:
@@ -600,6 +636,19 @@ class SystemZPreOCF(PreOCF):
                 return 0
             return self._rec_z_rank(solver, partition_index - 1)
         return partition_index + 1
+
+    # ------------------------------------------------------------------
+    # Public accessors for partition metadata
+    # ------------------------------------------------------------------
+    @property
+    def uses_extended_partition(self) -> bool:
+        """True if the System Z partition was computed with weakly=True (extended)."""
+        return bool(self.load_meta("z_partition_extended", False))
+
+    @property
+    def z_partition_stats(self) -> dict[str, int] | None:
+        """Return stats about the partitioning process (layers, calls, levels) if available."""
+        return self.load_meta("z_partition_stats", None)  # type: ignore[return-value]
 
 
 class RandomMinCRepPreOCF(PreOCF):
