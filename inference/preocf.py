@@ -650,6 +650,26 @@ class SystemZPreOCF(PreOCF):
         """Return stats about the partitioning process (layers, calls, levels) if available."""
         return self.load_meta("z_partition_stats", None)  # type: ignore[return-value]
 
+    @property
+    def has_infinity_partition(self) -> bool:
+        """True if an infinity (last) partition exists (i.e., extended System Z)."""
+        return self.uses_extended_partition
+
+    @property
+    def infinity_partition_index(self) -> int | None:
+        """Index of the infinity partition if present, otherwise None."""
+        if not self.has_infinity_partition:
+            return None
+        return len(self._z_partition) - 1
+
+    @property
+    def infinity_partition(self) -> list[Conditional] | None:
+        """Return the infinity partition (possibly empty) when extended is used; otherwise None."""
+        idx = self.infinity_partition_index
+        if idx is None:
+            return None
+        return self._z_partition[idx]
+
 
 class RandomMinCRepPreOCF(PreOCF):
     def __init__(

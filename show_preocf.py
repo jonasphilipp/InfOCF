@@ -717,8 +717,11 @@ try:
     part_sizes = [len(layer) for layer in sz_atomic._z_partition]
     print("Partition layer sizes:", part_sizes)
     print("All layers:")
+    is_ext = getattr(sz_atomic, "uses_extended_partition", False)
+    last_idx = len(sz_atomic._z_partition) - 1
     for i, layer in enumerate(sz_atomic._z_partition):
-        print(f"  Layer {i}: " + ", ".join(str(c) for c in layer))
+        label = " (∞)" if is_ext and i == last_idx else ""
+        print(f"  Layer {i}{label}: " + ", ".join(str(c) for c in layer))
     sz_atomic.compute_all_ranks()
     formula_a = parse_formula("b,!p")
     sat_ws_a = sz_atomic.filter_worlds_by_conditionalization(formula_a)
@@ -739,8 +742,11 @@ try:
     part_sizes_c = [len(layer) for layer in sz_conj._z_partition]
     print("Partition layer sizes:", part_sizes_c)
     print("All layers:")
+    is_ext = getattr(sz_conj, "uses_extended_partition", False)
+    last_idx = len(sz_conj._z_partition) - 1
     for i, layer in enumerate(sz_conj._z_partition):
-        print(f"  Layer {i}: " + ", ".join(str(c) for c in layer))
+        label = " (∞)" if is_ext and i == last_idx else ""
+        print(f"  Layer {i}{label}: " + ", ".join(str(c) for c in layer))
     sz_conj.compute_all_ranks()
     formula_b = parse_formula("b,w")
     sat_ws_b = sz_conj.filter_worlds_by_conditionalization(formula_b)
@@ -761,8 +767,11 @@ try:
     part_sizes_d = [len(layer) for layer in sz_disj._z_partition]
     print("Partition layer sizes:", part_sizes_d)
     print("All layers:")
+    is_ext = getattr(sz_disj, "uses_extended_partition", False)
+    last_idx = len(sz_disj._z_partition) - 1
     for i, layer in enumerate(sz_disj._z_partition):
-        print(f"  Layer {i}: " + ", ".join(str(c) for c in layer))
+        label = " (∞)" if is_ext and i == last_idx else ""
+        print(f"  Layer {i}{label}: " + ", ".join(str(c) for c in layer))
     sz_disj.compute_all_ranks()
     formula_c = parse_formula("!(p;f)")
     sat_ws_c = sz_disj.filter_worlds_by_conditionalization(formula_c)
@@ -784,8 +793,11 @@ try:
     part_sizes_x = [len(layer) for layer in sz_combo._z_partition]
     print("Partition layer sizes:", part_sizes_x)
     print("All layers:")
+    is_ext = getattr(sz_combo, "uses_extended_partition", False)
+    last_idx = len(sz_combo._z_partition) - 1
     for i, layer in enumerate(sz_combo._z_partition):
-        print(f"  Layer {i}: " + ", ".join(str(c) for c in layer))
+        label = " (∞)" if is_ext and i == last_idx else ""
+        print(f"  Layer {i}{label}: " + ", ".join(str(c) for c in layer))
     sz_combo.compute_all_ranks()
     formula_d = And(parse_formula("b,f"), parse_formula("!(p;f)"))
     sat_ws_d = sz_combo.filter_worlds_by_conditionalization(formula_d)
