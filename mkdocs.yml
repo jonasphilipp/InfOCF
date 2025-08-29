@@ -1,0 +1,45 @@
+site_name: InfOCF
+site_description: Reasoning With Conditional Belief Bases
+site_url: https://infocf.local
+repo_url: https://github.com/jonasphilipp/InfOCF
+repo_name: InfOCF
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+    - navigation.indexes
+
+plugins:
+  - search
+  - autorefs
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_source: false
+            filters:
+              - "!^_"
+            merge_init_into_class: true
+            inherited_members: true
+            members_order: source
+
+nav:
+  - Home: index.md
+  - Installation: INSTALL.md
+  - CL Syntax: CL_SYNTAX.md
+  - API Reference:
+      - Overview: api.md
+      - infocf package: api/infocf.md
+      - inference modules: api/inference.md
+      - parser modules: api/parser.md
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences

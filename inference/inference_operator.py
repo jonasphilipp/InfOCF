@@ -49,6 +49,27 @@ def create_epistemic_state(
     pmaxsat_solver: str,
     weakly: bool,
 ) -> dict:
+    """
+    Create and initialize the epistemic state structure.
+
+    Parameters
+    ----------
+    belief_base : BeliefBase
+        Parsed belief base.
+    inference_system : str
+        One of ``{"p-entailment", "system-z", "system-w", "c-inference", "lex_inf"}``.
+    smt_solver : str
+        SMT solver name (e.g., ``"z3"``).
+    pmaxsat_solver : str
+        MaxSAT solver name (ignored for p-entailment and system-z).
+    weakly : bool
+        Whether to use weak semantics where applicable.
+
+    Returns
+    -------
+    dict
+        Initialized epistemic state dictionary.
+    """
     epistemic_state = dict()
 
     epistemic_state["belief_base"] = belief_base
@@ -80,6 +101,19 @@ Returns:
 
 
 def create_inference_instance(epistemic_state) -> Inference:
+    """
+    Instantiate the concrete inference class based on the epistemic state.
+
+    Parameters
+    ----------
+    epistemic_state : dict
+        Epistemic state produced by ``create_epistemic_state``.
+
+    Returns
+    -------
+    Inference
+        Instantiated inference implementation.
+    """
     inference_system = epistemic_state["inference_system"]
 
     # INFO-level logging for inference system initialization
@@ -191,6 +225,22 @@ class InferenceOperator:
         pmaxsat_solver: str = "rc2",
         weakly: bool = False,
     ) -> None:
+        """
+        Initialize the high-level operator wrapper.
+
+        Parameters
+        ----------
+        belief_base : BeliefBase
+            Parsed belief base.
+        inference_system : str
+            Name of the inference system.
+        smt_solver : str, default "z3"
+            SMT solver backend.
+        pmaxsat_solver : str, default "rc2"
+            PMAX-SAT solver backend (unused for some operators).
+        weakly : bool, default False
+            Whether to use weak semantics where applicable.
+        """
         inference_system = inference_system.lower()
         smt_solver = smt_solver.lower()
         if inference_system in ["p-entailment", "system-z"]:
@@ -231,6 +281,31 @@ class InferenceOperator:
         multi_inference: bool = False,
         decimals: int = 1,
     ) -> pd.DataFrame:
+        """
+        Run end-to-end inference over a set of queries and return a report.
+
+        Parameters
+        ----------
+        queries : Queries
+            Container of conditional queries.
+        total_timeout : int, default 0
+            Global timeout budget in seconds; 0 disables.
+        inference_timeout : int, default 0
+            Per-query timeout in seconds; 0 disables.
+        preprocessing_timeout : int, default 0
+            Preprocessing timeout in seconds; 0 disables.
+        queries_name : str, default ""
+            Optional label for this batch.
+        multi_inference : bool, default False
+            If True, attempt parallel evaluation.
+        decimals : int, default 1
+            Rounding precision for time metrics.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A dataframe with per-query results and timing information.
+        """
         if queries_name:
             queries.name = queries_name
 

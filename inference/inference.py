@@ -44,6 +44,20 @@ class Inference(ABC):
     """
 
     def preprocess_belief_base(self, preprocessing_timeout: int) -> None:
+        """
+        Preprocess the belief base before running inference.
+
+        Parameters
+        ----------
+        preprocessing_timeout : int
+            Timeout in seconds. If 0, no timeout is enforced.
+
+        Notes
+        -----
+        Updates timing and status fields in the epistemic state:
+        ``kill_time``, ``preprocessing_time``, ``preprocessing_done``,
+        and ``preprocessing_timed_out``.
+        """
         if self.epistemic_state["preprocessing_done"]:
             logger.info(
                 "Preprocessing already completed, skipping",
@@ -124,6 +138,23 @@ class Inference(ABC):
     """
 
     def inference(self, queries: dict, timeout: int, multi_inference: bool) -> None:
+        """
+        Run inference over a set of queries.
+
+        Parameters
+        ----------
+        queries : dict
+            Mapping from index to ``Conditional`` queries.
+        timeout : int
+            Per-query timeout in seconds. If 0, no timeout is enforced.
+        multi_inference : bool
+            If True, use parallel evaluation where possible.
+
+        Side Effects
+        ------------
+        The method updates ``result_dict`` in the epistemic state with entries of
+        the form ``{str(query): (index, result, timed_out, time_ms)}``.
+        """
         # INFO-level logging for inference operation start
         logger.info(
             "Starting inference operations",
@@ -198,6 +229,21 @@ class Inference(ABC):
     """
 
     def single_inference(self, queries: dict, timeout: int) -> dict:
+        """
+        Evaluate queries sequentially.
+
+        Parameters
+        ----------
+        queries : dict
+            Mapping from index to ``Conditional`` queries.
+        timeout : int
+            Per-query timeout in seconds. If 0, no timeout is enforced.
+
+        Returns
+        -------
+        dict
+            A result mapping ``{str(query): (index, result, timed_out, time_ms)}``.
+        """
         result_dict = dict()
         for index, query in queries.items():
             if timeout:
@@ -230,6 +276,21 @@ class Inference(ABC):
     """
 
     def multi_inference(self, queries: dict, timeout: int) -> dict:
+        """
+        Evaluate queries in parallel using multiprocessing.
+
+        Parameters
+        ----------
+        queries : dict
+            Mapping from index to ``Conditional`` queries.
+        timeout : int
+            Per-query timeout in seconds. If 0, no timeout is enforced.
+
+        Returns
+        -------
+        dict
+            A result mapping ``{str(query): (index, result, timed_out, time_ms)}``.
+        """
         indices = queries.keys()
 
         with mp.Manager() as manager:
@@ -281,6 +342,20 @@ class Inference(ABC):
     def _multi_inference_worker(
         self, index: int, query: Conditional, mp_return_dict: dict, timeout: int
     ) -> None:
+        """
+        Worker function used by ``multi_inference``.
+
+        Parameters
+        ----------
+        index : int
+            Index of the query.
+        query : Conditional
+            Query to evaluate.
+        mp_return_dict : dict
+            Multiprocessing shared dict to write results into.
+        timeout : int
+            Timeout in seconds.
+        """
         if timeout:
             self.epistemic_state["kill_time"] = timeout + perf_counter()
         else:
@@ -296,6 +371,21 @@ class Inference(ABC):
             raise e
 
     def general_inference(self, query: Conditional, weakly: bool = None):
+        """
+        Run the concrete inference implementation with quick unsatisfiability checks.
+
+        Parameters
+        ----------
+        query : Conditional
+            Query to evaluate.
+        weakly : bool, optional
+            Whether to use weak semantics; defaults to epistemic state's setting.
+
+        Returns
+        -------
+        bool
+            True if the conditional is entailed under the configured operator.
+        """
         if weakly is None:
             weakly = self.epistemic_state.get("weakly", False)
 
@@ -309,8 +399,8 @@ class Inference(ABC):
 
     @abstractmethod
     def _inference(self, query: Conditional, weakly: bool) -> bool:
-        pass
+        """Concrete inference implementation for a single query."""
 
     @abstractmethod
     def _preprocess_belief_base(self, weakly: bool) -> None:
-        pass
+        """Concrete preprocessing implementation for the selected operator."""

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "infocf"
-version = "2.1.1a11"
+version = "2.1.1a12"
 description = "InfOCF - Reasoning With Conditional Belief Bases: A library for non-monotonic inference operators"
 readme = "README.md"
 license = {text = "MIT"}
@@ -281,5 +281,11 @@ match-dir = "(?!unittests).*"
 
 [dependency-groups]
 dev = [
+    "mkdocs>=1.6.1",
+    "mkdocs-autorefs>=1.4.3",
+    "mkdocs-material>=9.6.18",
+    "mkdocs-section-index>=0.3.10",
+    "mkdocstrings[python]>=0.30.0",
+    "pymdown-extensions>=10.16.1",
     "twine>=6.1.0",
 ]
