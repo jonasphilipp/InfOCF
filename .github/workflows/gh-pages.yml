@@ -2,7 +2,7 @@ name: Deploy Docs
 
 on:
   push:
-    branches: [ master, main, feature/ocf ]
+    branches: [ master, main ]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -48,6 +49,7 @@ jobs:
           path: ./site
 
   deploy:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -58,4 +60,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
         with:
-          preview: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
+          preview: false
