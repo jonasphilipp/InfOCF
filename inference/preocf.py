@@ -84,6 +84,8 @@ class PreOCF(ABC):
         self.signature = signature
         self.conditionals = conditionals
         self.ranking_system = ranking_system
+        # Internal state store (not part of user metadata)
+        self._state = {}
         # Initialise metadata storage
         if metadata is None:
             self._metadata = {}
@@ -528,9 +530,9 @@ class SystemZPreOCF(PreOCF):
         if facts:
             # Determine extended mode: infer True when unspecified, otherwise use the explicit value
             computed_extended = extended if extended is not None else True
-            self.save_meta("z_extended_inferred_from_facts", extended is None)
-            self.save_meta("z_extended_user_explicit", extended is not None)
-            self.save_meta("z_facts_present", True)
+            self._state["z_extended_inferred_from_facts"] = extended is None
+            self._state["z_extended_user_explicit"] = extended is not None
+            self._state["z_facts_present"] = True
             if extended is False:
                 logger.warning(
                     "Facts are intended for extended semantics; proceeding with extended=False as requested"
@@ -590,32 +592,34 @@ class SystemZPreOCF(PreOCF):
                     "Provided facts are jointly inconsistent with each other or the base belief base"
                 )
             self._z_partition = part
-            # Record partition mode and stats for later consumers
-            self.save_meta("z_partition_extended", bool(computed_extended))
-            self.save_meta(
-                "z_partition_stats",
-                {"layers": stats[0], "calls": stats[1], "levels": stats[2]},
-            )
-            self.save_meta("z_partition_source", "augmented_with_facts")
+            # Record partition mode and stats for later consumers (internal state)
+            self._state["z_partition_extended"] = bool(computed_extended)
+            self._state["z_partition_stats"] = {
+                "layers": stats[0],
+                "calls": stats[1],
+                "levels": stats[2],
+            }
+            self._state["z_partition_source"] = "augmented_with_facts"
         else:
             # Determine extended mode: default to False when unspecified and no facts
             computed_extended = extended if extended is not None else False
-            self.save_meta("z_extended_inferred_from_facts", False)
-            self.save_meta("z_extended_user_explicit", extended is not None)
-            self.save_meta("z_facts_present", False)
+            self._state["z_extended_inferred_from_facts"] = False
+            self._state["z_extended_user_explicit"] = extended is not None
+            self._state["z_facts_present"] = False
             # Compute partition in base or extended mode depending on flag
             part, stats = consistency(
                 BeliefBase(signature, conditionals, "z-partition"),
                 weakly=computed_extended,
             )
             self._z_partition = part
-            # Record partition mode and stats for later consumers
-            self.save_meta("z_partition_extended", bool(computed_extended))
-            self.save_meta(
-                "z_partition_stats",
-                {"layers": stats[0], "calls": stats[1], "levels": stats[2]},
-            )
-            self.save_meta("z_partition_source", "base")
+            # Record partition mode and stats for later consumers (internal state)
+            self._state["z_partition_extended"] = bool(computed_extended)
+            self._state["z_partition_stats"] = {
+                "layers": stats[0],
+                "calls": stats[1],
+                "levels": stats[2],
+            }
+            self._state["z_partition_source"] = "base"
 
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
         if force_calculation or self.ranks[world] is None:
@@ -643,12 +647,12 @@ class SystemZPreOCF(PreOCF):
     @property
     def uses_extended_partition(self) -> bool:
         """True if the System Z partition was computed with weakly=True (extended)."""
-        return bool(self.load_meta("z_partition_extended", False))
+        return bool(self._state.get("z_partition_extended", False))
 
     @property
     def z_partition_stats(self) -> dict[str, int] | None:
         """Return stats about the partitioning process (layers, calls, levels) if available."""
-        return self.load_meta("z_partition_stats", None)  # type: ignore[return-value]
+        return self._state.get("z_partition_stats", None)  # type: ignore[return-value]
 
     @property
     def has_infinity_partition(self) -> bool:
