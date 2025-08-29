@@ -31,9 +31,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Sync dependencies (dev)
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Sync dependencies (dev group)
         run: |
-          uv sync --extra dev
+          uv sync --group dev
 
       - name: Build docs
         run: |
@@ -54,3 +57,5 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          preview: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
