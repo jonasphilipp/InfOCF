@@ -14,6 +14,9 @@ from z3 import Optimize, sat, z3
 from inference.belief_base import BeliefBase
 from inference.c_inference import CInference
 from inference.conditional import Conditional
+from inference.consistency_diagnostics import (
+    consistency_diagnostics,
+)
 from inference.consistency_sat import consistency
 from inference.inference_operator import create_epistemic_state
 from infocf.log_setup import get_logger
@@ -586,6 +589,7 @@ class SystemZPreOCF(PreOCF):
             )
 
             # Compute partition with weakly=True; raise if inconsistent (False returned)
+            # Partition compute for selected mode (recorded below)
             part, stats = consistency(augmented_bb, weakly=computed_extended)
             if part is False:
                 raise ValueError(
@@ -600,6 +604,26 @@ class SystemZPreOCF(PreOCF):
                 "levels": stats[2],
             }
             self._state["z_partition_source"] = "augmented_with_facts"
+
+            # Run diagnostics with reuse to avoid recomputing the combined-selected case
+            reuse = {
+                "combined_extended" if computed_extended else "combined_standard": (
+                    part,
+                    stats,
+                )
+            }
+            diag = consistency_diagnostics(
+                BeliefBase(signature, conditionals, "z-partition"),
+                facts=facts,
+                reuse=reuse,
+                compute_bb=True,
+                compute_combined=True,
+                compute_facts=True,
+                semantics="extended" if computed_extended else "standard",
+                on_inconsistent="warn",
+            )
+            # Persist diagnostics in metadata
+            self.save_meta("consistency_diagnostics", diag)
         else:
             # Determine extended mode: default to False when unspecified and no facts
             computed_extended = extended if extended is not None else False
@@ -607,10 +631,8 @@ class SystemZPreOCF(PreOCF):
             self._state["z_extended_user_explicit"] = extended is not None
             self._state["z_facts_present"] = False
             # Compute partition in base or extended mode depending on flag
-            part, stats = consistency(
-                BeliefBase(signature, conditionals, "z-partition"),
-                weakly=computed_extended,
-            )
+            base_bb = BeliefBase(signature, conditionals, "z-partition")
+            part, stats = consistency(base_bb, weakly=computed_extended)
             self._z_partition = part
             # Record partition mode and stats for later consumers (internal state)
             self._state["z_partition_extended"] = bool(computed_extended)
@@ -620,6 +642,22 @@ class SystemZPreOCF(PreOCF):
                 "levels": stats[2],
             }
             self._state["z_partition_source"] = "base"
+
+            # Run diagnostics with reuse for the selected base case
+            reuse = {
+                "base_extended" if computed_extended else "base_standard": (part, stats)
+            }
+            diag = consistency_diagnostics(
+                base_bb,
+                facts=None,
+                reuse=reuse,
+                compute_bb=True,
+                compute_combined=True,
+                compute_facts=True,
+                semantics="extended" if computed_extended else "standard",
+                on_inconsistent="warn",
+            )
+            self.save_meta("consistency_diagnostics", diag)
 
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
         if force_calculation or self.ranks[world] is None:
