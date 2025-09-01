@@ -292,6 +292,8 @@ class TestPreOCFAdditional(unittest.TestCase):
         """Test metadata storage and retrieval operations."""
         # Create a fresh PreOCF
         preocf = PreOCF.init_system_z(self.belief_base_birds)
+        # Account for automatically populated metadata (e.g., diagnostics)
+        base_meta_len = len(preocf.metadata)
 
         # Test basic metadata operations
         preocf.save_meta("author", "Alice")
@@ -311,9 +313,13 @@ class TestPreOCFAdditional(unittest.TestCase):
 
         # Test metadata property
         metadata_dict = preocf.metadata
-        self.assertEqual(len(metadata_dict), 4)
+        # Expect exactly 4 new keys added to whatever existed initially
+        self.assertEqual(len(metadata_dict), base_meta_len + 4)
         self.assertIn("author", metadata_dict)
         self.assertIn("experiment_id", metadata_dict)
+        # Optional: diagnostics metadata may be present
+        if "consistency_diagnostics" in metadata_dict:
+            self.assertIsInstance(metadata_dict["consistency_diagnostics"], dict)
 
         # Test direct metadata modification
         preocf.metadata["direct_key"] = "direct_value"
