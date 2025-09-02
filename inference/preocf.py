@@ -605,21 +605,19 @@ class SystemZPreOCF(PreOCF):
             }
             self._state["z_partition_source"] = "augmented_with_facts"
 
-            # Run diagnostics with reuse to avoid recomputing the combined-selected case
-            reuse = {
-                "combined_extended" if computed_extended else "combined_standard": (
+            # Run diagnostics, reusing the already computed combined partition
+            precomputed = {
+                ("combined_extended" if computed_extended else "combined_standard"): (
                     part,
                     stats,
                 )
             }
             diag = consistency_diagnostics(
                 BeliefBase(signature, conditionals, "z-partition"),
+                extended=bool(computed_extended),
+                uses_facts=True,
                 facts=facts,
-                reuse=reuse,
-                compute_bb=True,
-                compute_combined=True,
-                compute_facts=True,
-                semantics="extended" if computed_extended else "standard",
+                precomputed=precomputed,
                 on_inconsistent="warn",
             )
             # Persist diagnostics in metadata
@@ -643,18 +641,19 @@ class SystemZPreOCF(PreOCF):
             }
             self._state["z_partition_source"] = "base"
 
-            # Run diagnostics with reuse for the selected base case
-            reuse = {
-                "base_extended" if computed_extended else "base_standard": (part, stats)
+            # Run diagnostics, reusing the already computed base partition
+            precomputed = {
+                ("base_extended" if computed_extended else "base_standard"): (
+                    part,
+                    stats,
+                )
             }
             diag = consistency_diagnostics(
                 base_bb,
+                extended=bool(computed_extended),
+                uses_facts=False,
                 facts=None,
-                reuse=reuse,
-                compute_bb=True,
-                compute_combined=True,
-                compute_facts=True,
-                semantics="extended" if computed_extended else "standard",
+                precomputed=precomputed,
                 on_inconsistent="warn",
             )
             self.save_meta("consistency_diagnostics", diag)

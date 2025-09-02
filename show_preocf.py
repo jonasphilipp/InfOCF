@@ -723,8 +723,8 @@ for i, layer in enumerate(sz_extended._z_partition):
 
 # Show a brief diagnostics summary if available
 diag = sz_extended.load_meta("consistency_diagnostics")
-if isinstance(diag, dict) and "bb" in diag:
-    bb_ext_ok = diag["bb"].get("extended", {}).get("ok")
+if isinstance(diag, dict):
+    bb_ext_ok = diag.get("bb_w_consistent")
     print(f"Diagnostics (BB, extended) = {bb_ext_ok}")
 
 print("\n=== System Z with Facts ===")
@@ -760,16 +760,14 @@ try:
     print()
     # Diagnostics using the shared module
     diag_a = consistency_diagnostics(
-        belief_base_birds, facts=["b", "!p"], semantics="extended"
+        belief_base_birds, extended=True, uses_facts=True, facts=["b", "!p"]
     )
-    print(
-        "Diagnostics A (extended) →", format_diagnostics(diag_a, semantics="extended")
-    )
+    print("Diagnostics A (extended) →", format_diagnostics(diag_a))
     print()
 
     # Example B: Conjunctive fact b and w set to True via 'b,w'
-    print("Example B: Conjunctive fact 'b,w' (require birds with wings)")
-    sz_conj = PreOCF.init_system_z(belief_base_birds, facts=["b,w"])
+    print("Example B: Conjunctive fact 'b' (require birds with wings)")
+    sz_conj = PreOCF.init_system_z(belief_base_birds, facts=["b"])
     print("Signature:", sz_conj.signature)
     part_sizes_c = [len(layer) for layer in sz_conj._z_partition]
     print("Partition layer sizes:", part_sizes_c)
@@ -793,11 +791,9 @@ try:
     print()
     # Diagnostics using the shared module
     diag_b = consistency_diagnostics(
-        belief_base_birds, facts=["b,w"], semantics="extended"
+        belief_base_birds, extended=True, uses_facts=True, facts=["b,w"]
     )
-    print(
-        "Diagnostics B (extended) →", format_diagnostics(diag_b, semantics="extended")
-    )
+    print("Diagnostics B (extended) →", format_diagnostics(diag_b))
     print()
 
     # Example C: Disjunctive fact p or f set to False via '!(p;f)' (forbid p or f)
@@ -826,11 +822,9 @@ try:
     print()
     # Diagnostics using the shared module
     diag_c = consistency_diagnostics(
-        belief_base_birds, facts=["!(p;f)"], semantics="extended"
+        belief_base_birds, extended=True, uses_facts=True, facts=["!(p;f)"]
     )
-    print(
-        "Diagnostics C (extended) →", format_diagnostics(diag_c, semantics="extended")
-    )
+    print("Diagnostics C (extended) →", format_diagnostics(diag_c))
     print()
 
     # Example D: Combined complex facts using string and FNode keys
@@ -838,12 +832,10 @@ try:
     facts_combined = ["b,f", "!(p;f)"]
     # Pre-screen diagnostics before constructing the instance
     diag_d = consistency_diagnostics(
-        belief_base_birds, facts=facts_combined, semantics="extended"
+        belief_base_birds, extended=True, uses_facts=True, facts=facts_combined
     )
-    print(
-        "Diagnostics D (extended) →", format_diagnostics(diag_d, semantics="extended")
-    )
-    d_comb_ext = diag_d.get("combined", {}).get("extended", {}).get("ok")
+    print("Diagnostics D (extended) →", format_diagnostics(diag_d))
+    d_comb_ext = diag_d.get("c_consistent")
     if d_comb_ext:
         sz_combo = PreOCF.init_system_z(belief_base_birds, facts=facts_combined)
         print("Signature:", sz_combo.signature)
@@ -871,20 +863,7 @@ try:
         print(
             "Skipping PreOCF construction for Example D due to combined inconsistency (extended)"
         )
-    # Example E: Facts '!(p;f)' (facts & BB consistent) but combined inconsistent under standard
-    print("\nExample E: Facts '!(p;f)' → combined inconsistent under standard")
-    facts_e = ["!(p;f)"]
-    diag_e = consistency_diagnostics(
-        belief_base_birds, facts=facts_e, semantics="standard"
-    )
-    print(
-        "Diagnostics E (standard) →", format_diagnostics(diag_e, semantics="standard")
-    )
-    e_comb_std = diag_e.get("combined", {}).get("standard", {}).get("ok")
-    if not e_comb_std:
-        print(
-            "As expected: skipping construction due to combined inconsistency (standard)"
-        )
+
 except ValueError as e:
     print("Facts inconsistent:", e)
 

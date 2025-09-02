@@ -1,10 +1,22 @@
 """
 Consistency diagnostics utilities for PreOCF-compatible belief bases.
 
-Provides three-layer checks:
-- Facts-only: whether all provided facts are jointly satisfiable
-- Belief base only: consistency under standard and extended (weak) semantics
-- Combined (BB + facts as weak constraints): consistency under standard and extended semantics
+This module provides an efficient diagnostic that computes the following
+booleans depending on two switches, `extended` and `uses_facts`:
+
+- f_consistent: facts are jointly satisfiable
+- bb_consistent: belief base consistent under standard semantics
+- bb_w_consistent: belief base weakly consistent (extended semantics)
+- c_consistent: augmented (BB + facts-as-weak-constraints) is consistent
+- c_infinity_increase: (only meaningful for extended=True and uses_facts=True)
+  whether the size of the ∞-partition increased after adding facts
+
+Notes on efficiency:
+- When extended=True, a single extended partition run is reused to derive
+  both bb_w_consistent and bb_consistent (the latter via checking if the
+  last layer is empty).
+- For combined checks, only one run is done for the selected mode
+  (standard or extended) and reused for the infinity-size comparison.
 
 The functions operate purely on `BeliefBase` and lists of facts (strings or FNode),
 making them reusable across different PreOCF implementations.
@@ -26,27 +38,12 @@ from parser.Wrappers import parse_formula
 logger = get_logger(__name__)
 
 
-class PartitionStats(TypedDict):
-    layers: List[int]
-    calls: int
-    levels: int
-
-
-class ModeReport(TypedDict, total=False):
-    ok: bool
-    stats: PartitionStats
-
-
-class LayerDiagnostics(TypedDict, total=False):
-    present: bool
-    standard: ModeReport
-    extended: ModeReport
-
-
 class Diagnostics(TypedDict, total=False):
-    facts: Dict[str, Any]
-    bb: LayerDiagnostics
-    combined: LayerDiagnostics
+    f_consistent: Optional[bool]
+    bb_consistent: Optional[bool]
+    bb_w_consistent: Optional[bool]
+    c_consistent: Optional[bool]
+    c_infinity_increase: Optional[bool]
 
 
 def _parse_fact(entry: str | FNode) -> FNode:
@@ -134,176 +131,110 @@ def augment_belief_base_with_facts(
     return BeliefBase(bb.signature, augmented, f"{bb.name}-with-facts")
 
 
-def _to_report(part_or_false, stats_tuple) -> ModeReport:
-    if part_or_false is False:
-        return {
-            "ok": False,
-            "stats": {
-                "layers": stats_tuple[0],
-                "calls": stats_tuple[1],
-                "levels": stats_tuple[2],
-            },
-        }
-    return {
-        "ok": True,
-        "stats": {
-            "layers": stats_tuple[0],
-            "calls": stats_tuple[1],
-            "levels": stats_tuple[2],
-        },
-    }
+def _last_layer_size(partition) -> int:
+    return len(partition[-1]) if partition and isinstance(partition, list) else 0
 
 
 def consistency_diagnostics(
     belief_base: BeliefBase,
     *,
+    extended: bool,
+    uses_facts: bool,
     facts: Optional[List[str | FNode]] = None,
     solver: str = "z3",
-    reuse: Optional[Dict[str, Tuple[Any, Tuple[List[int], int, int]]]] = None,
-    compute_bb: bool = True,
-    compute_combined: bool = True,
-    compute_facts: bool = True,
-    semantics: Literal["standard", "extended", "both"] = "both",
+    precomputed: Optional[Dict[str, Tuple[Any, Tuple[List[int], int, int]]]] = None,
     on_inconsistent: Literal["warn", "raise", "silent"] = "warn",
 ) -> Diagnostics:
-    """Compute three-layer consistency diagnostics with minimal duplication.
+    """Compute diagnostics per the (extended, uses_facts) mode.
 
-    - facts-only satisfiability
-    - belief base consistency (standard and extended)
-    - combined belief base + facts as weak constraints (standard and extended)
-
-    The `reuse` dict can contain any of the keys: 'base_standard', 'base_extended',
-    'combined_standard', 'combined_extended' mapped to a tuple of (partition_or_false, stats_tuple)
-    as returned by `consistency`.
+    Case matrix:
+    1) extended=False, uses_facts=False → bb_consistent
+    2) extended=False, uses_facts=True  → f_consistent, bb_consistent, c_consistent
+    3) extended=True,  uses_facts=False → bb_consistent, bb_w_consistent
+    4) extended=True,  uses_facts=True  → f_consistent, bb_consistent, bb_w_consistent,
+                                          c_consistent, c_infinity_increase
     """
-    reuse = reuse or {}
+    precomputed = precomputed or {}
     diag: Diagnostics = {}
 
-    # 1) Facts-only
-    facts_present = bool(facts)
-    if compute_facts:
+    # Optional facts check
+    if uses_facts:
+        if not facts:
+            raise ValueError("uses_facts=True requires non-empty 'facts'")
         try:
-            facts_ok = facts_jointly_satisfiable(belief_base.signature, facts or [])
-        except Exception as e:
-            # Variable validation failures etc. are hard errors
+            f_ok = facts_jointly_satisfiable(belief_base.signature, facts)
+        except Exception:
+            # parsing/validation errors bubble up
             raise
-        diag["facts"] = {"present": facts_present, "consistent": facts_ok}
-        if not facts_ok and on_inconsistent == "warn":
+        diag["f_consistent"] = f_ok
+        if f_ok is False and on_inconsistent == "warn":
             logger.warning(
                 "Facts are mutually inconsistent (no model satisfies all facts)"
             )
-        if not facts_ok and on_inconsistent == "raise":
+        if f_ok is False and on_inconsistent == "raise":
             raise ValueError("Facts are mutually inconsistent")
 
-    # 2) BB-only
-    if compute_bb:
-        bb_layer: LayerDiagnostics = {"present": True}
+    # Base (belief base only)
+    if extended:
+        # Try to reuse extended partition if provided
+        if "base_extended" in precomputed:
+            base_part_ext, _ = precomputed["base_extended"]
+        else:
+            base_part_ext, _ = consistency(belief_base, solver=solver, weakly=True)
 
-        # Standard
-        if semantics in ("standard", "both"):
-            if "base_standard" in reuse:
-                part_std, stats_std = reuse["base_standard"]
-            else:
-                part_std, stats_std = consistency(
-                    belief_base, solver=solver, weakly=False
-                )
-            bb_layer["standard"] = _to_report(part_std, stats_std)
-            if bb_layer["standard"]["ok"] is False and on_inconsistent == "warn":
-                logger.warning("Belief base inconsistent under standard semantics")
-            if bb_layer["standard"]["ok"] is False and on_inconsistent == "raise":
-                raise ValueError("Belief base inconsistent under standard semantics")
+        if base_part_ext is False:
+            diag["bb_w_consistent"] = False
+            diag["bb_consistent"] = False
+        else:
+            diag["bb_w_consistent"] = True
+            # Standard consistency is equivalent to empty last layer in extended partition
+            diag["bb_consistent"] = _last_layer_size(base_part_ext) == 0
+    else:
+        # Standard-only check
+        if "base_standard" in precomputed:
+            base_part_std, _ = precomputed["base_standard"]
+        else:
+            base_part_std, _ = consistency(belief_base, solver=solver, weakly=False)
+        diag["bb_consistent"] = base_part_std is not False
 
-        # Extended
-        if semantics in ("extended", "both"):
-            if "base_extended" in reuse:
-                part_ext, stats_ext = reuse["base_extended"]
-            else:
-                part_ext, stats_ext = consistency(
-                    belief_base, solver=solver, weakly=True
-                )
-            bb_layer["extended"] = _to_report(part_ext, stats_ext)
-
-        diag["bb"] = bb_layer
-
-    # 3) Combined
-    if compute_combined and facts_present:
-        combined_layer: LayerDiagnostics = {"present": True}
+    # Combined (BB + facts as weak constraints)
+    if uses_facts:
         augmented = augment_belief_base_with_facts(belief_base, facts or [])
-
-        # Standard combined
-        if semantics in ("standard", "both"):
-            if "combined_standard" in reuse:
-                c_part_std, c_stats_std = reuse["combined_standard"]
+        if extended:
+            if "combined_extended" in precomputed:
+                comb_part_ext, _ = precomputed["combined_extended"]
             else:
-                c_part_std, c_stats_std = consistency(
-                    augmented, solver=solver, weakly=False
-                )
-            combined_layer["standard"] = _to_report(c_part_std, c_stats_std)
+                comb_part_ext, _ = consistency(augmented, solver=solver, weakly=True)
+            diag["c_consistent"] = comb_part_ext is not False
 
-        # Extended combined
-        if semantics in ("extended", "both"):
-            if "combined_extended" in reuse:
-                c_part_ext, c_stats_ext = reuse["combined_extended"]
+            # Infinity partition size comparison only if both are partitions
+            if (comb_part_ext is not False) and (
+                "base_part_ext" in locals() and base_part_ext is not False
+            ):
+                diag["c_infinity_increase"] = _last_layer_size(
+                    comb_part_ext
+                ) > _last_layer_size(base_part_ext)
+        else:
+            if "combined_standard" in precomputed:
+                comb_part_std, _ = precomputed["combined_standard"]
             else:
-                c_part_ext, c_stats_ext = consistency(
-                    augmented, solver=solver, weakly=True
-                )
-            combined_layer["extended"] = _to_report(c_part_ext, c_stats_ext)
-
-        # Policy-based notification
-        std_bad = (
-            semantics in ("standard", "both")
-            and combined_layer.get("standard", {}).get("ok") is False
-        )
-        ext_bad = (
-            semantics in ("extended", "both")
-            and combined_layer.get("extended", {}).get("ok") is False
-        )
-        if (std_bad or ext_bad) and on_inconsistent == "warn":
-            logger.warning(
-                "Augmented belief base (BB + facts) inconsistent under one or more selected semantics"
-            )
-        if on_inconsistent == "raise":
-            if semantics == "both" and std_bad and ext_bad:
-                raise ValueError(
-                    "Augmented belief base inconsistent under both standard and extended semantics"
-                )
-            if semantics == "standard" and std_bad:
-                raise ValueError(
-                    "Augmented belief base inconsistent under standard semantics"
-                )
-            if semantics == "extended" and ext_bad:
-                raise ValueError(
-                    "Augmented belief base inconsistent under extended semantics"
-                )
-
-        diag["combined"] = combined_layer
-    elif compute_combined:
-        # No facts → combined layer not applicable
-        diag["combined"] = {"present": False}
+                comb_part_std, _ = consistency(augmented, solver=solver, weakly=False)
+            diag["c_consistent"] = comb_part_std is not False
 
     return diag
 
 
-def format_diagnostics(
-    diag: Diagnostics, *, semantics: Literal["standard", "extended", "both"] = "both"
-) -> str:
-    """Return a concise one-line summary according to selected semantics.
+def format_diagnostics(diag: Diagnostics) -> str:
+    """Return a concise one-line summary of available booleans.
 
-    Examples (extended): "facts=True, bb=True, combined=False"
+    Example: "facts=True, bb=True, bb_w=True, combined=False, inf_inc=False"
+    Missing values are shown as None.
     """
-    facts_ok = diag.get("facts", {}).get("consistent")
-    if semantics == "standard":
-        bb_ok = diag.get("bb", {}).get("standard", {}).get("ok")
-        comb_ok = diag.get("combined", {}).get("standard", {}).get("ok")
-        return f"facts={facts_ok}, bb={bb_ok}, combined={comb_ok}"
-    if semantics == "extended":
-        bb_ok = diag.get("bb", {}).get("extended", {}).get("ok")
-        comb_ok = diag.get("combined", {}).get("extended", {}).get("ok")
-        return f"facts={facts_ok}, bb={bb_ok}, combined={comb_ok}"
-    # both
-    bb_std = diag.get("bb", {}).get("standard", {}).get("ok")
-    bb_ext = diag.get("bb", {}).get("extended", {}).get("ok")
-    comb_std = diag.get("combined", {}).get("standard", {}).get("ok")
-    comb_ext = diag.get("combined", {}).get("extended", {}).get("ok")
-    return f"facts={facts_ok}, bb(std={bb_std}, ext={bb_ext}), combined(std={comb_std}, ext={comb_ext})"
+    f_ok = diag.get("f_consistent")
+    bb_ok = diag.get("bb_consistent")
+    bbw_ok = diag.get("bb_w_consistent")
+    c_ok = diag.get("c_consistent")
+    inf_inc = diag.get("c_infinity_increase")
+    return (
+        f"facts={f_ok}, bb={bb_ok}, bb_w={bbw_ok}, combined={c_ok}, inf_inc={inf_inc}"
+    )
