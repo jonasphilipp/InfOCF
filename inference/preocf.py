@@ -1,3 +1,23 @@
+"""(Pre-) Ordinal Conditional Functions (Pre-OCFs).
+
+This module provides a common interface (``PreOCF``) and concrete
+implementations for computing and querying ordinal conditional rankings
+over possible worlds.
+
+Worlds are represented as bitstrings over a boolean signature (e.g.,
+"1010" for ``signature == ["b", "p", "f", "w"]``). Ranks are integers
+greater-or-equal to 0 (lower is more plausible). Some methods compute
+ranks lazily on demand.
+
+Notes
+-----
+Security
+    Saving and loading complete OCF objects uses Python's pickle format.
+    Only call ``load_ocf`` with files from trusted sources. For safer
+    persistence of ancillary data, prefer ``save_metadata`` / ``load_metadata``
+    with JSON.
+"""
+
 # std-lib imports for persistence helpers
 import json
 import pathlib
@@ -31,6 +51,31 @@ logger = get_logger(__name__)
 # signature, bb, systemz
 # signature, bb, random_min_c_rep
 class PreOCF(ABC):
+    """Abstract base class for ordinal conditional functions (Pre-OCFs).
+
+    Parameters
+    ----------
+    ranks : dict[str, int | None]
+        Mapping from world bitstrings to ranks; ``None`` indicates
+        "not yet computed".
+    signature : list[str] | None
+        Variable names defining world bit positions.
+    conditionals : dict[int, Conditional] | None
+        Indexed conditionals used by concrete ranking systems.
+    ranking_system : str
+        Identifier of the ranking approach (e.g., ``"system-z"``,
+        ``"random_min_c_rep"``).
+    metadata : dict[str, object] | None, optional
+        Free-form metadata store persisted with the instance.
+
+    Attributes
+    ----------
+    ranks_verbose : dict[tuple[str, ...], int | None]
+        Human-readable view (tuples of signed literals) mapped to ranks.
+    metadata : dict[str, object]
+        Read–write metadata store.
+    """
+
     # epistemic_state: dict
     ranks: dict[str, None | int]
     signature: list[str]
@@ -314,6 +359,19 @@ class PreOCF(ABC):
 
     # returns new PreOCF with marginalized signature and ranks that are the minimum of the ranks of the worlds with the same marginalized signature
     def marginalize(self, marginalization: list[str]) -> "PreOCF":
+        """Return a new PreOCF marginalized to a subset of variables.
+
+        Parameters
+        ----------
+        marginalization : list[str]
+            Variables to eliminate from the signature.
+
+        Returns
+        -------
+        PreOCF
+            A custom PreOCF over the reduced signature whose world ranks
+            are the minimum over compatible original worlds.
+        """
         ranks = {}
         for world in self.ranks.keys():
             # remove all bits whose index matches the one of the signature elements in marginalization
@@ -428,6 +486,22 @@ class PreOCF(ABC):
 
     # smallest rank of any world that satisfies formula
     def formula_rank(self, formula: FNode) -> int | None:
+        """Return the smallest rank among worlds satisfying ``formula``.
+
+        Parameters
+        ----------
+        formula : FNode
+            Boolean formula over the current signature.
+
+        Returns
+        -------
+        int | None
+            Minimum rank if any world satisfies ``formula``, otherwise ``None``.
+
+        See Also
+        --------
+        conditional_acceptance
+        """
         min_rank = None
         solver = Solver(name="z3")
 
@@ -456,6 +530,10 @@ class PreOCF(ABC):
 
     # true if formula_rank of verification is smaller than formula_rank of negation
     def conditional_acceptance(self, conditional: Conditional) -> bool:
+        """Return True iff ``(B|A)`` is accepted.
+
+        The acceptance test is defined as ``rank(A ∧ B) < rank(A ∧ ¬B)``.
+        """
         v = conditional.make_A_then_B()
         n = conditional.make_A_then_not_B()
         v_rank = self.formula_rank(v)
@@ -484,6 +562,18 @@ class PreOCF(ABC):
 
 # convert ranks to total preorder
 def ranks2tpo(ranks: dict[str, None | int]) -> list[set[str]]:
+    """Convert a rank map to a total preorder (layers of worlds).
+
+    Parameters
+    ----------
+    ranks : dict[str, int | None]
+        World-to-rank mapping.
+
+    Returns
+    -------
+    list[set[str]]
+        Layers (ascending by rank), each a set of world bitstrings.
+    """
     # Group worlds by their rank
     rank_groups: dict[int, set[str]] = {}
     for world, rank in ranks.items():
@@ -502,6 +592,20 @@ def ranks2tpo(ranks: dict[str, None | int]) -> list[set[str]]:
 # convert total preorder to ranks
 # The rank_function takes a layer number and returns the rank for that layer
 def tpo2ranks(tpo: list[set[str]], rank_function: callable) -> dict[str, None | int]:
+    """Convert a total preorder to ranks using a layer rank function.
+
+    Parameters
+    ----------
+    tpo : list[set[str]]
+        Layers of worlds (0 is most plausible).
+    rank_function : callable
+        Function mapping layer index -> rank value.
+
+    Returns
+    -------
+    dict[str, int | None]
+        World-to-rank mapping.
+    """
     ranks = {}
     for layer_num, layer in enumerate(tpo):
         for world in layer:
@@ -511,6 +615,13 @@ def tpo2ranks(tpo: list[set[str]], rank_function: callable) -> dict[str, None | 
 
 # PreOCF subclasses and factory
 class SystemZPreOCF(PreOCF):
+    """System Z ranking via partition computation.
+
+    Computes a System Z partition for the belief base; optionally uses
+    extended semantics and weak facts, and stores diagnostics in metadata.
+    Provides accessors for partition metadata such as layers and levels.
+    """
+
     def __init__(
         self,
         belief_base: BeliefBase,
@@ -713,6 +824,14 @@ class SystemZPreOCF(PreOCF):
 
 
 class RandomMinCRepPreOCF(PreOCF):
+    """Ranking via Pareto-minimized impact vector over conditionals.
+
+    The constructor solves for an impact vector using Z3 Optimize. A world's
+    rank is the sum of impacts for violated conditionals. Utility methods are
+    provided to save/load impacts and to construct instances from precomputed
+    impact vectors.
+    """
+
     def __init__(
         self,
         belief_base: BeliefBase,
@@ -945,6 +1064,14 @@ class RandomMinCRepPreOCF(PreOCF):
 
 
 class CustomPreOCF(PreOCF):
+    """PreOCF with user-provided ranks.
+
+    Notes
+    -----
+    ``rank_world`` raises a ``ValueError`` if a world is missing from
+    the provided ``ranks`` mapping.
+    """
+
     def __init__(
         self,
         ranks: dict[str, None | int],
@@ -968,6 +1095,23 @@ class CustomPreOCF(PreOCF):
 
 
 def create_preocf(ranking_system: str, *args, **kwargs) -> PreOCF:
+    """Factory for PreOCF subclasses.
+
+    Parameters
+    ----------
+    ranking_system : {"system-z", "random_min_c_rep", "custom"}
+        Selects the concrete implementation.
+
+    Returns
+    -------
+    PreOCF
+        Instance of the requested ranking system.
+
+    Raises
+    ------
+    ValueError
+        If ``ranking_system`` is unknown.
+    """
     if ranking_system == "system-z":
         return SystemZPreOCF(*args, **kwargs)
     elif ranking_system == "random_min_c_rep":

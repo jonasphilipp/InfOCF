@@ -74,40 +74,7 @@ source .venv/bin/activate
 infocf --system-check
 ```
 
-## Method 2: Using pip and venv
-
-If you prefer the traditional pip approach:
-
-### Set Up Virtual Environment
-
-```bash
-# Clone the repository
-git clone https://github.com/InfOCF-Team/InfOCF.git
-cd InfOCF
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-source venv/bin/activate  # On Linux/macOS
-# or
-venv\Scripts\activate     # On Windows
-```
-
-### Install the Package
-
-```bash
-# Install in development mode with core dependencies
-pip install -e .
-
-# Install with optional dependencies (choose as needed)
-pip install -e ".[dev,testing,docs]"
-
-# Install solver extras only if you need additional backends
-pip install -e ".[solvers]"
-```
-
-## Method 3: Install from GitHub Release wheel
+## Method 2: Install from GitHub Release wheel
 
 Use prebuilt wheels attached to GitHub Releases (no local build needed).
 
@@ -140,19 +107,6 @@ infocf --system-check
 python -c "import infocf; print(infocf.__version__)"
 ```
 
-## Method 4: Using nix
-
-For reproducible environments using the nix package manager:
-
-```bash
-# Clone the repository
-git clone https://github.com/InfOCF-Team/InfOCF.git
-cd InfOCF
-
-# Enter development environment
-nix develop
-```
-
 ## Verifying Installation
 
 After installation, verify that everything works correctly:
@@ -175,9 +129,6 @@ For development work, install the development dependencies:
 ```bash
 # Using uv (recommended)
 uv sync --extra dev
-
-# Using pip
-pip install -e ".[dev]"
 ```
 
 This includes tools for:
@@ -209,5 +160,3 @@ uv sync  # This installs in development mode by default
 
 - [uv documentation](https://docs.astral.sh/uv/)
 - [pip documentation](https://pypi.org/project/pip/)
-- [venv documentation](https://docs.python.org/3/library/venv.html)
-- [nix documentation](https://nixos.org/learn.html)

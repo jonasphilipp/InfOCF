@@ -36,6 +36,7 @@ nav:
       - infocf package: api/infocf.md
       - inference modules: api/inference.md
       - parser modules: api/parser.md
+      - preocf module: api/preocf.md
 
 markdown_extensions:
   - admonition
