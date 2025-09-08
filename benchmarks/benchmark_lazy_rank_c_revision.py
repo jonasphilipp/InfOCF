@@ -19,7 +19,11 @@ class CountingSystemZPreOCF(SystemZPreOCF):
     """
 
     def __init__(self, belief_base: BeliefBase, signature: list[str] | None = None):
-        super().__init__(belief_base, signature)
+        # Ensure we pass a concrete list to the parent to satisfy type checkers
+        sig_for_parent: list[str] = (
+            belief_base.signature if signature is None else signature
+        )
+        super().__init__(belief_base, sig_for_parent)
         self.rank_calls: int = 0
         self.compute_calls: int = 0
 
@@ -80,7 +84,11 @@ def count_contributing_worlds(
 
 def run_benchmark(signature: list[str]) -> None:
     revision_conditionals = build_revision_conditionals(signature)
-    bb = BeliefBase(signature, {c.index: c for c in revision_conditionals}, "bench_kb")
+    # Type-safe: filter out None indices before building the mapping
+    cond_map: dict[int, Conditional] = {
+        int(c.index): c for c in revision_conditionals if c.index is not None
+    }
+    bb = BeliefBase(signature, cond_map, "bench_kb")
 
     preocf = CountingSystemZPreOCF(bb, signature)
 

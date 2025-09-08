@@ -20,6 +20,10 @@ class Conditional:
         self.consequence = consequence
         self.weak = weak
         self.textRepresentation = textRepresentation
+        # Optional external identifier used across the codebase (e.g., as keys
+        # in belief bases or intermediate structures). Some callers set it
+        # explicitly; others leave it unset.
+        self.index: int | None = None
 
     def make_A_then_B(self):
         return And(self.antecedence, self.consequence)
