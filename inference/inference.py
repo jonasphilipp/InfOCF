@@ -5,6 +5,7 @@
 import multiprocessing as mp
 from abc import ABC, abstractmethod
 from time import perf_counter_ns
+from typing import Any, MutableMapping, cast
 
 from pysmt.shortcuts import And, Not, is_unsat
 
@@ -20,6 +21,8 @@ logger = get_logger(__name__)
 
 
 class Inference(ABC):
+    # Explicit attribute annotation for static type checkers
+    epistemic_state: dict[str, Any]
     """
     Context:
         Abstract class intitialization inherited by implementing classes
@@ -28,7 +31,7 @@ class Inference(ABC):
         Initialized epistemic_state
     """
 
-    def __init__(self, epistemic_state: dict) -> None:
+    def __init__(self, epistemic_state: dict[str, Any]) -> None:
         self.epistemic_state = epistemic_state
 
     """
@@ -138,7 +141,12 @@ class Inference(ABC):
         result dictionary mapping query string -> (index, result, timed_out, time_ms)
     """
 
-    def inference(self, queries: dict, timeout: int, multi_inference: bool) -> dict:
+    def inference(
+        self,
+        queries: dict[int, Conditional],
+        timeout: int,
+        multi_inference: bool,
+    ) -> dict[str, tuple[int, bool, bool, float]]:
         """
         Run inference over a set of queries.
 
@@ -173,9 +181,11 @@ class Inference(ABC):
             not self.epistemic_state["preprocessing_done"]
             and not self.epistemic_state["preprocessing_timed_out"]
         ):
-            Exception("preprocess belief_base before running inference")
+            raise Exception("preprocess belief_base before running inference")
         if self.epistemic_state["preprocessing_timed_out"]:
-            result_dict = {str(q): (i, False, False, 0) for i, q in queries.items()}
+            result_dict: dict[str, tuple[int, bool, bool, float]] = {
+                str(q): (i, False, False, 0.0) for i, q in queries.items()
+            }
         elif multi_inference:
             result_dict = self.multi_inference(queries, timeout)
         else:
@@ -218,7 +228,9 @@ class Inference(ABC):
         result dictionay
     """
 
-    def single_inference(self, queries: dict, timeout: int) -> dict:
+    def single_inference(
+        self, queries: dict[int, Conditional], timeout: int
+    ) -> dict[str, tuple[int, bool, bool, float]]:
         """
         Evaluate queries sequentially.
 
@@ -234,7 +246,7 @@ class Inference(ABC):
         dict
             A result mapping ``{str(query): (index, result, timed_out, time_ms)}``.
         """
-        result_dict = dict()
+        result_dict: dict[str, tuple[int, bool, bool, float]] = {}
         for index, query in queries.items():
             deadline = Deadline.from_duration(timeout) if timeout else None
             try:
@@ -243,7 +255,12 @@ class Inference(ABC):
                 time = perf_counter_ns() / 1e6 - start_time
                 result_dict[str(query)] = (index, result, False, time)
             except TimeoutError:
-                result_dict[str(query)] = (index, False, True, timeout * 1000)
+                result_dict[str(query)] = (
+                    index,
+                    False,
+                    True,
+                    float(timeout * 1000),
+                )
             except Exception as e:
                 raise e
         return result_dict
@@ -262,7 +279,9 @@ class Inference(ABC):
         result dictionay
     """
 
-    def multi_inference(self, queries: dict, timeout: int) -> dict:
+    def multi_inference(
+        self, queries: dict[int, Conditional], timeout: int
+    ) -> dict[str, tuple[int, bool, bool, float]]:
         """
         Evaluate queries in parallel using multiprocessing.
 
@@ -281,8 +300,12 @@ class Inference(ABC):
         indices = queries.keys()
 
         with mp.Manager() as manager:
-            mp_return_dict = manager.dict()
-            processes = []
+            # Shared dict across processes. Treat as a generic mutable mapping for typing.
+            mp_return_dict = cast(
+                MutableMapping[int, tuple[int, bool, bool, float]],
+                manager.dict(),
+            )
+            processes: list[tuple[mp.Process, int, Conditional]] = []
 
             for i in indices:
                 query = queries[i]
@@ -299,15 +322,17 @@ class Inference(ABC):
                     p.terminate()
                     p.join()  # Ensure the process has terminated
                     mp_return_dict[processes.index((p, i, query))] = (
-                        query,
-                        (i, False, True, 0),
+                        i,
+                        False,
+                        True,
+                        0.0,
                     )
 
             # results = [mp_return_dict[i] if i in return_dict else (str(q), (i, False, True, 0))  for i, q in queries.items()]
-            result_dict = {
+            result_dict: dict[str, tuple[int, bool, bool, float]] = {
                 str(q): mp_return_dict[i]
                 if i in mp_return_dict
-                else (i, False, True, timeout)
+                else (i, False, True, float(timeout * 1000))
                 for i, q in queries.items()
             }
             return result_dict
@@ -327,7 +352,11 @@ class Inference(ABC):
     """
 
     def _multi_inference_worker(
-        self, index: int, query: Conditional, mp_return_dict: dict, timeout: int
+        self,
+        index: int,
+        query: Conditional,
+        mp_return_dict: MutableMapping[int, tuple[int, bool, bool, float]],
+        timeout: int,
     ) -> None:
         """
         Worker function used by ``multi_inference``.
@@ -348,9 +377,9 @@ class Inference(ABC):
             start_time = perf_counter_ns() / 1e6
             result = self.general_inference(query, deadline=deadline)
             time = perf_counter_ns() / 1e6 - start_time
-            mp_return_dict[index] = (index, result, False, time)
+            mp_return_dict[index] = (index, result, False, float(time))
         except TimeoutError:
-            mp_return_dict[index] = (index, False, True, timeout * 1000)
+            mp_return_dict[index] = (index, False, True, float(timeout * 1000))
         except Exception as e:
             raise e
 
@@ -359,7 +388,7 @@ class Inference(ABC):
         query: Conditional,
         weakly: bool | None = None,
         deadline: Deadline | None = None,
-    ):
+    ) -> bool:
         """
         Run the concrete inference implementation with quick unsatisfiability checks.
 

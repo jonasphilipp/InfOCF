@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Optional, Set, Tuple
+from typing import Dict, Iterable, List, Optional, Set, Tuple, cast
 
 from pysmt.fnode import FNode
 
@@ -87,7 +87,7 @@ class CRevisionModel:
         """
         if not hasattr(cond, "index"):
             raise ValueError("Conditional must have a unique 'index' attribute")
-        idx = int(cond.index)
+        idx = int(cast(int, cond.index))
         if idx in self.conds:
             raise ValueError(f"Conditional index already present: {idx}")
 
@@ -187,9 +187,12 @@ class CRevisionModel:
         )
 
         compilation = self.to_compilation()
-        return translate_to_csp(
-            compilation,
-            gamma_plus_zero,
-            fixed_gamma_plus=fixed_gamma_plus,
-            fixed_gamma_minus=fixed_gamma_minus,
+        return cast(
+            List[FNode],
+            translate_to_csp(
+                compilation,
+                gamma_plus_zero,
+                fixed_gamma_plus=fixed_gamma_plus,
+                fixed_gamma_minus=fixed_gamma_minus,
+            ),
         )

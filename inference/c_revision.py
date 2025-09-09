@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+from typing import Any, Protocol, cast
 
 import z3
+from pysmt.fnode import FNode
 from pysmt.shortcuts import GE, GT, Int, Plus, Solver, Symbol
 from pysmt.typing import INT
 
@@ -10,6 +12,8 @@ from inference.c_inference import freshVars, minima_encoding
 from inference.conditional import Conditional
 from inference.preocf import PreOCF
 from infocf.log_setup import get_logger
+
+"""Avoid importing CRevisionModel at type-check time to prevent import cycles."""
 
 # Configure module logger
 logger = get_logger(__name__)
@@ -19,10 +23,10 @@ ATTENTION: This file is not tested yet sufficiently, and the implementation is n
 """
 
 # Cache for gamma symbol objects (avoids recreating identical FNodes)
-_gamma_sym_cache: dict[str, "FNode"] = {}
+_gamma_sym_cache: dict[str, FNode] = {}
 
 
-def _gamma(name: str):
+def _gamma(name: str) -> FNode:
     sym = _gamma_sym_cache.get(name)
     if sym is None:
         sym = Symbol(name, INT)
@@ -30,12 +34,15 @@ def _gamma(name: str):
     return sym
 
 
+WorldTriple = tuple[int, list[int], list[int]]
+
+
 def compile(
     ranking_function: PreOCF, revision_conditionals: list[Conditional]
-) -> list[list[dict[str, list[int, list[int]]]]]:
-    outer_list = []
+) -> list[list[dict[str, WorldTriple]]]:
+    outer_list: list[list[dict[str, WorldTriple]]] = []
     for rev_cond in revision_conditionals:
-        inner_list = [dict(), dict()]
+        inner_list: list[dict[str, WorldTriple]] = [dict(), dict()]
         for world in ranking_function.ranks.keys():
             if ranking_function.world_satisfies_conditionalization(
                 world, rev_cond.make_A_then_B()
@@ -48,21 +55,18 @@ def compile(
             else:
                 continue
 
-            inner_list[branch_index][world] = [
-                ranking_function.rank_world(world),
-                [],
-                [],
-            ]
+            rank_val = ranking_function.rank_world(world)
+            inner_list[branch_index][world] = (rank_val, [], [])
 
             for cond in revision_conditionals:
                 if ranking_function.world_satisfies_conditionalization(
                     world, cond.make_A_then_B()
                 ):
-                    inner_list[branch_index][world][1].append(cond.index)
+                    inner_list[branch_index][world][1].append(cast(int, cond.index))
                 elif ranking_function.world_satisfies_conditionalization(
                     world, cond.make_A_then_not_B()
                 ):
-                    inner_list[branch_index][world][2].append(cond.index)
+                    inner_list[branch_index][world][2].append(cast(int, cond.index))
 
         outer_list.append(inner_list)
 
@@ -70,11 +74,14 @@ def compile(
 
 
 # Reference implementation (quadratic); kept for testing.
+TripleMutable = list[object]
+
+
 def compile_alt(
     ranking_function: PreOCF, revision_conditionals: list[Conditional]
-) -> tuple[dict[int, list[int]], dict[int, list[int]]]:
-    vMin = dict()
-    fMin = dict()
+) -> tuple[dict[int, list[TripleMutable]], dict[int, list[TripleMutable]]]:
+    vMin: dict[int, list[TripleMutable]] = dict()
+    fMin: dict[int, list[TripleMutable]] = dict()
 
     # Initialize dictionaries for all revision conditionals based on their index
     for rev_cond in revision_conditionals:
@@ -82,12 +89,13 @@ def compile_alt(
             raise ValueError(
                 f"Revision conditional '{rev_cond.textRepresentation}' is missing the 'index' attribute."
             )
-        vMin[rev_cond.index] = []
-        fMin[rev_cond.index] = []
+        key = int(cast(int, rev_cond.index))
+        vMin[key] = []
+        fMin[key] = []
 
     for rev_cond in revision_conditionals:
         # The key is now the conditional's own index
-        key_index = rev_cond.index
+        key_index = int(cast(int, rev_cond.index))
 
         for world in ranking_function.ranks.keys():
             v_dict = ranking_function.world_satisfies_conditionalization(
@@ -100,34 +108,39 @@ def compile_alt(
             if not v_dict and not f_dict:
                 continue
 
-            triple = [ranking_function.rank_world(world), [], []]
+            rank_val = ranking_function.rank_world(world)
+            acc_list: list[int] = []
+            rej_list: list[int] = []
 
             # Skip the leading conditional itself – only consider *other* conditionals
             for cond in revision_conditionals:
-                if cond.index == key_index:
+                if int(cast(int, cond.index)) == key_index:
                     continue
 
                 if ranking_function.world_satisfies_conditionalization(
                     world, cond.make_A_then_B()
                 ):
-                    triple[1].append(cond.index)
+                    acc_list.append(cast(int, cond.index))
                 elif ranking_function.world_satisfies_conditionalization(
                     world, cond.make_A_then_not_B()
                 ):
-                    triple[2].append(cond.index)
+                    rej_list.append(cast(int, cond.index))
 
             if v_dict:
-                vMin[key_index].append(triple)
+                vMin[key_index].append([rank_val, acc_list, rej_list])
             elif f_dict:
-                fMin[key_index].append(triple)
+                fMin[key_index].append([rank_val, acc_list, rej_list])
 
     return vMin, fMin
 
 
 # Optimised implementation
+MinimaTriple = tuple[int, list[int], list[int]]
+
+
 def compile_alt_fast(
     ranking_function: PreOCF, revision_conditionals: list[Conditional]
-) -> tuple[dict[int, list], dict[int, list]]:
+) -> tuple[dict[int, list[MinimaTriple]], dict[int, list[MinimaTriple]]]:
     """Optimised variant of *compile_alt*.
 
     Instead of an outer loop over revision conditionals *and* an inner loop over
@@ -145,40 +158,48 @@ def compile_alt_fast(
     sig_index = {v: i for i, v in enumerate(ranking_function.signature)}
 
     # Pre-extract masks for simple literals; complex ones will be None and fallback to solver.
-    cond_masks = {}
+    cond_masks: dict[int, tuple[int, int, int, int] | None] = {}
     for cond in revision_conditionals:
+        if cond.index is None or not isinstance(cond.index, int):
+            raise ValueError(
+                f"Revision conditional '{cond.textRepresentation}' is missing a valid 'index' (int)."
+            )
         cond_masks[cond.index] = _extract_cond_masks(cond, sig_index)
 
-    vMin: dict[int, list] = {c.index: [] for c in revision_conditionals}
-    fMin: dict[int, list] = {c.index: [] for c in revision_conditionals}
+    vMin: dict[int, list[MinimaTriple]] = {
+        cast(int, c.index): [] for c in revision_conditionals
+    }
+    fMin: dict[int, list[MinimaTriple]] = {
+        cast(int, c.index): [] for c in revision_conditionals
+    }
 
     # Evaluate each world once.
     for world in ranking_function.ranks.keys():
         # cache world bits as ints
         bits = [int(b) for b in world]
 
-        accepted_list = []
-        rejected_list = []
+        accepted_list: list[int] = []
+        rejected_list: list[int] = []
 
         for cond in revision_conditionals:
-            mask = cond_masks[cond.index]
+            mask = cond_masks[int(cast(int, cond.index))]
             if mask is None:
                 # Fallback to solver evaluation for complex formula
                 if ranking_function.world_satisfies_conditionalization(
                     world, cond.make_A_then_B()
                 ):
-                    accepted_list.append(cond.index)
+                    accepted_list.append(cast(int, cond.index))
                 elif ranking_function.world_satisfies_conditionalization(
                     world, cond.make_A_then_not_B()
                 ):
-                    rejected_list.append(cond.index)
+                    rejected_list.append(cast(int, cond.index))
             else:
                 a_idx, a_val, c_idx, c_val = mask
                 if bits[a_idx] == a_val:
                     if bits[c_idx] == c_val:
-                        accepted_list.append(cond.index)
+                        accepted_list.append(cast(int, cond.index))
                     else:
-                        rejected_list.append(cond.index)
+                        rejected_list.append(cast(int, cond.index))
 
         # Skip rank computation entirely if this world contributes to no branch
         if not accepted_list and not rejected_list:
@@ -191,11 +212,11 @@ def compile_alt_fast(
         rej_set = set(rejected_list)
 
         for cond in revision_conditionals:
-            idx = cond.index
+            idx = cast(int, cond.index)
             if idx in acc_set or idx in rej_set:
                 acc_filtered = [i for i in accepted_list if i != idx]
                 rej_filtered = [i for i in rejected_list if i != idx]
-                triple = (rank_val, acc_filtered, rej_filtered)
+                triple: MinimaTriple = (rank_val, acc_filtered, rej_filtered)
                 if idx in acc_set:
                     vMin[idx].append(triple)
                 else:
@@ -205,14 +226,14 @@ def compile_alt_fast(
 
 
 def symbolize_minima_expression(
-    minima: dict[int, list], gamma_plus_zero: bool = False
-) -> dict[int, list]:
+    minima: dict[int, list[MinimaTriple]], gamma_plus_zero: bool = False
+) -> dict[int, list[FNode]]:
     """
     Convert minima expression to symbolic form.
     Input: dict mapping indices to lists of triples [rank, accepted_indices, rejected_indices]
     Output: dict mapping indices to lists of symbolic expressions
     """
-    results = dict()
+    results: dict[int, list[FNode]] = dict()
 
     for index, triple_list in minima.items():
         results[index] = []
@@ -265,8 +286,12 @@ def symbolize_minima_expression(
     return results
 
 
-def encoding(gammas: dict, vSums: dict, fSums: dict) -> list:
-    csp = []
+def encoding(
+    gammas: dict[int, tuple[FNode, FNode]],
+    vSums: dict[int, list[FNode]],
+    fSums: dict[int, list[FNode]],
+) -> list[FNode]:
+    csp: list[FNode] = []
     for index, gamma in gammas.items():
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("gamma %s", gamma)
@@ -283,11 +308,14 @@ def encoding(gammas: dict, vSums: dict, fSums: dict) -> list:
 
 
 def translate_to_csp(
-    compilation: tuple[dict[int, list[int]], dict[int, list[int]]],
+    compilation: tuple[
+        dict[int, list[MinimaTriple]],
+        dict[int, list[MinimaTriple]],
+    ],
     gamma_plus_zero: bool = False,
     fixed_gamma_plus: dict[int, int] | None = None,
     fixed_gamma_minus: dict[int, int] | None = None,
-) -> list:
+) -> list[FNode]:
     gammas = {}
     for i in compilation[0].keys():
         # Determine gamma_plus variable/constant
@@ -321,7 +349,9 @@ def translate_to_csp(
     return csp
 
 
-def solve_and_get_model(csp, minimize_vars: list[str] | None = None):
+def solve_and_get_model(
+    csp: list[FNode], minimize_vars: list[str] | None = None
+) -> dict[str, int] | None:
     """Return a model satisfying *csp* and Pareto-minimising *minimize_vars*.
 
     Arguments
@@ -345,7 +375,7 @@ def solve_and_get_model(csp, minimize_vars: list[str] | None = None):
         s.add(*z3_csp)
         if s.check() == z3.sat:
             m = s.model()
-            return {d.name(): m[d].as_long() for d in m.decls()}
+            return {d.name(): cast(Any, m[d]).as_long() for d in m.decls()}
         return None
 
     # Otherwise build an optimiser.
@@ -360,13 +390,23 @@ def solve_and_get_model(csp, minimize_vars: list[str] | None = None):
     # Enumerate first Pareto-optimal model (suffices since *priority='pareto'*).
     if opt.check() == z3.sat:
         m = opt.model()
-        return {d.name(): m[d].as_long() for d in m.decls()}
+        return {d.name(): cast(Any, m[d]).as_long() for d in m.decls()}
 
     return None
 
 
 # Choose which compilation backend to use – fast by default.
 _compile_backend = compile_alt_fast
+
+
+class HasToCSP(Protocol):
+    def to_csp(
+        self,
+        *,
+        gamma_plus_zero: bool = False,
+        fixed_gamma_plus: dict[int, int] | None = None,
+        fixed_gamma_minus: dict[int, int] | None = None,
+    ) -> list[FNode]: ...
 
 
 def c_revision(
@@ -376,8 +416,8 @@ def c_revision(
     fixed_gamma_minus: dict[int, int] | None = None,
     fixed_gamma_plus: dict[int, int] | None = None,
     *,
-    model: "CRevisionModel" | None = None,
-):
+    model: HasToCSP | None = None,
+) -> dict[str, int] | None:
     """Compute gamma_plus/gamma_minus parameters according to c-revision semantics.
 
     When *gamma_plus_zero* is *True*, gamma_plus variables are fixed to 0 and the
@@ -408,26 +448,25 @@ def c_revision(
         if not (fixed_gamma_minus and cond.index in fixed_gamma_minus)
     ]
 
-    model = solve_and_get_model(csp, minimize_vars)
+    model_dict = solve_and_get_model(csp, minimize_vars)
 
     # Ensure fixed gamma values appear in the returned model dictionary
-    if model is not None:
+    if model_dict is not None:
         if fixed_gamma_minus:
             for i, val in fixed_gamma_minus.items():
-                model[f"gamma-_{i}"] = int(val)
+                model_dict[f"gamma-_{i}"] = int(val)
         if fixed_gamma_plus:
             for i, val in fixed_gamma_plus.items():
-                model[f"gamma+_{i}"] = int(val)
+                model_dict[f"gamma+_{i}"] = int(val)
         if gamma_plus_zero:
-            # Also surface gamma_plus=0 for completeness if requested globally and not fixed explicitly
             for cond in revision_conditionals:
                 key = f"gamma+_{cond.index}"
-                if key not in model and not (
+                if key not in model_dict and not (
                     fixed_gamma_plus and cond.index in fixed_gamma_plus
                 ):
-                    model[key] = 0
+                    model_dict[key] = 0
 
-    return model
+    return model_dict
 
 
 # ----------------------------------------------------------------------------

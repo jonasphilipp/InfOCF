@@ -5,14 +5,16 @@
 import logging
 
 # ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+from typing import Any
+
+# ---------------------------------------------------------------------------
 # Third-party
 # ---------------------------------------------------------------------------
 import pandas as pd
 from pysmt.environment import get_env
 
-# ---------------------------------------------------------------------------
-# Project modules
-# ---------------------------------------------------------------------------
 from inference.belief_base import BeliefBase
 from inference.c_inference import CInference
 from inference.inference import Inference
@@ -48,7 +50,7 @@ def create_epistemic_state(
     smt_solver: str,
     pmaxsat_solver: str,
     weakly: bool,
-) -> dict:
+) -> dict[str, Any]:
     """
     Create and initialize the epistemic state structure.
 
@@ -70,7 +72,7 @@ def create_epistemic_state(
     dict
         Initialized epistemic state dictionary.
     """
-    epistemic_state = dict()
+    epistemic_state: dict[str, Any] = {}
 
     epistemic_state["belief_base"] = belief_base
     epistemic_state["inference_system"] = inference_system
@@ -98,7 +100,7 @@ Returns:
 """
 
 
-def create_inference_instance(epistemic_state) -> Inference:
+def create_inference_instance(epistemic_state: dict[str, Any]) -> Inference:
     """
     Instantiate the concrete inference class based on the epistemic state.
 
@@ -186,7 +188,7 @@ def create_inference_instance(epistemic_state) -> Inference:
                 ],
             },
         )
-        Exception("no correct inference system provideid")
+        raise Exception("no correct inference system provideid")
 
     # INFO-level logging for successful initialization
     logger.info(
@@ -203,7 +205,7 @@ def create_inference_instance(epistemic_state) -> Inference:
 
 
 class InferenceOperator:
-    epistemic_state: dict
+    epistemic_state: dict[str, Any]
 
     """
     Initializes InferenceOperator.
@@ -345,7 +347,8 @@ class InferenceOperator:
             "pmaxsat_solver",
         ]
 
-        df = pd.DataFrame(columns=columns)  # type: ignore
+        # Build an empty DataFrame with desired columns without relying on "columns=" typing quirks
+        df = pd.DataFrame({c: [] for c in columns})
 
         inference_instance = create_inference_instance(self.epistemic_state)
 

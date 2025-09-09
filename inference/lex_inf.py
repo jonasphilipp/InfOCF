@@ -3,6 +3,7 @@
 # ---------------------------------------------------------------------------
 
 import logging
+from typing import FrozenSet
 from warnings import warn
 
 # ---------------------------------------------------------------------------
@@ -237,5 +238,7 @@ Returns:
 """
 
 
-def any_subset_of_all(A: frozenset, B: frozenset) -> bool:
+def any_subset_of_all(
+    A: FrozenSet[FrozenSet[int]], B: FrozenSet[FrozenSet[int]]
+) -> bool:
     return all(any(a.issubset(b) for a in A) for b in B)

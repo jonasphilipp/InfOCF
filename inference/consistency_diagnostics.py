@@ -131,7 +131,10 @@ def augment_belief_base_with_facts(
     return BeliefBase(bb.signature, augmented, f"{bb.name}-with-facts")
 
 
-def _last_layer_size(partition) -> int:
+from typing import List as _List
+
+
+def _last_layer_size(partition: _List[_List[Any]] | Literal[False]) -> int:
     return len(partition[-1]) if partition and isinstance(partition, list) else 0
 
 
@@ -175,6 +178,7 @@ def consistency_diagnostics(
             raise ValueError("Facts are mutually inconsistent")
 
     # Base (belief base only)
+    base_part_ext: _List[_List[Any]] | Literal[False] = False
     if extended:
         # Try to reuse extended partition if provided
         if "base_extended" in precomputed:
@@ -208,9 +212,7 @@ def consistency_diagnostics(
             diag["c_consistent"] = comb_part_ext is not False
 
             # Infinity partition size comparison only if both are partitions
-            if (comb_part_ext is not False) and (
-                "base_part_ext" in locals() and base_part_ext is not False
-            ):
+            if (comb_part_ext is not False) and (base_part_ext is not False):
                 diag["c_infinity_increase"] = _last_layer_size(
                     comb_part_ext
                 ) > _last_layer_size(base_part_ext)
