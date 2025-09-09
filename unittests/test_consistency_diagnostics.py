@@ -1,3 +1,17 @@
+"""
+Consistency diagnostics tests.
+
+Purpose
+-------
+Exercise `consistency_diagnostics` and `format_diagnostics` for both standard
+and extended (weakly) modes, with and without facts, ensuring keys and types are
+present and values are sensible for basic scenarios.
+
+Run
+---
+uv run pytest -q unittests/test_consistency_diagnostics.py
+"""
+
 import pytest
 
 from inference.consistency_diagnostics import (

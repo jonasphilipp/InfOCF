@@ -4,6 +4,20 @@ Test file for the compile function in inference/preocf.py
 
 import os
 import sys
+
+"""
+Compile pipeline function-level tests.
+
+Purpose
+-------
+Verify compile-related helper functions produce expected structures and content
+at each stage, catching regressions in formatting or assembly logic.
+
+Run
+---
+uv run pytest -q unittests/test_compile_function.py
+"""
+
 import unittest
 
 # Add the parent directory to the path so we can import the modules

@@ -1,13 +1,53 @@
+"""
+CSV-driven correctness tests for standard (strict) semantics.
+
+Inputs
+------
+CSV files: `unittests/example_testing_results_small.csv` (preferred if present)
+          or `unittests/example_testing_results.csv`.
+
+Required CSV columns (per row):
+- index: expected sequential position of the test case (used for ordering checks)
+- result: True/False expected outcome
+- belief_base_filepath: path to the belief base file (repo-relative)
+- queries_filepath: path to the queries file (repo-relative)
+- query: the single query (string) within the batch to validate
+- inference_system: one of {"p-entailment","system-z","system-w","lex_inf","c-inference"}
+
+Optional CSV columns:
+- smt_solver: SMT backend (default: z3)
+- pmaxsat_solver: variant for systems supporting it (e.g., rc2|z3)
+
+Environment variables
+---------------------
+- INFOCF_CORRECTNESS_SIZE: small|large|both
+  Controls which CSV(s) are used; by default the test prefers the small file if present.
+
+Behavior
+--------
+- Rows are grouped by (belief base file, queries file) to avoid redundant computation.
+- For each group, results are computed for all configured systems and variants.
+- For the row's system, all registered variants must match the expected result.
+- The `index` column is used to ensure sequential ordering of rows.
+"""
+
 import os
 import sys
 import unittest
+from typing import Any, cast
 
-import pandas as pd
+try:
+    import pandas as pd  # type: ignore
+except Exception:  # pragma: no cover - gracefully handle missing pandas in env
+    pd = cast(Any, None)
 
 from inference.inference_operator import InferenceOperator
 from parser.Wrappers import parse_belief_base, parse_queries
 
 
+@unittest.skipIf(
+    pd is None, "pandas not installed; run 'uv sync' or include testing extras"
+)
 class InferenceCorrectnessTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

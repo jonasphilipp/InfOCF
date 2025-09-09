@@ -1,3 +1,18 @@
+"""
+PreOCF end-to-end tests.
+
+Purpose
+-------
+Validate core functionality of the PreOCF implementation (System Z initialization,
+rank computation, conditionalization, marginalization, TPO conversions, state
+persistence, and solver integration) on both a large random belief base and a
+small birds example.
+
+Run
+---
+uv run --python 3.12 --extra testing pytest -q unittests/test_preocf.py
+"""
+
 import os
 import random
 import unittest

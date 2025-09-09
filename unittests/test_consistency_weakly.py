@@ -1,6 +1,21 @@
 import glob
 import os
 import sys
+
+"""
+Extended (weakly) consistency and partition tests.
+
+Purpose
+-------
+Cover a broader set of weakly/extended consistency behaviors, including
+properties of the last layer and interactions with facts, beyond the small
+sanity checks.
+
+Run
+---
+uv run pytest -q unittests/test_consistency_weakly.py
+"""
+
 import unittest
 
 # Add the base directory to the Python path

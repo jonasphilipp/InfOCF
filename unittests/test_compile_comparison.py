@@ -1,5 +1,19 @@
 import os
 import sys
+
+"""
+Compile comparison tests.
+
+Purpose
+-------
+Compare compiled outputs against fixture baselines to detect content regressions.
+Focuses on end-to-end artifacts rather than function-level shapes.
+
+Run
+---
+uv run pytest -q unittests/test_compile_comparison.py
+"""
+
 import unittest
 from itertools import cycle
 from unittest.mock import Mock

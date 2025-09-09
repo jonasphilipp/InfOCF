@@ -1,4 +1,19 @@
 import random
+
+"""
+C-revision vs C-representation tests.
+
+Purpose
+-------
+Compare outcomes between the C-revision operator and the compact
+representation-based approach to ensure theoretical equivalence and spot
+divergences.
+
+Run
+---
+uv run pytest -q unittests/test_c_revision_vs_c_representation.py
+"""
+
 import unittest
 
 import z3

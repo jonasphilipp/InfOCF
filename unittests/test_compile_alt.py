@@ -1,5 +1,19 @@
 import os
 import sys
+
+"""
+Alternative compile flow tests.
+
+Purpose
+-------
+Exercise alternate or legacy compile paths to ensure compatibility and parity
+with the primary compile pipeline.
+
+Run
+---
+uv run pytest -q unittests/test_compile_alt.py
+"""
+
 import unittest
 from itertools import cycle
 from unittest.mock import Mock

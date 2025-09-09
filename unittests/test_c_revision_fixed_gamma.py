@@ -1,3 +1,16 @@
+"""
+C-revision fixed-gamma tests.
+
+Purpose
+-------
+Verify behavior of the C-revision operator with fixed gamma settings across a
+set of representative scenarios.
+
+Run
+---
+uv run pytest -q unittests/test_c_revision_fixed_gamma.py
+"""
+
 import unittest
 
 from pysmt.shortcuts import Not, Symbol

@@ -1,3 +1,30 @@
+"""
+Manual weakly-semantics edge-case tests.
+
+Purpose
+-------
+Exercise specific corner cases for weakly/extended semantics to ensure
+logical properties (e.g. vacuity with last layer, partition interaction) hold.
+
+How to add cases
+----------------
+Use the helper `run_case(bb, qs, expected, systems=None)`:
+- bb: inline belief base (string)
+- qs: inline queries (string)
+- expected: list[bool] corresponding to queries order
+- systems: target systems; defaults to ["system-z","system-w","lex_inf"].
+  z3 variants are exercised for supported systems.
+
+Semantics
+---------
+weakly=True (extended). SMT solver is z3. The test `test_default_mode_remains_strict`
+also asserts the strict mode raises where appropriate.
+
+Run
+---
+uv run pytest -q unittests/test_manual_weakly_edge_cases.py
+"""
+
 import unittest
 
 from inference.inference_operator import InferenceOperator

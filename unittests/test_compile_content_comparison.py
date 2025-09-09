@@ -1,5 +1,24 @@
 import os
 import sys
+
+"""
+Compile/content comparison tests.
+
+Purpose
+-------
+Compare generated/compiled artifacts or parser outputs against fixtures to detect
+regressions in formatting or content. This suite is focused on structural and
+content equivalence, not semantic inference results.
+
+Inputs
+------
+- Describes and uses fixture files from the repository (see individual tests).
+
+Run
+---
+uv run pytest -q unittests/test_compile_content_comparison.py
+"""
+
 import unittest
 from itertools import cycle
 from unittest.mock import Mock

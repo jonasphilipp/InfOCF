@@ -1,3 +1,21 @@
+"""
+Weakly consistency sanity tests.
+
+Purpose
+-------
+Quick checks that weakly/extended partitioning and consistency behave as expected
+for selected belief bases. Intended as sanity checks rather than exhaustive coverage.
+
+Notes
+-----
+- Focuses on consistency utilities; operator-specific behavior should be covered
+  in the CSV-driven and manual weakly tests.
+
+Run
+---
+uv run pytest -q unittests/test_weaklyConsistence.py
+"""
+
 import unittest
 
 from inference.consistency_sat import consistency, consistency_indices

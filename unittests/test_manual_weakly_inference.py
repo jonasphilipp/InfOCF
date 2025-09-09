@@ -1,3 +1,27 @@
+"""
+Manual weakly-semantics checks.
+
+Purpose
+-------
+Validate edge-case behavior for weakly/extended semantics across systems.
+
+How to add cases
+----------------
+Use `run_case(belief_base_str, queries_str, expected, systems=None)`:
+- belief_base_str / queries_str: inline belief base and queries text
+- expected: list[bool] aligned to the order of queries in `queries_str`
+- systems: defaults to ["system-z", "system-w", "lex_inf"]; z3 variants
+  are also exercised where available via pmaxsat selection
+
+Semantics
+---------
+weakly=True (extended). SMT solver is z3.
+
+Run
+---
+uv run pytest -q unittests/test_manual_weakly_inference.py
+"""
+
 import unittest
 
 from inference.inference_operator import InferenceOperator

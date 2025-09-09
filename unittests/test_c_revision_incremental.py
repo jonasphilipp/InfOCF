@@ -1,3 +1,17 @@
+"""
+C-revision incremental tests.
+
+Purpose
+-------
+Validate incremental update behavior for the C-revision operator, checking that
+successive modifications yield consistent results and preserve expected
+properties.
+
+Run
+---
+uv run pytest -q unittests/test_c_revision_incremental.py
+"""
+
 import unittest
 
 from pysmt.shortcuts import Not, Symbol
