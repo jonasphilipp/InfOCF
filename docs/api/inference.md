@@ -6,12 +6,6 @@
       filters:
         - "!^_"
 
-::: inference.p_entailment
-    options:
-      show_source: false
-      filters:
-        - "!^_"
-
 ::: inference.conditional
     options:
       show_source: false
