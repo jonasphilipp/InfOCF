@@ -2,7 +2,6 @@
 # Standard library
 # ---------------------------------------------------------------------------
 
-from time import perf_counter
 
 # ---------------------------------------------------------------------------
 # Third-party
@@ -14,6 +13,7 @@ from z3 import Optimize, Or, Solver, is_true, unsat, z3
 from inference.conditional import Conditional
 from inference.conditional_z3 import Conditional_z3
 from inference.consistency_sat import consistency
+from inference.deadline import Deadline
 
 # ---------------------------------------------------------------------------
 # Project modules
@@ -44,7 +44,7 @@ class SystemWZ3(Inference):
         partition in epistemic_state
     """
 
-    def _preprocess_belief_base(self, weakly: bool) -> None:
+    def _preprocess_belief_base(self, weakly: bool, deadline: Deadline | None) -> None:
         partition, _ = consistency(
             self.epistemic_state["belief_base"],
             self.epistemic_state["smt_solver"],
@@ -79,14 +79,15 @@ class SystemWZ3(Inference):
         result boolean
     """
 
-    def _inference(self, query: Conditional, weakly: bool) -> bool:
+    def _inference(
+        self, query: Conditional, weakly: bool, deadline: Deadline | None
+    ) -> bool:
         # self._translation_start()
         query_z3 = Conditional_z3.translate_from_existing(query)
         # self._translation_end()
         opt = makeOptimizer()
-        kt = float(self.epistemic_state.get("kill_time", 0) or 0)
-        if kt:
-            opt.set(timeout=int(1000 * (kt - perf_counter())))
+        if deadline and not deadline.expired():
+            opt.set(timeout=deadline.remaining_ms())
         if not weakly:
             result = self._rec_inference(
                 opt, len(self.epistemic_state["partition"]) - 1, query_z3
@@ -175,9 +176,6 @@ class SystemWZ3(Inference):
         for conditional in part:
             opt.add_soft(conditional.make_A_then_not_B() == False)
         while True:
-            kt = float(self.epistemic_state.get("kill_time", 0) or 0)
-            if kt and perf_counter() > kt:
-                raise TimeoutError
             check = opt.check()
             if check == unsat:
                 return xi_i_set

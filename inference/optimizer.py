@@ -4,7 +4,6 @@
 
 import logging
 from abc import ABC, abstractmethod
-from time import perf_counter
 
 # ---------------------------------------------------------------------------
 # Third-party
@@ -14,6 +13,8 @@ from typing import cast
 from pysat.card import IDPool
 from pysat.examples.rc2 import RC2
 from pysat.formula import WCNF
+
+from inference.deadline import Deadline
 
 # ---------------------------------------------------------------------------
 # Project modules
@@ -69,7 +70,7 @@ class Optimizer(ABC):
 
     @abstractmethod
     def minimal_correction_subsets(
-        self, wcnf: WCNF, ignore: list[int] = []
+        self, wcnf: WCNF, ignore: list[int] = [], deadline: Deadline | None = None
     ) -> list[list[int]]:
         return []
 
@@ -181,7 +182,7 @@ class OptimizerRC2(Optimizer):
     """
 
     def minimal_correction_subsets(
-        self, wcnf: WCNF, ignore: list[int] = []
+        self, wcnf: WCNF, ignore: list[int] = [], deadline: Deadline | None = None
     ) -> list[list[int]]:
         xMins: list[set[int]] = []
         sat_solver = str(self.epistemic_state.get("pmaxsat_solver", ""))[4:]
@@ -190,8 +191,7 @@ class OptimizerRC2(Optimizer):
         model_count = 0
         with RC2(wcnf, solver=sat_solver) as rc2:
             while True:
-                kill_time_val = float(self.epistemic_state.get("kill_time", 0) or 0)
-                if kill_time_val and perf_counter() > kill_time_val:
+                if deadline and deadline.expired():
                     raise TimeoutError
 
                 model = rc2.compute()

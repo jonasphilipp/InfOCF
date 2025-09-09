@@ -18,6 +18,7 @@ from pysmt.shortcuts import (
 )
 
 from inference.conditional import Conditional
+from inference.deadline import Deadline
 from inference.inference import Inference
 from inference.optimizer import create_optimizer
 from inference.tseitin_transformation import TseitinTransformation
@@ -111,7 +112,7 @@ class CInference(Inference):
             logger.debug("csp extended %s", csp)
         return csp
 
-    def _preprocess_belief_base(self, weakly: bool) -> None:
+    def _preprocess_belief_base(self, weakly: bool, deadline: Deadline | None) -> None:
         # self._translation_start_belief_base()
         # for i, conditional in self.epistemic_state.belief_base.conditionals.items():
         #    translated_condtional = Conditional_z3.translate_from_existing(conditional)
@@ -120,13 +121,15 @@ class CInference(Inference):
         tseitin_transformation = TseitinTransformation(self.epistemic_state)
         tseitin_transformation.belief_base_to_cnf(True, True, True)
         # self._translation_end_belief_base()
-        self.compile_constraint()
+        self.compile_constraint(deadline)
         # self._translation_start_belief_base()
         self.base_csp = self.translate()
         # self._translation_end_belief_base()
         # print("Translation done")
 
-    def _inference(self, query: Conditional, weakly: bool) -> bool:
+    def _inference(
+        self, query: Conditional, weakly: bool, deadline: Deadline | None
+    ) -> bool:
         selffullfilling = True
         for conditional in self.epistemic_state["belief_base"].conditionals.values():
             if is_sat(And(conditional.antecedence, Not(conditional.consequence))):
@@ -141,7 +144,7 @@ class CInference(Inference):
         for constraint in self.base_csp:
             solver.add_assertion(constraint)
             # print(f"new base_csp constraint {constraint}")
-        csp, _ = self.compile_and_encode_query(query)
+        csp, _ = self.compile_and_encode_query(query, deadline)
         for constraint in csp:
             solver.add_assertion(constraint)
             # print(f"new csp constraint {constraint}")
@@ -162,7 +165,7 @@ class CInference(Inference):
         Execution time in ms
     """
 
-    def compile_constraint(self) -> float:
+    def compile_constraint(self, deadline: Deadline | None = None) -> float:
         start_time = perf_counter_ns() / (1e6)
 
         for leading_conditional in [
@@ -181,7 +184,9 @@ class CInference(Inference):
                 ]
 
                 optimizer = create_optimizer(self.epistemic_state)
-                xMins_lst = optimizer.minimal_correction_subsets(wcnf, ignore=[i])
+                xMins_lst = optimizer.minimal_correction_subsets(
+                    wcnf, ignore=[i], deadline=deadline
+                )
 
                 if leading_conditional is self.epistemic_state["v_cnf_dict"]:
                     self.epistemic_state["vMin"][i] = xMins_lst
@@ -204,7 +209,9 @@ class CInference(Inference):
         Execution time
     """
 
-    def compile_and_encode_query(self, query: Conditional) -> tuple[list, float]:
+    def compile_and_encode_query(
+        self, query: Conditional, deadline: Deadline | None = None
+    ) -> tuple[list, float]:
         start_time = perf_counter_ns() / 1e6
 
         vMin, fMin = [], []
@@ -221,12 +228,24 @@ class CInference(Inference):
             ]
 
             optimizer = create_optimizer(self.epistemic_state)
-            xMins_lst = optimizer.minimal_correction_subsets(wcnf)
+            xMins_lst = optimizer.minimal_correction_subsets(wcnf, deadline=deadline)
 
             if conditional is transformed_conditionals[0]:
                 vMin = xMins_lst
             else:
                 fMin = xMins_lst
+
+        # Short-circuit edge cases where one side has no minimal correction subsets
+        if not vMin and fMin:
+            # No verification MCS but falsification has MCS -> not entailed
+            return [], (perf_counter_ns() / (1e6) - start_time)
+        if not fMin and vMin:
+            # Verification has MCS but falsification has none -> entailed
+            # Return an impossible constraint to force UNSAT when checked
+            return [LE(Int(1), Int(0))], (perf_counter_ns() / (1e6) - start_time)
+        if not vMin and not fMin:
+            # Both sides empty -> default to not entailed
+            return [], (perf_counter_ns() / (1e6) - start_time)
 
         vSum = makeSummation({0: vMin})
         fSum = makeSummation({0: fMin})

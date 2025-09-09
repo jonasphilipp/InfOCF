@@ -129,6 +129,9 @@ class InferenceCorrectnessTest(unittest.TestCase):
         cls.smt_solver = "z3"
         cls.pmaxsat_solver = "rc2"
         cls.multi_inference = False
+        env_multi = os.environ.get("INFOCF_MULTI", "").lower()
+        if env_multi in {"1", "true", "yes", "on"}:
+            cls.multi_inference = True
 
     def test_inference_correctness(self):
         for test_set in self.test_sets:

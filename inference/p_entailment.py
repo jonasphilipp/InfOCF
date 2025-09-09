@@ -12,6 +12,7 @@ from pysmt.shortcuts import Not
 from inference.belief_base import BeliefBase
 from inference.conditional import Conditional
 from inference.consistency_sat import consistency
+from inference.deadline import Deadline
 
 # ---------------------------------------------------------------------------
 # Project modules
@@ -23,10 +24,12 @@ logger = get_logger(__name__)
 
 
 class PEntailment(Inference):
-    def _preprocess_belief_base(self, weakly: bool) -> None:
+    def _preprocess_belief_base(self, weakly: bool, deadline: Deadline | None) -> None:
         self.epistemic_state["preprocessing_done"] = True
 
-    def _inference(self, query: Conditional, weakly: bool) -> bool:
+    def _inference(
+        self, query: Conditional, weakly: bool, deadline: Deadline | None
+    ) -> bool:
         belief_base = self.epistemic_state["belief_base"]
         solver_name = self.epistemic_state["smt_solver"]
         conditionals = belief_base.conditionals.copy()

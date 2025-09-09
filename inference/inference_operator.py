@@ -76,11 +76,9 @@ def create_epistemic_state(
     epistemic_state["inference_system"] = inference_system
     epistemic_state["smt_solver"] = smt_solver
     epistemic_state["pmaxsat_solver"] = pmaxsat_solver
-    epistemic_state["result_dict"] = dict()
     epistemic_state["preprocessing_done"] = False
     epistemic_state["preprocessing_timed_out"] = False
     epistemic_state["preprocessing_time"] = 0
-    epistemic_state["kill_time"] = 0
     epistemic_state["weakly"] = weakly
 
     return epistemic_state
@@ -399,10 +397,9 @@ class InferenceOperator:
             },
         )
 
-        inference_instance.inference(
+        results = inference_instance.inference(
             queries.conditionals, inference_timeout, multi_inference
         )
-        results = self.epistemic_state["result_dict"]
 
         # DEBUG-level logging for detailed results processing
         if logger.isEnabledFor(logging.DEBUG):

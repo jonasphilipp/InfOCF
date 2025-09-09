@@ -1,5 +1,4 @@
 import logging
-from time import perf_counter
 from warnings import warn
 
 from z3 import Optimize, Or, Solver, is_true, unsat, z3
@@ -7,6 +6,7 @@ from z3 import Optimize, Or, Solver, is_true, unsat, z3
 from inference.conditional import Conditional
 from inference.conditional_z3 import Conditional_z3
 from inference.consistency_sat import consistency
+from inference.deadline import Deadline
 from inference.inference import Inference
 from infocf.log_setup import get_logger
 
@@ -33,7 +33,7 @@ class LexInfZ3(Inference):
         partition in epistemic_state
     """
 
-    def _preprocess_belief_base(self, weakly: bool) -> None:
+    def _preprocess_belief_base(self, weakly: bool, deadline: Deadline | None) -> None:
         partition, _ = consistency(
             self.epistemic_state["belief_base"],
             self.epistemic_state["smt_solver"],
@@ -68,17 +68,18 @@ class LexInfZ3(Inference):
         result boolean
     """
 
-    def _inference(self, query: Conditional, weakly: bool) -> bool:
+    def _inference(
+        self, query: Conditional, weakly: bool, deadline: Deadline | None
+    ) -> bool:
         # self._translation_start()
         query_z3 = Conditional_z3.translate_from_existing(query)
         # self._translation_end()
         opt_v = makeOptimizer()
-        kt = float(self.epistemic_state.get("kill_time", 0) or 0)
-        if kt:
-            opt_v.set(timeout=int(1000 * (kt - perf_counter())))
+        if deadline and not deadline.expired():
+            opt_v.set(timeout=deadline.remaining_ms())
         opt_f = makeOptimizer()
-        if kt:
-            opt_f.set(timeout=int(1000 * (kt - perf_counter())))
+        if deadline and not deadline.expired():
+            opt_f.set(timeout=deadline.remaining_ms())
         if not weakly:
             result = self._rec_inference(
                 opt_v, opt_f, len(self.epistemic_state["partition"]) - 1, query_z3
@@ -194,11 +195,6 @@ class LexInfZ3(Inference):
         for conditional in part:
             opt.add_soft(conditional.make_A_then_not_B() == False)
         while True:
-            if (
-                self.epistemic_state["kill_time"]
-                and perf_counter() > self.epistemic_state["kill_time"]
-            ):
-                raise TimeoutError
             check = opt.check()
             if check == unsat:
                 return xi_i_set

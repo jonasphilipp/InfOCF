@@ -13,6 +13,7 @@ from pysmt.shortcuts import And, Not, Solver, is_unsat
 
 from inference.conditional import Conditional
 from inference.consistency_sat import consistency_indices
+from inference.deadline import Deadline
 
 # ---------------------------------------------------------------------------
 # Project modules
@@ -37,7 +38,7 @@ class LexInf(Inference):
         partition in epistemic_state
     """
 
-    def _preprocess_belief_base(self, weakly: bool) -> None:
+    def _preprocess_belief_base(self, weakly: bool, deadline: Deadline | None) -> None:
         self.epistemic_state["partition"], _ = consistency_indices(
             self.epistemic_state["belief_base"],
             self.epistemic_state["smt_solver"],
@@ -63,7 +64,9 @@ class LexInf(Inference):
         result boolean
     """
 
-    def _inference(self, query: Conditional, weakly: bool) -> bool:
+    def _inference(
+        self, query: Conditional, weakly: bool, deadline: Deadline | None
+    ) -> bool:
         # In strict mode, allow standard vacuity short-cuts; in weakly mode we consider
         # last-layer constraints, so skip the global short-cuts here.
         if not weakly:
@@ -85,7 +88,7 @@ class LexInf(Inference):
         [wcnf_f.append(c) for c in self.epistemic_state["f_cnf_dict"][0]]
         if not weakly:
             result = self._rec_inference(
-                wcnf_v, wcnf_f, len(self.epistemic_state["partition"]) - 1
+                wcnf_v, wcnf_f, len(self.epistemic_state["partition"]) - 1, deadline
             )
         else:
             # Vacuity checks using only last-layer constraints (align with System Z/W)
@@ -115,7 +118,7 @@ class LexInf(Inference):
                 [wcnf_v.append(c) for c in self.epistemic_state["nf_cnf_dict"][index]]
                 [wcnf_f.append(c) for c in self.epistemic_state["nf_cnf_dict"][index]]
             result = self._rec_inference(
-                wcnf_v, wcnf_f, len(self.epistemic_state["partition"]) - 2
+                wcnf_v, wcnf_f, len(self.epistemic_state["partition"]) - 2, deadline
             )
         # self._inference_end()
         return result
@@ -134,7 +137,11 @@ class LexInf(Inference):
     """
 
     def _rec_inference(
-        self, hard_constraints_v: WCNF, hard_constraints_f: WCNF, partition_index: int
+        self,
+        hard_constraints_v: WCNF,
+        hard_constraints_f: WCNF,
+        partition_index: int,
+        deadline: Deadline | None,
     ) -> bool:
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("partition_index: %s", partition_index)
@@ -153,8 +160,12 @@ class LexInf(Inference):
             if sublist != part
             for item in sublist
         ]
-        mcs_v = optimizer.minimal_correction_subsets(hard_constraints_v, ignore=ignore)
-        mcs_f = optimizer.minimal_correction_subsets(hard_constraints_f, ignore=ignore)
+        mcs_v = optimizer.minimal_correction_subsets(
+            hard_constraints_v, ignore=ignore, deadline=deadline
+        )
+        mcs_f = optimizer.minimal_correction_subsets(
+            hard_constraints_f, ignore=ignore, deadline=deadline
+        )
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("mcs_v: %s", mcs_v)
             logger.debug("mcs_f: %s", mcs_f)
@@ -201,7 +212,10 @@ class LexInf(Inference):
                             for c in self.epistemic_state["nf_cnf_dict"][i]
                         ]
                 result = self._rec_inference(
-                    hard_constraints_new_v, hard_constraints_new_f, partition_index - 1
+                    hard_constraints_new_v,
+                    hard_constraints_new_f,
+                    partition_index - 1,
+                    deadline,
                 )
                 if result == False:
                     return False

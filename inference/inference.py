@@ -4,7 +4,7 @@
 
 import multiprocessing as mp
 from abc import ABC, abstractmethod
-from time import perf_counter, perf_counter_ns
+from time import perf_counter_ns
 
 from pysmt.shortcuts import And, Not, is_unsat
 
@@ -13,6 +13,7 @@ from pysmt.shortcuts import And, Not, is_unsat
 # ---------------------------------------------------------------------------
 from inference.conditional import Conditional
 from inference.consistency_sat import consistency
+from inference.deadline import Deadline
 from infocf.log_setup import get_logger
 
 logger = get_logger(__name__)
@@ -40,7 +41,7 @@ class Inference(ABC):
         Timeout in seconds.
 
     Side Effects:
-        kill_time, preprocessing_time and preprocessing_timed_out in epistemic_state
+        preprocessing_time and preprocessing_timed_out in epistemic_state
     """
 
     def preprocess_belief_base(self, preprocessing_timeout: int) -> None:
@@ -55,8 +56,7 @@ class Inference(ABC):
         Notes
         -----
         Updates timing and status fields in the epistemic state:
-        ``kill_time``, ``preprocessing_time``, ``preprocessing_done``,
-        and ``preprocessing_timed_out``.
+        ``preprocessing_time``, ``preprocessing_done``, and ``preprocessing_timed_out``.
         """
         if self.epistemic_state["preprocessing_done"]:
             logger.info(
@@ -79,13 +79,14 @@ class Inference(ABC):
             weakly=self.epistemic_state.get("weakly", False),
         )
         assert cons != False, "belief base inconsistent"
-        if preprocessing_timeout:
-            self.epistemic_state["kill_time"] = preprocessing_timeout + perf_counter()
-        else:
-            self.epistemic_state["kill_time"] = 0
+        deadline = (
+            Deadline.from_duration(preprocessing_timeout)
+            if preprocessing_timeout
+            else None
+        )
         try:
             preprocessing_start_time = perf_counter_ns() / 1e6
-            self._preprocess_belief_base(self.epistemic_state["weakly"])
+            self._preprocess_belief_base(self.epistemic_state["weakly"], deadline)
             self.epistemic_state["preprocessing_time"] += (
                 perf_counter_ns() / 1e6 - preprocessing_start_time
             )
@@ -133,11 +134,11 @@ class Inference(ABC):
     Parameters:
         Conditional dictionay, timeout in s and boolen indication if parallel inferences are to be performed.
 
-    Side Effects:
-        result_dict in epistemic_state
+    Returns:
+        result dictionary mapping query string -> (index, result, timed_out, time_ms)
     """
 
-    def inference(self, queries: dict, timeout: int, multi_inference: bool) -> None:
+    def inference(self, queries: dict, timeout: int, multi_inference: bool) -> dict:
         """
         Run inference over a set of queries.
 
@@ -150,10 +151,10 @@ class Inference(ABC):
         multi_inference : bool
             If True, use parallel evaluation where possible.
 
-        Side Effects
-        ------------
-        The method updates ``result_dict`` in the epistemic state with entries of
-        the form ``{str(query): (index, result, timed_out, time_ms)}``.
+        Returns
+        -------
+        dict
+            A mapping ``{str(query): (index, result, timed_out, time_ms)}``.
         """
         # INFO-level logging for inference operation start
         logger.info(
@@ -174,28 +175,16 @@ class Inference(ABC):
         ):
             Exception("preprocess belief_base before running inference")
         if self.epistemic_state["preprocessing_timed_out"]:
-            self.epistemic_state["result_dict"].update(
-                {str(q): (i, False, False, 0) for i, q in queries.items()}
-            )
+            result_dict = {str(q): (i, False, False, 0) for i, q in queries.items()}
         elif multi_inference:
-            self.epistemic_state["result_dict"].update(
-                self.multi_inference(queries, timeout)
-            )
+            result_dict = self.multi_inference(queries, timeout)
         else:
-            self.epistemic_state["result_dict"].update(
-                self.single_inference(queries, timeout)
-            )
+            result_dict = self.single_inference(queries, timeout)
 
         # INFO-level logging for inference operation completion
-        successful_queries = sum(
-            1
-            for result in self.epistemic_state["result_dict"].values()
-            if not result[2]
-        )
+        successful_queries = sum(1 for result in result_dict.values() if not result[2])
         timed_out_queries = len(queries) - successful_queries
-        total_inference_time = sum(
-            result[3] for result in self.epistemic_state["result_dict"].values()
-        )
+        total_inference_time = sum(result[3] for result in result_dict.values())
 
         logger.info(
             "Inference operations completed",
@@ -212,6 +201,7 @@ class Inference(ABC):
                 "weakly": self.epistemic_state["weakly"],
             },
         )
+        return result_dict
 
     """
     Singular inference wrapper method. Handles timeout and measures time.
@@ -246,13 +236,10 @@ class Inference(ABC):
         """
         result_dict = dict()
         for index, query in queries.items():
-            if timeout:
-                self.epistemic_state["kill_time"] = timeout + perf_counter()
-            else:
-                self.epistemic_state["kill_time"] = 0
+            deadline = Deadline.from_duration(timeout) if timeout else None
             try:
                 start_time = perf_counter_ns() / 1e6
-                result = self.general_inference(query)
+                result = self.general_inference(query, deadline=deadline)
                 time = perf_counter_ns() / 1e6 - start_time
                 result_dict[str(query)] = (index, result, False, time)
             except TimeoutError:
@@ -356,13 +343,10 @@ class Inference(ABC):
         timeout : int
             Timeout in seconds.
         """
-        if timeout:
-            self.epistemic_state["kill_time"] = timeout + perf_counter()
-        else:
-            self.epistemic_state["kill_time"] = 0
+        deadline = Deadline.from_duration(timeout) if timeout else None
         try:
             start_time = perf_counter_ns() / 1e6
-            result = self.general_inference(query)
+            result = self.general_inference(query, deadline=deadline)
             time = perf_counter_ns() / 1e6 - start_time
             mp_return_dict[index] = (index, result, False, time)
         except TimeoutError:
@@ -370,7 +354,12 @@ class Inference(ABC):
         except Exception as e:
             raise e
 
-    def general_inference(self, query: Conditional, weakly: bool = None):
+    def general_inference(
+        self,
+        query: Conditional,
+        weakly: bool | None = None,
+        deadline: Deadline | None = None,
+    ):
         """
         Run the concrete inference implementation with quick unsatisfiability checks.
 
@@ -387,7 +376,7 @@ class Inference(ABC):
             True if the conditional is entailed under the configured operator.
         """
         if weakly is None:
-            weakly = self.epistemic_state.get("weakly", False)
+            weakly = bool(self.epistemic_state.get("weakly", False))
 
         if is_unsat(query.antecedence) or is_unsat(
             And(query.antecedence, Not(query.consequence))
@@ -395,12 +384,14 @@ class Inference(ABC):
             logger.debug("general_inference query selffullfilling")
             return True
         else:
-            return self._inference(query, weakly)
+            return self._inference(query, weakly, deadline)
 
     @abstractmethod
-    def _inference(self, query: Conditional, weakly: bool) -> bool:
+    def _inference(
+        self, query: Conditional, weakly: bool, deadline: Deadline | None
+    ) -> bool:
         """Concrete inference implementation for a single query."""
 
     @abstractmethod
-    def _preprocess_belief_base(self, weakly: bool) -> None:
+    def _preprocess_belief_base(self, weakly: bool, deadline: Deadline | None) -> None:
         """Concrete preprocessing implementation for the selected operator."""
