@@ -34,7 +34,7 @@ def _gamma(name: str) -> FNode:
     return sym
 
 
-WorldTriple = tuple[int, list[int], list[int]]
+WorldTriple = list[object]
 
 
 def compile(
@@ -56,17 +56,21 @@ def compile(
                 continue
 
             rank_val = ranking_function.rank_world(world)
-            inner_list[branch_index][world] = (rank_val, [], [])
+            inner_list[branch_index][world] = [rank_val, [], []]
 
             for cond in revision_conditionals:
                 if ranking_function.world_satisfies_conditionalization(
                     world, cond.make_A_then_B()
                 ):
-                    inner_list[branch_index][world][1].append(cast(int, cond.index))
+                    cast(list[int], inner_list[branch_index][world][1]).append(
+                        cast(int, cond.index)
+                    )
                 elif ranking_function.world_satisfies_conditionalization(
                     world, cond.make_A_then_not_B()
                 ):
-                    inner_list[branch_index][world][2].append(cast(int, cond.index))
+                    cast(list[int], inner_list[branch_index][world][2]).append(
+                        cast(int, cond.index)
+                    )
 
         outer_list.append(inner_list)
 
