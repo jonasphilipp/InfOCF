@@ -1,3 +1,0 @@
-# infocf package
-
-::: infocf

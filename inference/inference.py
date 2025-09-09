@@ -1,3 +1,11 @@
+"""
+Inference Operators Base Classes
+
+This module provides the abstract base class for all inference operators in InfOCF.
+Concrete inference operators like p-entailment, system Z, system W, and c-inference
+inherit from this base class and implement specific inference algorithms.
+"""
+
 # ---------------------------------------------------------------------------
 # Standard library
 # ---------------------------------------------------------------------------
@@ -21,15 +29,44 @@ logger = get_logger(__name__)
 
 
 class Inference(ABC):
+    """
+    Abstract base class for all inference operators in conditional logic.
+
+    This class defines the common interface and functionality shared by all
+    inference operators in InfOCF. Concrete implementations must override
+    the abstract methods to provide specific inference algorithms.
+
+    The inference process typically involves:
+    1. Preprocessing the belief base (optional)
+    2. Evaluating queries using the specific inference algorithm
+    3. Managing timeouts and performance metrics
+
+    Attributes
+    ----------
+    epistemic_state : dict[str, Any]
+        Internal state containing belief base, solver configuration, timing
+        information, and other inference parameters. Key components include:
+        - 'belief_base': BeliefBase instance
+        - 'smt_solver': str, name of SMT solver to use
+        - 'preprocessing_done': bool, preprocessing completion flag
+        - 'preprocessing_time': float, preprocessing duration in ms
+        - Various timing and status flags
+
+    Notes
+    -----
+    All inference operators follow a common pattern:
+    - Initialize with epistemic state containing belief base and configuration
+    - Optionally preprocess the belief base for efficiency
+    - Evaluate conditional queries using specific inference rules
+    - Handle timeouts and provide performance metrics
+
+    Subclasses should implement:
+    - `_preprocess_belief_base()`: Optional preprocessing logic
+    - `_inference()`: Core inference algorithm for single queries
+    """
+
     # Explicit attribute annotation for static type checkers
     epistemic_state: dict[str, Any]
-    """
-    Context:
-        Abstract class intitialization inherited by implementing classes
-
-    Parameters:
-        Initialized epistemic_state
-    """
 
     def __init__(self, epistemic_state: dict[str, Any]) -> None:
         self.epistemic_state = epistemic_state
