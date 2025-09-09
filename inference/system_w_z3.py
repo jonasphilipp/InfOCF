@@ -3,11 +3,12 @@
 # ---------------------------------------------------------------------------
 
 from time import perf_counter
-from warnings import warn
 
 # ---------------------------------------------------------------------------
 # Third-party
 # ---------------------------------------------------------------------------
+from warnings import warn
+
 from z3 import Optimize, Or, Solver, is_true, unsat, z3
 
 from inference.conditional import Conditional
@@ -51,6 +52,8 @@ class SystemWZ3(Inference):
         )
         if not partition:
             warn("belief base inconsistent")
+            self.epistemic_state["partition"] = []
+            return
         self.epistemic_state["partition"] = []
         for part in partition:  # type: ignore
             translated_part = []
@@ -81,9 +84,9 @@ class SystemWZ3(Inference):
         query_z3 = Conditional_z3.translate_from_existing(query)
         # self._translation_end()
         opt = makeOptimizer()
-        opt.set(
-            timeout=int(1000 * (self.epistemic_state["kill_time"] - perf_counter()))
-        )
+        kt = float(self.epistemic_state.get("kill_time", 0) or 0)
+        if kt:
+            opt.set(timeout=int(1000 * (kt - perf_counter())))
         if not weakly:
             result = self._rec_inference(
                 opt, len(self.epistemic_state["partition"]) - 1, query_z3
@@ -124,7 +127,7 @@ class SystemWZ3(Inference):
     """
 
     def _rec_inference(
-        self, opt: Optimize, partition_index: int, query: Conditional
+        self, opt: Optimize, partition_index: int, query: Conditional_z3
     ) -> bool:
         assert type(self.epistemic_state["partition"]) == list
         part = self.epistemic_state["partition"][partition_index]
@@ -165,25 +168,25 @@ class SystemWZ3(Inference):
 
     """
 
-    def get_all_xi_i(self, opt: Optimize, part: list[Conditional]) -> set:
-        xi_i_set = set()
+    def get_all_xi_i(
+        self, opt: Optimize, part: list[Conditional_z3]
+    ) -> set[frozenset[Conditional_z3]]:
+        xi_i_set: set[frozenset[Conditional_z3]] = set()
         for conditional in part:
             opt.add_soft(conditional.make_A_then_not_B() == False)
         while True:
-            if (
-                self.epistemic_state["kill_time"]
-                and perf_counter() > self.epistemic_state["kill_time"]
-            ):
+            kt = float(self.epistemic_state.get("kill_time", 0) or 0)
+            if kt and perf_counter() > kt:
                 raise TimeoutError
             check = opt.check()
             if check == unsat:
                 return xi_i_set
             m = opt.model()
-            xi_i = frozenset(
+            xi_i: frozenset[Conditional_z3] = frozenset(
                 [c for c in part if is_true(m.eval(c.make_A_then_not_B()))]
             )
             xi_i_set.add(xi_i)
-            if xi_i == frozenset():
+            if xi_i == frozenset[Conditional_z3]():
                 return xi_i_set
             opt.add(Or([c.make_A_then_not_B() == False for c in xi_i]))
 
@@ -202,5 +205,7 @@ Returns:
 """
 
 
-def any_subset_of_all(A: set, B: set) -> bool:
+def any_subset_of_all(
+    A: set[frozenset[Conditional_z3]], B: set[frozenset[Conditional_z3]]
+) -> bool:
     return all(any(a.issubset(b) for a in A) for b in B)

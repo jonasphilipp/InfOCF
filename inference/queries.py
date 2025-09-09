@@ -7,7 +7,9 @@
 # Project modules
 # ---------------------------------------------------------------------------
 
+
 from inference.belief_base import BeliefBase
+from inference.conditional import Conditional
 from infocf.log_setup import get_logger
 
 logger = get_logger(__name__)
@@ -18,13 +20,20 @@ class Queries(BeliefBase):
     Initializes Queries object either from dict or from BeliefBase object
     """
 
-    def __init__(self, queries: dict | BeliefBase) -> None:
-        if type(queries) == dict:
+    # Explicit attributes to satisfy type checker on subclasses
+    conditionals: dict[int, Conditional]
+    name: str
+    signature: list[str]
+
+    def __init__(self, queries: dict[int, Conditional] | BeliefBase) -> None:
+        # Initialise with safe defaults; overwritten below
+        super().__init__(signature=[], conditionals={}, name="queries")
+        if isinstance(queries, dict):
             self._from_dict(queries)
-        elif type(queries) == BeliefBase:
+        elif isinstance(queries, BeliefBase):
             self._from_belief_base(queries)
 
-    def _from_dict(self, query_dict: dict) -> None:
+    def _from_dict(self, query_dict: dict[int, Conditional]) -> None:
         self.conditionals = query_dict
         self.name = "from_dict"
 

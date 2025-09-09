@@ -41,6 +41,8 @@ class LexInfZ3(Inference):
         )
         if not partition:
             warn("belief base inconsistent")
+            self.epistemic_state["partition"] = []
+            return
         self.epistemic_state["partition"] = []
         for part in partition:  # type: ignore
             translated_part = []
@@ -71,13 +73,12 @@ class LexInfZ3(Inference):
         query_z3 = Conditional_z3.translate_from_existing(query)
         # self._translation_end()
         opt_v = makeOptimizer()
-        opt_v.set(
-            timeout=int(1000 * (self.epistemic_state["kill_time"] - perf_counter()))
-        )
+        kt = float(self.epistemic_state.get("kill_time", 0) or 0)
+        if kt:
+            opt_v.set(timeout=int(1000 * (kt - perf_counter())))
         opt_f = makeOptimizer()
-        opt_f.set(
-            timeout=int(1000 * (self.epistemic_state["kill_time"] - perf_counter()))
-        )
+        if kt:
+            opt_f.set(timeout=int(1000 * (kt - perf_counter())))
         if not weakly:
             result = self._rec_inference(
                 opt_v, opt_f, len(self.epistemic_state["partition"]) - 1, query_z3
@@ -186,8 +187,10 @@ class LexInfZ3(Inference):
 
     """
 
-    def get_all_xi_i(self, opt: Optimize, part: list[Conditional]) -> set:
-        xi_i_set = set()
+    def get_all_xi_i(
+        self, opt: Optimize, part: list[Conditional_z3]
+    ) -> set[frozenset[Conditional_z3]]:
+        xi_i_set: set[frozenset[Conditional_z3]] = set()
         for conditional in part:
             opt.add_soft(conditional.make_A_then_not_B() == False)
         while True:
@@ -200,11 +203,11 @@ class LexInfZ3(Inference):
             if check == unsat:
                 return xi_i_set
             m = opt.model()
-            xi_i = frozenset(
+            xi_i: frozenset[Conditional_z3] = frozenset(
                 [c for c in part if is_true(m.eval(c.make_A_then_not_B()))]
             )
             xi_i_set.add(xi_i)
-            if xi_i == frozenset():
+            if xi_i == frozenset[Conditional_z3]():
                 return xi_i_set
             opt.add(Or([c.make_A_then_not_B() == False for c in xi_i]))
 
@@ -223,5 +226,7 @@ Returns:
 """
 
 
-def any_subset_of_all(A: set, B: set) -> bool:
+def any_subset_of_all(
+    A: set[frozenset[Conditional_z3]], B: set[frozenset[Conditional_z3]]
+) -> bool:
     return all(any(a.issubset(b) for a in A) for b in B)

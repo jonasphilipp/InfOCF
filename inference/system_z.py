@@ -95,7 +95,7 @@ class SystemZ(Inference):
 
     def _rec_inference(
         self, solver: Solver, partition_index: int, query: Conditional
-    ) -> bool:  # type: ignore
+    ) -> bool:
         if (
             self.epistemic_state["kill_time"]
             and perf_counter() > self.epistemic_state["kill_time"]

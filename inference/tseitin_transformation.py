@@ -1,4 +1,5 @@
 from time import perf_counter_ns
+from typing import cast
 
 from pysat.card import IDPool
 from pysmt.shortcuts import Solver
@@ -8,7 +9,7 @@ from inference.conditional import Conditional
 
 
 class TseitinTransformation:
-    epistemic_state: dict
+    epistemic_state: dict[str, object]
 
     """
     Initializes TseitinTransformation object and creates needed dict entries if not present.
@@ -23,7 +24,7 @@ class TseitinTransformation:
         pool, v_cnf_dict, f_cnf_dict, nf_cnf_dict entries in epistemic_state
     """
 
-    def __init__(self, epistemic_state: dict) -> None:
+    def __init__(self, epistemic_state: dict[str, object]) -> None:
         if "pool" not in epistemic_state:
             epistemic_state["pool"] = IDPool()
         if "v_cnf_dict" not in epistemic_state:
@@ -52,21 +53,30 @@ class TseitinTransformation:
         start_time = perf_counter_ns()
         t = z3.Tactic("tseitin-cnf")
 
-        for index, conditional in self.epistemic_state[
-            "belief_base"
-        ].conditionals.items():
+        bb = cast(object, self.epistemic_state["belief_base"])  # BeliefBase-like
+        conditionals = cast(dict[int, Conditional], bb.conditionals)
+        for index, conditional in conditionals.items():
             with Solver(name="z3") as solver:
                 antecedence = solver.converter.convert(conditional.antecedence)
                 consequence = solver.converter.convert(conditional.consequence)
             if v:
                 g1 = t(z3.And(antecedence, consequence))
-                self.epistemic_state["v_cnf_dict"][index] = self.goal2intcnf(g1[0])
+                v_dict = cast(
+                    dict[int, list[list[int]]], self.epistemic_state["v_cnf_dict"]
+                )  # type: ignore[assignment]
+                v_dict[index] = self.goal2intcnf(g1[0])
             if f:
                 g2 = t(z3.And(antecedence, z3.Not(consequence)))
-                self.epistemic_state["f_cnf_dict"][index] = self.goal2intcnf(g2[0])
+                f_dict = cast(
+                    dict[int, list[list[int]]], self.epistemic_state["f_cnf_dict"]
+                )  # type: ignore[assignment]
+                f_dict[index] = self.goal2intcnf(g2[0])
             if nf:
                 g3 = t(z3.Or(z3.Not(antecedence), consequence))
-                self.epistemic_state["nf_cnf_dict"][index] = self.goal2intcnf(g3[0])
+                nf_dict = cast(
+                    dict[int, list[list[int]]], self.epistemic_state["nf_cnf_dict"]
+                )  # type: ignore[assignment]
+                nf_dict[index] = self.goal2intcnf(g3[0])
         return (perf_counter_ns() - start_time) / (1e6)
 
     """
@@ -135,5 +145,7 @@ class TseitinTransformation:
         if z3.is_not(expr):
             sign = -1
             expr = expr.children()[0]
-        expr_id = self.epistemic_state["pool"].id(expr)
+        # IDPool.id accepts arbitrary hashable; typing as Any to satisfy analyzer
+        pool = cast(IDPool, self.epistemic_state["pool"])  # type: ignore[assignment]
+        expr_id = pool.id(expr)  # type: ignore[no-any-return]
         return sign * expr_id

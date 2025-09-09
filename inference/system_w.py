@@ -155,5 +155,10 @@ Returns:
 """
 
 
-def any_subset_of_all(A: frozenset, B: frozenset) -> bool:
+from typing import FrozenSet
+
+
+def any_subset_of_all(
+    A: FrozenSet[FrozenSet[int]], B: FrozenSet[FrozenSet[int]]
+) -> bool:
     return all(any(a.issubset(b) for a in A) for b in B)

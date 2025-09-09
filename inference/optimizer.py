@@ -9,6 +9,8 @@ from time import perf_counter
 # ---------------------------------------------------------------------------
 # Third-party
 # ---------------------------------------------------------------------------
+from typing import cast
+
 from pysat.card import IDPool
 from pysat.examples.rc2 import RC2
 from pysat.formula import WCNF
@@ -22,7 +24,7 @@ logger = get_logger(__name__)
 
 
 class Optimizer(ABC):
-    epistemic_state: dict
+    epistemic_state: dict[str, object]
 
     """
     Initializes Optimizer (pmaxsat solver) object and creates needed dict entries if not present.
@@ -37,7 +39,7 @@ class Optimizer(ABC):
         pool, v_cnf_dict, f_cnf_dict, nf_cnf_dict entries in epistemic_state
     """
 
-    def __init__(self, epistemic_state: dict):
+    def __init__(self, epistemic_state: dict[str, object]):
         if "pool" not in epistemic_state:
             epistemic_state["pool"] = IDPool()
         if "v_cnf_dict" not in epistemic_state:
@@ -66,8 +68,10 @@ class Optimizer(ABC):
     """
 
     @abstractmethod
-    def minimal_correction_subsets(self, wcnf: WCNF, ignore: list[int] = []):
-        return list()
+    def minimal_correction_subsets(
+        self, wcnf: WCNF, ignore: list[int] = []
+    ) -> list[list[int]]:
+        return []
 
     """
     Takes model and returns all IDs of CNFs in notAorBs (i.e. Not(A, Not(B))) that are not satisfied
@@ -87,10 +91,13 @@ class Optimizer(ABC):
     def get_violated_conditional(
         self, model: list[int], cost: int, ignore: list[int]
     ) -> set[int]:
-        violated = set()
+        violated: set[int] = set()
         if cost > 0:
             counter = 0
-            for index, conditional in self.epistemic_state["nf_cnf_dict"].items():
+            nf_cnf_dict = cast(
+                dict[int, list[list[int]]], self.epistemic_state["nf_cnf_dict"]
+            )  # type: ignore[assignment]
+            for index, conditional in nf_cnf_dict.items():
                 if index in ignore:
                     continue
                 for clause in conditional:
@@ -118,17 +125,22 @@ class Optimizer(ABC):
     """
 
     def exclude_violated(self, violated: set[int]) -> list[list[int]]:
-        return_constraints = []
-        helper_variables_clause = []
+        return_constraints: list[list[int]] = []
+        helper_variables_clause: list[int] = []
+
+        pool = cast(IDPool, self.epistemic_state["pool"])  # type: ignore[assignment]
+        nf_cnf_dict = cast(
+            dict[int, list[list[int]]], self.epistemic_state["nf_cnf_dict"]
+        )  # type: ignore[assignment]
 
         for index in violated:
-            id = self.epistemic_state["pool"].id(index)
-            for clause in self.epistemic_state["nf_cnf_dict"][index]:
+            hid = pool.id(index)
+            for clause in nf_cnf_dict[index]:
                 new_clause = clause[:]
-                new_clause.append(id * (-1))
+                new_clause.append(hid * (-1))
                 return_constraints.append(new_clause)
 
-            helper_variables_clause.append(id)
+            helper_variables_clause.append(hid)
         return_constraints.append(helper_variables_clause)
         return return_constraints
 
@@ -168,27 +180,27 @@ class OptimizerRC2(Optimizer):
     RC2 based implementation of Optimizer (partial maxsat solver)
     """
 
-    def minimal_correction_subsets(self, wcnf: WCNF, ignore: list[int] = []):
-        xMins = []
-        sat_solver = self.epistemic_state["pmaxsat_solver"][4:]
+    def minimal_correction_subsets(
+        self, wcnf: WCNF, ignore: list[int] = []
+    ) -> list[list[int]]:
+        xMins: list[set[int]] = []
+        sat_solver = str(self.epistemic_state.get("pmaxsat_solver", ""))[4:]
         if not sat_solver:
             sat_solver = "g3"
-        int = 0
+        model_count = 0
         with RC2(wcnf, solver=sat_solver) as rc2:
             while True:
-                if (
-                    self.epistemic_state["kill_time"]
-                    and perf_counter() > self.epistemic_state["kill_time"]
-                ):
+                kill_time_val = float(self.epistemic_state.get("kill_time", 0) or 0)
+                if kill_time_val and perf_counter() > kill_time_val:
                     raise TimeoutError
 
                 model = rc2.compute()
 
-                if model == None:
+                if model is None:
                     if logger.isEnabledFor(logging.DEBUG):
-                        logger.debug("models found: %s", int)
+                        logger.debug("models found: %s", model_count)
                     break
-                int += 1
+                model_count += 1
                 cost = rc2.cost
 
                 violated = self.get_violated_conditional(model, cost, ignore)
@@ -202,7 +214,7 @@ class OptimizerRC2(Optimizer):
 
                 [rc2.add_clause(clause) for clause in clauses_to_add]
 
-        xMins_lst = remove_supersets(xMins)
+        xMins_lst: list[list[int]] = remove_supersets(xMins)
         return xMins_lst
 
 
@@ -221,9 +233,9 @@ Returns:
 """
 
 
-def create_optimizer(epistemic_state: dict) -> Optimizer:
-    if epistemic_state["pmaxsat_solver"].startswith("rc2"):
-        optimizer = OptimizerRC2(epistemic_state)
-    else:
-        Exception("no correct optimizer provided")
-    return optimizer  # type: ignore
+def create_optimizer(epistemic_state: dict[str, object]) -> Optimizer:
+    solver_name = str(epistemic_state.get("pmaxsat_solver", ""))
+    if solver_name.startswith("rc2"):
+        optimizer: Optimizer = OptimizerRC2(epistemic_state)
+        return optimizer
+    raise ValueError("no correct optimizer provided")
