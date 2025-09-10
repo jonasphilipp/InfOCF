@@ -2,17 +2,6 @@
 C-Inference Operator for Conditional Belief Bases
 
 This module implements the c-inference operator for conditional belief bases.
-C-inference is based on the concept of minimal correction subsets and uses
-constraint satisfaction problems (CSPs) to determine whether a conditional
-is entailed by a belief base.
-
-The c-inference operator works by:
-1. Translating the belief base into a constraint satisfaction problem
-2. Computing minimal correction subsets for verification and falsification
-3. Using CSP solving to determine entailment
-
-The implementation uses PySMT for logical constraints and integrates with
-SAT/SMT solvers for efficient computation.
 """
 
 import logging

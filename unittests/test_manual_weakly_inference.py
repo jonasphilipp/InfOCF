@@ -24,7 +24,7 @@ uv run pytest -q unittests/test_manual_weakly_inference.py
 
 import unittest
 
-from inference.inference_operator import InferenceOperator
+from inference.inference_manager import InferenceManager
 from parser.Wrappers import parse_belief_base, parse_queries
 
 
@@ -40,7 +40,7 @@ def run_case(
             "system-w",
             "lex_inf",
             # Exercise z3 variants where available via pmaxsat selection in operator:
-            # We trigger z3 variants by passing pmaxsat_solver="z3" through InferenceOperator API.
+            # We trigger z3 variants by passing pmaxsat_solver="z3" through InferenceManager API.
         ]
 
     belief_base = parse_belief_base(belief_base_str)
@@ -48,10 +48,10 @@ def run_case(
 
     for system in systems:
         # default variant
-        op = InferenceOperator(
+        manager = InferenceManager(
             belief_base, inference_system=system, smt_solver="z3", weakly=True
         )
-        results = op.inference(queries)
+        results = manager.inference(queries)
         actual = results["result"].tolist()
         assert actual == expected, (
             f"System {system} mismatch. Expected {expected} but got {actual}.\n"
@@ -59,14 +59,14 @@ def run_case(
         )
         # z3 pmaxsat variant where meaningful (system-w and lex_inf)
         if system in ["system-w", "lex_inf"]:
-            op_z3 = InferenceOperator(
+            manager_z3 = InferenceManager(
                 belief_base,
                 inference_system=system,
                 smt_solver="z3",
                 pmaxsat_solver="z3",
                 weakly=True,
             )
-            results_z3 = op_z3.inference(queries)
+            results_z3 = manager_z3.inference(queries)
             actual_z3 = results_z3["result"].tolist()
             assert actual_z3 == expected, (
                 f"System {system} (z3 variant) mismatch. Expected {expected} but got {actual_z3}.\n"

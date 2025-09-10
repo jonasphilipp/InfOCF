@@ -24,12 +24,9 @@ class BeliefBase:
 
     A belief base is a finite set of conditionals that represent the agent's knowledge
     or beliefs about the domain. Each conditional is of the form (B|A), meaning
-    "if A then B". The belief base serves as the foundation for various inference
+    "if A then usually B". The belief base serves as the foundation for various inference
     operations in conditional logic.
 
-    Currently only supports strong conditionals. Multiple implementation approaches
-    exist within this class; the inferior if-then-then encoding approach will be
-    moved elsewhere in future versions.
 
     Parameters
     ----------
@@ -54,6 +51,26 @@ class BeliefBase:
 
     Examples
     --------
+    >>> from parser.Wrappers import parse_belief_base
+    >>>
+    >>> # Parse belief base from string (recommended approach)
+    >>> belief_base_str = '''
+    ... signature
+    ...   p, q, r
+    ... conditionals
+    ... example{
+    ...   (q|p),
+    ...   (r|q)
+    ... }
+    ... '''
+    >>> bb = parse_belief_base(belief_base_str)
+    >>> print(f"Parsed belief base '{bb.name}' with {len(bb.conditionals)} conditionals")
+    >>>
+    >>> # Or parse from file
+    >>> # bb = parse_belief_base("path/to/belief_base.ckb")
+
+    Manual construction (for advanced users):
+
     >>> from inference.conditional import Conditional
     >>> from pysmt.shortcuts import Symbol
     >>>
@@ -81,10 +98,6 @@ class BeliefBase:
     Different inference operators (p-entailment, system Z, system W, c-inference)
     interpret the same belief base in different ways to produce different entailment
     relations.
-
-    The integer indexing of conditionals allows for efficient lookup and manipulation
-    during inference operations, particularly when dealing with subsets or modified
-    versions of the belief base.
     """
 
     def __init__(

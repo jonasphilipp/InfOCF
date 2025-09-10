@@ -31,7 +31,7 @@ import unittest
 
 import pandas as pd
 
-from inference.inference_operator import InferenceOperator
+from inference.inference_manager import InferenceManager
 from parser.Wrappers import parse_belief_base, parse_queries
 
 
@@ -265,7 +265,7 @@ class WeaklyInferenceCSVTest(unittest.TestCase):
                             )
                             for variant in variants:
                                 pmaxsat_solver = variant.get("pmaxsat_solver", "")
-                                operator = InferenceOperator(
+                                manager = InferenceManager(
                                     belief_base,
                                     inference_system=system,
                                     smt_solver=smt_solver,
@@ -277,7 +277,7 @@ class WeaklyInferenceCSVTest(unittest.TestCase):
                                     f"pmaxsat={pmaxsat_solver or '-':<3} weakly={weakly} "
                                     f"on {bb_key}, {qs_key}"
                                 )
-                                res = operator.inference(
+                                res = manager.inference(
                                     queries,
                                     total_timeout=self.total_timeout,
                                     preprocessing_timeout=self.preprocessing_timeout,

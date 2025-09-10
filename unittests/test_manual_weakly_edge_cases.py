@@ -27,7 +27,7 @@ uv run pytest -q unittests/test_manual_weakly_edge_cases.py
 
 import unittest
 
-from inference.inference_operator import InferenceOperator
+from inference.inference_manager import InferenceManager
 from parser.Wrappers import parse_belief_base, parse_queries
 
 
@@ -38,8 +38,8 @@ def run_case(bb: str, qs: str, expected: list[bool], systems=None):
     queries = parse_queries(qs)
     for sys in systems:
         # default variant
-        op = InferenceOperator(belief_base, sys, smt_solver="z3", weakly=True)
-        res = op.inference(queries)
+        manager = InferenceManager(belief_base, sys, smt_solver="z3", weakly=True)
+        res = manager.inference(queries)
         actual = res["result"].tolist()
         assert actual == expected, (
             f"System {sys} mismatch. Expected {expected} but got {actual}.\n"
@@ -47,10 +47,10 @@ def run_case(bb: str, qs: str, expected: list[bool], systems=None):
         )
         # z3 pmaxsat variant for systems that support it
         if sys in ["system-w", "lex_inf"]:
-            op_z3 = InferenceOperator(
+            manager_z3 = InferenceManager(
                 belief_base, sys, smt_solver="z3", pmaxsat_solver="z3", weakly=True
             )
-            res_z3 = op_z3.inference(queries)
+            res_z3 = manager_z3.inference(queries)
             actual_z3 = res_z3["result"].tolist()
             assert actual_z3 == expected, (
                 f"System {sys} (z3 variant) mismatch. Expected {expected} but got {actual_z3}.\n"
@@ -104,8 +104,10 @@ class TestWeaklyEdgeCases(unittest.TestCase):
         belief_base = parse_belief_base(bb)
         for sys in ["system-z", "system-w", "lex_inf"]:
             with self.assertRaises(AssertionError):
-                op = InferenceOperator(belief_base, sys, smt_solver="z3", weakly=False)
-                _ = op.inference(qs)
+                manager = InferenceManager(
+                    belief_base, sys, smt_solver="z3", weakly=False
+                )
+                _ = manager.inference(qs)
 
 
 if __name__ == "__main__":

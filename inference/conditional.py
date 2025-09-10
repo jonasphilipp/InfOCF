@@ -24,10 +24,7 @@ from pysmt.shortcuts import And, Not, Or
 
 class Conditional:
     """
-    Represents a conditional statement of the form (B|A), meaning "if A then B".
-
-    A conditional expresses that the consequence B holds whenever the antecedence A holds.
-    This is the fundamental unit of knowledge representation in conditional belief bases.
+    Represents a conditional statement of the form (B|A), meaning "if A then usually B".
 
     Parameters
     ----------
@@ -63,23 +60,30 @@ class Conditional:
 
     Examples
     --------
+    >>> from parser.Wrappers import parse_formula
+    >>>
+    >>> # Parse conditional from string (recommended approach)
+    >>> antecedent = parse_formula('p')    # A = p
+    >>> consequent = parse_formula('q')    # B = q
+    >>> cond = Conditional(consequent, antecedent, '(q|p)')  # represents "if p then q"
+    >>> print(cond)
+    (q|p)
+    >>>
+    >>> # Or with more complex formulas
+    >>> ant = parse_formula('p, r')        # A = p ∧ r
+    >>> cons = parse_formula('q; s')       # B = q ∨ s
+    >>> cond2 = Conditional(cons, ant, '(q;s|p,r)')
+    >>> print(cond2)
+    (q;s|p,r)
+
+    Manual construction with PySMT symbols (for advanced users):
+
     >>> from pysmt.shortcuts import Symbol
     >>> p = Symbol('p')
     >>> q = Symbol('q')
     >>> cond = Conditional(q, p, '(q|p)')  # represents "if p then q"
     >>> print(cond)
     (q|p)
-
-    Notes
-    -----
-    The conditional (B|A) can be interpreted in different ways depending on the
-    inference system:
-    - In p-entailment: B is accepted if A holds
-    - In system Z: B is preferred if A holds
-    - In c-inference: B is accepted with certain credibility
-
-    The class provides utility methods for converting the conditional into
-    different logical forms used by various inference algorithms.
     """
 
     def __init__(self, consequence, antecedence, textRepresentation, weak=False):

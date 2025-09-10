@@ -41,7 +41,7 @@ try:
     # Utility functions
     from inference.consistency_sat import consistency
     from inference.inference import Inference
-    from inference.inference_operator import InferenceOperator
+    from inference.inference_manager import InferenceManager
     from inference.lex_inf import LexInf
     from inference.lex_inf_z3 import LexInfZ3
     from inference.p_entailment import PEntailment
@@ -114,7 +114,7 @@ if _INFERENCE_AVAILABLE:
         [
             # Core framework
             "Inference",
-            "InferenceOperator",
+            "InferenceManager",
             # Main inference operators
             "SystemZ",
             "SystemW",

@@ -37,14 +37,6 @@ class PEntailment(Inference):
     P-Entailment inference operator implementation.
 
     This class implements p-entailment using SAT-based consistency checking.
-    P-entailment is the weakest form of inference in conditional logic, accepting
-    a conditional (B|A) if and only if adding the falsified conditional (~B|A) to
-    the belief base does not lead to inconsistency.
-
-    The algorithm works by:
-    1. Adding the negated query (~B|A) to the belief base
-    2. Checking if the extended belief base remains consistent
-    3. If consistent, the original query is rejected; if inconsistent, accepted
 
     Parameters
     ----------
@@ -72,18 +64,6 @@ class PEntailment(Inference):
     >>> # Query whether (r|p) is entailed (is r accepted given p?)
     >>> result = inference.query('(r|p)')
     >>> print(f"Query result: {result}")
-
-    Notes
-    -----
-    P-entailment corresponds to the Ramsey test in conditional logic and is
-    equivalent to checking whether the conditional is contained in the set of
-    all conditionals that can be added to the belief base without causing
-    inconsistency.
-
-    References
-    ----------
-    .. [1] Kraus, Lehmann, Magidor: "Nonmonotonic Reasoning, Preferential Models
-           and Cumulative Logics". Artificial Intelligence 44(1-2), 167-207 (1990)
     """
 
     def _preprocess_belief_base(self, weakly: bool, deadline: Deadline | None) -> None:

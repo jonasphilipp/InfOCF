@@ -38,7 +38,7 @@ from inference.consistency_diagnostics import (
     consistency_diagnostics,
 )
 from inference.consistency_sat import consistency
-from inference.inference_operator import create_epistemic_state
+from inference.inference_manager import create_epistemic_state
 from infocf.log_setup import get_logger
 from parser.Wrappers import parse_formula
 

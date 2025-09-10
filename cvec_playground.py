@@ -2,7 +2,7 @@ from pysmt.shortcuts import Solver, Symbol
 from pysmt.typing import INT
 
 from inference.c_inference import CInference
-from inference.inference_operator import create_epistemic_state
+from inference.inference_manager import create_epistemic_state
 from parser.Wrappers import parse_belief_base
 
 # Create a small birds belief base for more targeted testing

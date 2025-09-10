@@ -10,7 +10,7 @@ import os
 
 import pandas as pd
 
-from inference.inference_operator import InferenceOperator
+from inference.inference_manager import InferenceManager
 from parser.Wrappers import parse_belief_base, parse_queries
 
 # These setting are only to adjust the display options to show all columns and rows
@@ -74,9 +74,9 @@ for j in [60]:
 
             # Below we will perform multiple inferenes according to different inference systems and parameter combinations
             #
-            # Inference is performed by instanciating InferenceOperator object and calling inference() method
+            # Inference is performed by instanciating InferenceManager object and calling inference() method
 
-            pent = InferenceOperator(
+            pent = InferenceManager(
                 belief_base, inference_system="p-entailment", smt_solver=smt_solver
             )
             print(f"p-entailment on {i} {j} {l}")
@@ -88,7 +88,7 @@ for j in [60]:
                 multi_inference=multi_inference,
             )
 
-            sysz = InferenceOperator(
+            sysz = InferenceManager(
                 belief_base, inference_system="system-z", smt_solver=smt_solver
             )
             print(f"system-z inf on {i} {j} {l}")
@@ -100,7 +100,7 @@ for j in [60]:
                 multi_inference=multi_inference,
             )
 
-            sysz = InferenceOperator(
+            sysz = InferenceManager(
                 belief_base, inference_system="system-z", smt_solver=alt_smt_solver
             )
             print(f"system-z inf on {i} {j} {l}")
@@ -112,7 +112,7 @@ for j in [60]:
                 multi_inference=multi_inference,
             )
 
-            sysw = InferenceOperator(
+            sysw = InferenceManager(
                 belief_base,
                 inference_system="system-w",
                 smt_solver=smt_solver,
@@ -127,7 +127,7 @@ for j in [60]:
                 multi_inference=multi_inference,
             )
 
-            sysw = InferenceOperator(
+            sysw = InferenceManager(
                 belief_base,
                 inference_system="system-w",
                 smt_solver=smt_solver,
@@ -142,7 +142,7 @@ for j in [60]:
                 multi_inference=multi_inference,
             )
 
-            lexinf = InferenceOperator(
+            lexinf = InferenceManager(
                 belief_base,
                 inference_system="lex_inf",
                 smt_solver=smt_solver,
@@ -157,7 +157,7 @@ for j in [60]:
                 multi_inference=multi_inference,
             )
 
-            lexinf = InferenceOperator(
+            lexinf = InferenceManager(
                 belief_base,
                 inference_system="lex_inf",
                 smt_solver=alt_smt_solver,
@@ -172,7 +172,7 @@ for j in [60]:
                 multi_inference=multi_inference,
             )
 
-            cinf = InferenceOperator(
+            cinf = InferenceManager(
                 belief_base,
                 inference_system="c-inference",
                 smt_solver=smt_solver,
@@ -187,7 +187,7 @@ for j in [60]:
                 multi_inference=multi_inference,
             )
 
-            cinf = InferenceOperator(
+            cinf = InferenceManager(
                 belief_base,
                 inference_system="c-inference",
                 smt_solver=alt_smt_solver,

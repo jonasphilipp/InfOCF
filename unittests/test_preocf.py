@@ -23,7 +23,7 @@ from z3 import AstRef, Optimize
 
 from inference.belief_base import BeliefBase
 from inference.conditional import Conditional
-from inference.inference_operator import create_epistemic_state
+from inference.inference_manager import create_epistemic_state
 from inference.preocf import PreOCF, ranks2tpo, tpo2ranks
 from inference.system_z import SystemZ
 from parser.Wrappers import parse_belief_base

@@ -1,4 +1,4 @@
-from inference.inference_operator import InferenceOperator
+from inference.inference_manager import InferenceManager
 from parser.Wrappers import parse_belief_base, parse_queries
 
 # belief base and queries provided dircetly as string. providing a filepath of belief base and
@@ -17,10 +17,10 @@ queries = parse_queries(queries_string)
 inference_system = "lex_inf"
 
 # instanciate inference operator parameterized by belief_base and inference_system
-inference_operator = InferenceOperator(belief_base, inference_system)
+inference_manager = InferenceManager(belief_base, inference_system)
 
 # perform inference on collection of queries
-results = inference_operator.inference(queries)
+results = inference_manager.inference(queries)
 
 
 # results are provided as pandas dataframe
