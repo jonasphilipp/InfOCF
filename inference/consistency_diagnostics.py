@@ -4,17 +4,17 @@ Consistency diagnostics utilities for PreOCF-compatible belief bases.
 This module provides an efficient diagnostic that computes the following
 booleans depending on two switches, `extended` and `uses_facts`:
 
-- f_consistent: facts are jointly satisfiable
-- bb_consistent: belief base consistent under standard semantics
-- bb_w_consistent: belief base weakly consistent (extended semantics)
-- c_consistent: augmented (BB + facts-as-weak-constraints) is consistent
-- c_infinity_increase: (only meaningful for extended=True and uses_facts=True)
+- facts_consistent: facts are jointly satisfiable
+- belief_base_consistent: belief base consistent under standard semantics
+- belief_base_weakly_consistent: belief base weakly consistent (extended semantics)
+- combination_consistent: augmented (BB + facts-as-weak-constraints) is consistent
+- combination_infinity_increase: (only for extended=True and uses_facts=True)
   whether the size of the ∞-partition increased after adding facts
 
 Notes on efficiency:
 - When extended=True, a single extended partition run is reused to derive
-  both bb_w_consistent and bb_consistent (the latter via checking if the
-  last layer is empty).
+  both belief_base_weakly_consistent and belief_base_consistent (the latter via
+  checking if the last layer is empty).
 - For combined checks, only one run is done for the selected mode
   (standard or extended) and reused for the infinity-size comparison.
 
@@ -39,11 +39,11 @@ logger = get_logger(__name__)
 
 
 class Diagnostics(TypedDict, total=False):
-    f_consistent: Optional[bool]
-    bb_consistent: Optional[bool]
-    bb_w_consistent: Optional[bool]
-    c_consistent: Optional[bool]
-    c_infinity_increase: Optional[bool]
+    facts_consistent: Optional[bool]
+    belief_base_consistent: Optional[bool]
+    belief_base_weakly_consistent: Optional[bool]
+    combination_consistent: Optional[bool]
+    combination_infinity_increase: Optional[bool]
 
 
 def _parse_fact(entry: str | FNode) -> FNode:
@@ -151,11 +151,15 @@ def consistency_diagnostics(
     """Compute diagnostics per the (extended, uses_facts) mode.
 
     Case matrix:
-    1) extended=False, uses_facts=False → bb_consistent
-    2) extended=False, uses_facts=True  → f_consistent, bb_consistent, c_consistent
-    3) extended=True,  uses_facts=False → bb_consistent, bb_w_consistent
-    4) extended=True,  uses_facts=True  → f_consistent, bb_consistent, bb_w_consistent,
-                                          c_consistent, c_infinity_increase
+    1) extended=False, uses_facts=False → belief_base_consistent
+    2) extended=False, uses_facts=True  → facts_consistent, belief_base_consistent,
+                                          combination_consistent
+    3) extended=True,  uses_facts=False → belief_base_consistent,
+                                          belief_base_weakly_consistent
+    4) extended=True,  uses_facts=True  → facts_consistent, belief_base_consistent,
+                                          belief_base_weakly_consistent,
+                                          combination_consistent,
+                                          combination_infinity_increase
     """
     precomputed = precomputed or {}
     diag: Diagnostics = {}
@@ -169,7 +173,7 @@ def consistency_diagnostics(
         except Exception:
             # parsing/validation errors bubble up
             raise
-        diag["f_consistent"] = f_ok
+        diag["facts_consistent"] = f_ok
         if f_ok is False and on_inconsistent == "warn":
             logger.warning(
                 "Facts are mutually inconsistent (no model satisfies all facts)"
@@ -187,19 +191,19 @@ def consistency_diagnostics(
             base_part_ext, _ = consistency(belief_base, solver=solver, weakly=True)
 
         if base_part_ext is False:
-            diag["bb_w_consistent"] = False
-            diag["bb_consistent"] = False
+            diag["belief_base_weakly_consistent"] = False
+            diag["belief_base_consistent"] = False
         else:
-            diag["bb_w_consistent"] = True
+            diag["belief_base_weakly_consistent"] = True
             # Standard consistency is equivalent to empty last layer in extended partition
-            diag["bb_consistent"] = _last_layer_size(base_part_ext) == 0
+            diag["belief_base_consistent"] = _last_layer_size(base_part_ext) == 0
     else:
         # Standard-only check
         if "base_standard" in precomputed:
             base_part_std, _ = precomputed["base_standard"]
         else:
             base_part_std, _ = consistency(belief_base, solver=solver, weakly=False)
-        diag["bb_consistent"] = base_part_std is not False
+        diag["belief_base_consistent"] = base_part_std is not False
 
     # Combined (BB + facts as weak constraints)
     if uses_facts:
@@ -209,11 +213,11 @@ def consistency_diagnostics(
                 comb_part_ext, _ = precomputed["combined_extended"]
             else:
                 comb_part_ext, _ = consistency(augmented, solver=solver, weakly=True)
-            diag["c_consistent"] = comb_part_ext is not False
+            diag["combination_consistent"] = comb_part_ext is not False
 
             # Infinity partition size comparison only if both are partitions
             if (comb_part_ext is not False) and (base_part_ext is not False):
-                diag["c_infinity_increase"] = _last_layer_size(
+                diag["combination_infinity_increase"] = _last_layer_size(
                     comb_part_ext
                 ) > _last_layer_size(base_part_ext)
         else:
@@ -221,7 +225,7 @@ def consistency_diagnostics(
                 comb_part_std, _ = precomputed["combined_standard"]
             else:
                 comb_part_std, _ = consistency(augmented, solver=solver, weakly=False)
-            diag["c_consistent"] = comb_part_std is not False
+            diag["combination_consistent"] = comb_part_std is not False
 
     return diag
 
@@ -229,14 +233,18 @@ def consistency_diagnostics(
 def format_diagnostics(diag: Diagnostics) -> str:
     """Return a concise one-line summary of available booleans.
 
-    Example: "facts=True, bb=True, bb_w=True, combined=False, inf_inc=False"
+    Example: "facts_consistent=True, belief_base_consistent=True, belief_base_weakly_consistent=True, combination_consistent=False, combination_infinity_increase=False"
     Missing values are shown as None.
     """
-    f_ok = diag.get("f_consistent")
-    bb_ok = diag.get("bb_consistent")
-    bbw_ok = diag.get("bb_w_consistent")
-    c_ok = diag.get("c_consistent")
-    inf_inc = diag.get("c_infinity_increase")
+    f_ok = diag.get("facts_consistent")
+    bb_ok = diag.get("belief_base_consistent")
+    bbw_ok = diag.get("belief_base_weakly_consistent")
+    c_ok = diag.get("combination_consistent")
+    inf_inc = diag.get("combination_infinity_increase")
     return (
-        f"facts={f_ok}, bb={bb_ok}, bb_w={bbw_ok}, combined={c_ok}, inf_inc={inf_inc}"
+        "facts_consistent="
+        f"{f_ok}, belief_base_consistent={bb_ok}, "
+        f"belief_base_weakly_consistent={bbw_ok}, "
+        f"combination_consistent={c_ok}, "
+        f"combination_infinity_increase={inf_inc}"
     )
