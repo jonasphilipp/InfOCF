@@ -31,10 +31,10 @@ results = manager.inference(queries)
 - **[PreOCF](api/preocf.md)**: Preprocessing and optimization
 
 ### Inference Systems
-- **System Z**
-- **System W**
-- **C-Inference**
 - **P-Entailment**
+- **System Z**
+- **C-Inference**
+- **System W**
 - **Lexicographic Inference**
 
 ## Main Package
