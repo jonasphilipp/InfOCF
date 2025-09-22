@@ -227,6 +227,18 @@ def consistency_diagnostics(
                 comb_part_std, _ = consistency(augmented, solver=solver, weakly=False)
             diag["combination_consistent"] = comb_part_std is not False
 
+    # Backward-compatible short-key aliases used by existing tests
+    alias_map = {
+        "f_consistent": "facts_consistent",
+        "bb_consistent": "belief_base_consistent",
+        "bb_w_consistent": "belief_base_weakly_consistent",
+        "c_consistent": "combination_consistent",
+        "c_infinity_increase": "combination_infinity_increase",
+    }
+    for short_key, long_key in alias_map.items():
+        if long_key in diag:
+            diag[short_key] = diag[long_key]  # type: ignore[index]
+
     return diag
 
 
@@ -236,15 +248,13 @@ def format_diagnostics(diag: Diagnostics) -> str:
     Example: "facts_consistent=True, belief_base_consistent=True, belief_base_weakly_consistent=True, combination_consistent=False, combination_infinity_increase=False"
     Missing values are shown as None.
     """
-    f_ok = diag.get("facts_consistent")
-    bb_ok = diag.get("belief_base_consistent")
-    bbw_ok = diag.get("belief_base_weakly_consistent")
-    c_ok = diag.get("combination_consistent")
-    inf_inc = diag.get("combination_infinity_increase")
+    # Prefer short alias keys expected by tests; fall back to long names
+    f_ok = diag.get("f_consistent", diag.get("facts_consistent"))
+    bb_ok = diag.get("bb_consistent", diag.get("belief_base_consistent"))
+    bbw_ok = diag.get("bb_w_consistent", diag.get("belief_base_weakly_consistent"))
+    c_ok = diag.get("c_consistent", diag.get("combination_consistent"))
+    inf_inc = diag.get("c_infinity_increase", diag.get("combination_infinity_increase"))
     return (
-        "facts_consistent="
-        f"{f_ok}, belief_base_consistent={bb_ok}, "
-        f"belief_base_weakly_consistent={bbw_ok}, "
-        f"combination_consistent={c_ok}, "
-        f"combination_infinity_increase={inf_inc}"
+        f"facts={f_ok}, bb={bb_ok}, bb_w={bbw_ok}, "
+        f"combined={c_ok}, inf_inc={inf_inc}"
     )
