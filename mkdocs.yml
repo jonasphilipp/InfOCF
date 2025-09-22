@@ -11,10 +11,14 @@ theme:
     - navigation.sections
     - content.code.copy
     - navigation.indexes
+    - content.footnote.tooltips
 
 plugins:
   - search
   - autorefs
+  - include-markdown:
+      rewrite_relative_urls: true
+      relative_to_docs: true
   - mkdocstrings:
       handlers:
         python:
@@ -32,6 +36,7 @@ nav:
   - Home: index.md
   - Installation: INSTALL.md
   - CL Syntax: CL_SYNTAX.md
+  - Documentation: documentation.md
   - API Reference:
       - Overview: api.md
       - inference modules: api/inference.md
@@ -42,5 +47,6 @@ markdown_extensions:
   - admonition
   - toc:
       permalink: true
+  - footnotes
   - pymdownx.details
   - pymdownx.superfences

@@ -285,6 +285,7 @@ dev = [
     "mkdocs-autorefs>=1.4.3",
     "mkdocs-material>=9.6.18",
     "mkdocs-section-index>=0.3.10",
+    "mkdocs-include-markdown-plugin>=6.2.0",
     "mkdocstrings[python]>=0.30.0",
     "pymdown-extensions>=10.16.1",
     "twine>=6.1.0",

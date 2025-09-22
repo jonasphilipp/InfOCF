@@ -707,7 +707,7 @@ print(
 )
 
 
-print("\n=== Extended System Z (explicit, no facts) ===")
+print("\n=== Extended System Z Partition (explicit, no facts) ===")
 # Explicit extended mode without facts
 sz_extended = PreOCF.init_system_z(belief_base_birds, extended=True)
 print("Signature:", sz_extended.signature)
@@ -727,13 +727,14 @@ if isinstance(diag, dict):
     bb_ext_ok = diag.get("bb_w_consistent")
     print(f"Diagnostics (BB, extended) = {bb_ext_ok}")
 
-print("\n=== System Z with Facts ===")
+print("\n=== System Z Partition with Facts ===")
 print("Belief base (birds) recap:")
 print("  Signature:", belief_base_birds.signature)
 print("  Conditionals:")
 for idx, cond in belief_base_birds.conditionals.items():
     print(f"    {idx}: {cond}")
 try:
+    print("\n")
     # Example A: Atomic facts (baseline)
     print("Example A: Atomic facts ['b', '!p']")
     sz_atomic = PreOCF.init_system_z(belief_base_birds, facts=["b", "!p"])
