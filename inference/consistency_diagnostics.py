@@ -5,9 +5,9 @@ This module provides an efficient diagnostic that computes the following
 booleans depending on two switches, `extended` and `uses_facts`:
 
 - facts_consistent: facts are jointly satisfiable
-- belief_base_consistent: belief base consistent under standard semantics
-- belief_base_weakly_consistent: belief base weakly consistent (extended semantics)
-- combination_consistent: augmented (BB + facts-as-weak-constraints) is consistent
+- belief_base_consistent: belief base consistent
+- belief_base_weakly_consistent: belief base weakly consistent
+- combination_consistent: combination (BB + facts) is consistent
 - combination_infinity_increase: (only for extended=True and uses_facts=True)
   whether the size of the ∞-partition increased after adding facts
 
