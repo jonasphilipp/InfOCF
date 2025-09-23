@@ -36,6 +36,7 @@ from inference.c_inference import CInference
 from inference.conditional import Conditional
 from inference.consistency_diagnostics import (
     consistency_diagnostics,
+    format_diagnostics,
 )
 from inference.consistency_sat import consistency
 from inference.inference_manager import create_epistemic_state
@@ -647,6 +648,8 @@ class SystemZPreOCF(PreOCF):
             self._state["z_extended_inferred_from_facts"] = extended is None
             self._state["z_extended_user_explicit"] = extended is not None
             self._state["z_facts_present"] = True
+            # Persist the provided facts (stringified) for summaries/debugging
+            facts_str_list: list[str] = []
             if extended is False:
                 logger.warning(
                     "Facts are intended for extended semantics; proceeding with extended=False as requested"
@@ -691,6 +694,7 @@ class SystemZPreOCF(PreOCF):
                 fact_cond.index = next_index  # type: ignore[attr-defined]
                 fact_conditionals[next_index] = fact_cond
                 next_index += 1
+                facts_str_list.append(str(display))
 
             # Build an augmented belief base
             augmented_conditionals = dict(conditionals)
@@ -731,8 +735,10 @@ class SystemZPreOCF(PreOCF):
                 precomputed=precomputed,
                 on_inconsistent="warn",
             )
-            # Persist diagnostics in metadata
+            # Persist diagnostics and facts metadata for compact summaries
             self.save_meta("consistency_diagnostics", diag)
+            self.save_meta("input_facts", facts_str_list)
+            self.save_meta("input_facts_count", len(facts_str_list))
         else:
             # Determine extended mode: default to False when unspecified and no facts
             computed_extended = extended if extended is not None else False
@@ -821,6 +827,58 @@ class SystemZPreOCF(PreOCF):
         if idx is None:
             return None
         return self._z_partition[idx]
+
+    # ------------------------------------------------------------------
+    # Convenience formatting & diagnostics helpers
+    # ------------------------------------------------------------------
+    @property
+    def diagnostics(self) -> dict[str, object] | None:
+        """Return stored consistency diagnostics if available."""
+        return self.load_meta("consistency_diagnostics")
+
+    def partition_layer_sizes(self) -> list[int]:
+        """Return the size of each partition layer (ascending by index)."""
+        return [len(layer) for layer in self._z_partition]
+
+    def format_partition_layers(self, short: bool = True) -> str:
+        """Return a compact string for layers, marking the last as (∞) if extended.
+
+        Example: "layers=[3,2,1(∞)]"
+        """
+        sizes = self.partition_layer_sizes()
+        if not sizes:
+            return "layers=[]"
+        if self.uses_extended_partition and len(sizes) >= 1:
+            items = [str(s) for s in sizes[:-1]] + [f"{sizes[-1]}(∞)"]
+        else:
+            items = [str(s) for s in sizes]
+        return f"layers=[{','.join(items)}]"
+
+    def format_diagnostics_line(self) -> str:
+        """Return a single-line diagnostics summary, or 'diag: none' if absent."""
+        diag = self.diagnostics
+        if isinstance(diag, dict):
+            return f"diag: {format_diagnostics(diag)}"
+        return "diag: none"
+
+    def summary(self, brief: bool = True, include_facts: bool = True) -> str:
+        """Return a compact one-line summary of this System Z PreOCF instance."""
+        sig = ",".join(self.signature)
+        ext = self.uses_extended_partition
+        layers_str = self.format_partition_layers(short=True)
+        # Facts info
+        facts_part = ""
+        if include_facts:
+            if self._state.get("z_facts_present", False):
+                cnt = self.load_meta("input_facts_count", None)
+                facts_display = f"facts={cnt}" if isinstance(cnt, int) else "facts=yes"
+            else:
+                facts_display = "facts=None"
+            facts_part = f"; {facts_display}"
+        return (
+            f"SystemZ(sig={sig}; extended={ext}{facts_part}; {layers_str}; "
+            f"{self.format_diagnostics_line()})"
+        )
 
 
 class RandomMinCRepPreOCF(PreOCF):

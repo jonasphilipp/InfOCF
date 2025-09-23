@@ -29,7 +29,7 @@ This showcase demonstrates all these features using the classic birds/penguins e
 
 import os
 
-from pysmt.shortcuts import And, Not
+from pysmt.shortcuts import And
 
 from inference.belief_base import BeliefBase
 from inference.conditional import Conditional
@@ -710,22 +710,7 @@ print(
 print("\n=== Extended System Z Partition (explicit, no facts) ===")
 # Explicit extended mode without facts
 sz_extended = PreOCF.init_system_z(belief_base_birds, extended=True)
-print("Signature:", sz_extended.signature)
-print("Extended mode:", getattr(sz_extended, "uses_extended_partition", False))
-part_sizes_ext = [len(layer) for layer in sz_extended._z_partition]
-print("Partition layer sizes:", part_sizes_ext)
-print("All layers:")
-is_ext = getattr(sz_extended, "uses_extended_partition", False)
-last_idx = len(sz_extended._z_partition) - 1
-for i, layer in enumerate(sz_extended._z_partition):
-    label = " (∞)" if is_ext and i == last_idx else ""
-    print(f"  Layer {i}{label}: " + ", ".join(str(c) for c in layer))
-
-# Show a brief diagnostics summary if available
-diag = sz_extended.load_meta("consistency_diagnostics")
-if isinstance(diag, dict):
-    bb_ext_ok = diag.get("belief_base_weakly_consistent")
-    print(f"Diagnostics (BB, extended) = {bb_ext_ok}")
+print(sz_extended.summary())
 
 print("\n=== System Z Partition with Facts ===")
 print("Belief base (birds) recap:")
@@ -738,94 +723,21 @@ try:
     # Example A: Atomic facts (baseline)
     print("Example A: Atomic facts ['b', '!p']")
     sz_atomic = PreOCF.init_system_z(belief_base_birds, facts=["b", "!p"])
-    print("Signature:", sz_atomic.signature)
-    part_sizes = [len(layer) for layer in sz_atomic._z_partition]
-    print("Partition layer sizes:", part_sizes)
-    print("All layers:")
-    is_ext = getattr(sz_atomic, "uses_extended_partition", False)
-    last_idx = len(sz_atomic._z_partition) - 1
-    for i, layer in enumerate(sz_atomic._z_partition):
-        label = " (∞)" if is_ext and i == last_idx else ""
-        print(f"  Layer {i}{label}: " + ", ".join(str(c) for c in layer))
-    sz_atomic.compute_all_ranks()
-    formula_a = parse_formula("b,!p")
-    sat_ws_a = sz_atomic.filter_worlds_by_conditionalization(formula_a)
-    viol_ws_a = sz_atomic.filter_worlds_by_conditionalization(Not(formula_a))
-    sat_a = sat_ws_a[0] if sat_ws_a else None
-    viol_a = viol_ws_a[0] if viol_ws_a else None
-    if sat_a and viol_a:
-        print(
-            f"  satisfying world {sat_a} rank={sz_atomic.ranks[sat_a]} |"
-            f" violating world {viol_a} rank={sz_atomic.ranks[viol_a]}"
-        )
-    print()
-    # Diagnostics using the shared module
-    diag_a = consistency_diagnostics(
-        belief_base_birds, extended=True, uses_facts=True, facts=["b", "!p"]
-    )
-    print("Diagnostics A (extended) →", format_diagnostics(diag_a))
+    print(sz_atomic.summary())
     print()
 
     # Example B: Conjunctive fact b and w set to True via 'b,w'
     print("Example B: Conjunctive fact 'b' (require birds with wings)")
     sz_conj = PreOCF.init_system_z(belief_base_birds, facts=["b"])
-    print("Signature:", sz_conj.signature)
-    part_sizes_c = [len(layer) for layer in sz_conj._z_partition]
-    print("Partition layer sizes:", part_sizes_c)
-    print("All layers:")
-    is_ext = getattr(sz_conj, "uses_extended_partition", False)
-    last_idx = len(sz_conj._z_partition) - 1
-    for i, layer in enumerate(sz_conj._z_partition):
-        label = " (∞)" if is_ext and i == last_idx else ""
-        print(f"  Layer {i}{label}: " + ", ".join(str(c) for c in layer))
-    sz_conj.compute_all_ranks()
-    formula_b = parse_formula("b,w")
-    sat_ws_b = sz_conj.filter_worlds_by_conditionalization(formula_b)
-    viol_ws_b = sz_conj.filter_worlds_by_conditionalization(Not(formula_b))
-    sat_b = sat_ws_b[0] if sat_ws_b else None
-    viol_b = viol_ws_b[0] if viol_ws_b else None
-    if sat_b and viol_b:
-        print(
-            f"  satisfying world {sat_b} rank={sz_conj.ranks[sat_b]} |"
-            f" violating world {viol_b} rank={sz_conj.ranks[viol_b]}"
-        )
+    print(sz_conj.summary())
     print()
-    # Diagnostics using the shared module
-    diag_b = consistency_diagnostics(
-        belief_base_birds, extended=True, uses_facts=True, facts=["b,w"]
-    )
-    print("Diagnostics B (extended) →", format_diagnostics(diag_b))
     print()
 
     # Example C: Disjunctive fact p or f set to False via '!(p;f)' (forbid p or f)
     print("Example C: Disjunctive fact '!(p;f)' (forbid p or f)")
     sz_disj = PreOCF.init_system_z(belief_base_birds, facts=["!(p;f)"])
-    print("Signature:", sz_disj.signature)
-    part_sizes_d = [len(layer) for layer in sz_disj._z_partition]
-    print("Partition layer sizes:", part_sizes_d)
-    print("All layers:")
-    is_ext = getattr(sz_disj, "uses_extended_partition", False)
-    last_idx = len(sz_disj._z_partition) - 1
-    for i, layer in enumerate(sz_disj._z_partition):
-        label = " (∞)" if is_ext and i == last_idx else ""
-        print(f"  Layer {i}{label}: " + ", ".join(str(c) for c in layer))
-    sz_disj.compute_all_ranks()
-    formula_c = parse_formula("!(p;f)")
-    sat_ws_c = sz_disj.filter_worlds_by_conditionalization(formula_c)
-    viol_ws_c = sz_disj.filter_worlds_by_conditionalization(Not(formula_c))
-    sat_c = sat_ws_c[0] if sat_ws_c else None
-    viol_c = viol_ws_c[0] if viol_ws_c else None
-    if sat_c and viol_c:
-        print(
-            f"  satisfying world {sat_c} rank={sz_disj.ranks[sat_c]} |"
-            f" violating world {viol_c} rank={sz_disj.ranks[viol_c]}"
-        )
+    print(sz_disj.summary())
     print()
-    # Diagnostics using the shared module
-    diag_c = consistency_diagnostics(
-        belief_base_birds, extended=True, uses_facts=True, facts=["!(p;f)"]
-    )
-    print("Diagnostics C (extended) →", format_diagnostics(diag_c))
     print()
 
     # Example D: Inconsistent facts using string and FNode keys
@@ -839,26 +751,7 @@ try:
     d_comb_ext = diag_d.get("combination_consistent")
     if d_comb_ext:
         sz_combo = PreOCF.init_system_z(belief_base_birds, facts=facts_combined)
-        print("Signature:", sz_combo.signature)
-        part_sizes_x = [len(layer) for layer in sz_combo._z_partition]
-        print("Partition layer sizes:", part_sizes_x)
-        print("All layers:")
-        is_ext = getattr(sz_combo, "uses_extended_partition", False)
-        last_idx = len(sz_combo._z_partition) - 1
-        for i, layer in enumerate(sz_combo._z_partition):
-            label = " (∞)" if is_ext and i == last_idx else ""
-            print(f"  Layer {i}{label}: " + ", ".join(str(c) for c in layer))
-        sz_combo.compute_all_ranks()
-        formula_d = And(parse_formula("b,f"), parse_formula("!(p;f)"))
-        sat_ws_d = sz_combo.filter_worlds_by_conditionalization(formula_d)
-        viol_ws_d = sz_combo.filter_worlds_by_conditionalization(Not(formula_d))
-        sat_d = sat_ws_d[0] if sat_ws_d else None
-        viol_d = viol_ws_d[0] if viol_ws_d else None
-        if sat_d and viol_d:
-            print(
-                f"  satisfying world {sat_d} rank={sz_combo.ranks[sat_d]} |"
-                f" violating world {viol_d} rank={sz_combo.ranks[viol_d]}"
-            )
+        print(sz_combo.summary())
         print()
     else:
         print("Skipping PreOCF construction for Example D due to inconsistency")
@@ -877,26 +770,7 @@ try:
     e_comb_ext = diag_e.get("combination_consistent")
     if e_comb_ext:
         sz_combo_e = PreOCF.init_system_z(belief_base_birds, facts=facts_e)
-        print("Signature:", sz_combo_e.signature)
-        part_sizes_e = [len(layer) for layer in sz_combo_e._z_partition]
-        print("Partition layer sizes:", part_sizes_e)
-        print("All layers:")
-        is_ext = getattr(sz_combo_e, "uses_extended_partition", False)
-        last_idx = len(sz_combo_e._z_partition) - 1
-        for i, layer in enumerate(sz_combo_e._z_partition):
-            label = " (∞)" if is_ext and i == last_idx else ""
-            print(f"  Layer {i}{label}: " + ", ".join(str(c) for c in layer))
-        sz_combo_e.compute_all_ranks()
-        formula_e = And(parse_formula("b,f"), parse_formula("!(p;f)"))
-        sat_ws_e = sz_combo_e.filter_worlds_by_conditionalization(formula_e)
-        viol_ws_e = sz_combo_e.filter_worlds_by_conditionalization(Not(formula_e))
-        sat_e = sat_ws_e[0] if sat_ws_e else None
-        viol_e = viol_ws_e[0] if viol_ws_e else None
-        if sat_e and viol_e:
-            print(
-                f"  satisfying world {sat_e} rank={sz_combo_e.ranks[sat_e]} |"
-                f" violating world {viol_e} rank={sz_combo_e.ranks[viol_e]}"
-            )
+        print(sz_combo_e.summary())
         print()
     else:
         print("Skipping PreOCF construction for Example E due to inconsistency")
