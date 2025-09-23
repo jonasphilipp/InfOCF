@@ -36,7 +36,7 @@ from inference.c_inference import CInference
 from inference.conditional import Conditional
 from inference.consistency_diagnostics import (
     consistency_diagnostics,
-    format_diagnostics,
+    format_diagnostics_verbose,
 )
 from inference.consistency_sat import consistency
 from inference.inference_manager import create_epistemic_state
@@ -296,7 +296,7 @@ class PreOCF(ABC):
         facts: list[str | FNode] | None = None,
         *,
         extended: bool | None = None,
-    ) -> "PreOCF":
+    ) -> "SystemZPreOCF":
         return SystemZPreOCF(
             belief_base, signature, metadata, facts=facts, extended=extended
         )
@@ -703,24 +703,9 @@ class SystemZPreOCF(PreOCF):
                 signature, augmented_conditionals, "z-partition-with-facts"
             )
 
-            # Compute partition with weakly=True; raise if inconsistent (False returned)
-            # Partition compute for selected mode (recorded below)
+            # Compute partition (may be inconsistent). Always compute diagnostics and save metadata,
+            # so callers can inspect them even if we raise due to inconsistency.
             part, stats = consistency(augmented_bb, weakly=computed_extended)
-            if part is False:
-                raise ValueError(
-                    "Provided facts are jointly inconsistent with each other or the base belief base"
-                )
-            self._z_partition = part
-            # Record partition mode and stats for later consumers (internal state)
-            self._state["z_partition_extended"] = bool(computed_extended)
-            self._state["z_partition_stats"] = {
-                "layers": stats[0],
-                "calls": stats[1],
-                "levels": stats[2],
-            }
-            self._state["z_partition_source"] = "augmented_with_facts"
-
-            # Run diagnostics, reusing the already computed combined partition
             precomputed = {
                 ("combined_extended" if computed_extended else "combined_standard"): (
                     part,
@@ -735,10 +720,25 @@ class SystemZPreOCF(PreOCF):
                 precomputed=precomputed,
                 on_inconsistent="warn",
             )
-            # Persist diagnostics and facts metadata for compact summaries
             self.save_meta("consistency_diagnostics", diag)
             self.save_meta("input_facts", facts_str_list)
             self.save_meta("input_facts_count", len(facts_str_list))
+            if part is False:
+                # Include verbose diagnostics in the error message (operator + diagnostics only)
+                from inference.consistency_diagnostics import (
+                    format_diagnostics_verbose as _fmt_diag,
+                )
+
+                raise ValueError(f"system-z: {_fmt_diag(diag)}")
+            self._z_partition = part
+            # Record partition mode and stats for later consumers (internal state)
+            self._state["z_partition_extended"] = bool(computed_extended)
+            self._state["z_partition_stats"] = {
+                "layers": stats[0],
+                "calls": stats[1],
+                "levels": stats[2],
+            }
+            self._state["z_partition_source"] = "augmented_with_facts"
         else:
             # Determine extended mode: default to False when unspecified and no facts
             computed_extended = extended if extended is not None else False
@@ -855,10 +855,10 @@ class SystemZPreOCF(PreOCF):
         return f"layers=[{','.join(items)}]"
 
     def format_diagnostics_line(self) -> str:
-        """Return a single-line diagnostics summary, or 'diag: none' if absent."""
+        """Return a single-line diagnostics summary (verbose keys), or 'diag: none' if absent."""
         diag = self.diagnostics
         if isinstance(diag, dict):
-            return f"diag: {format_diagnostics(diag)}"
+            return f"diag: {format_diagnostics_verbose(diag)}"
         return "diag: none"
 
     def summary(self, brief: bool = True, include_facts: bool = True) -> str:
@@ -879,6 +879,25 @@ class SystemZPreOCF(PreOCF):
             f"SystemZ(sig={sig}; extended={ext}{facts_part}; {layers_str}; "
             f"{self.format_diagnostics_line()})"
         )
+
+    def format_layers_with_conditionals(self) -> str:
+        """Return a multi-line string listing conditionals per partition layer.
+
+        Example lines:
+          Layer 0: (b|a), (!b|a)
+          Layer 1(∞): (Bottom|!a)
+        """
+        part = self._z_partition
+        if not isinstance(part, list):
+            return "(no partition)"
+        is_ext = self.uses_extended_partition
+        last_idx = len(part) - 1
+        lines: list[str] = []
+        for i, layer in enumerate(part):
+            label = " (∞)" if is_ext and i == last_idx else ""
+            cond_str = ", ".join(str(c) for c in layer)
+            lines.append(f"  Layer {i}{label}: {cond_str}")
+        return "\n".join(lines)
 
 
 class RandomMinCRepPreOCF(PreOCF):

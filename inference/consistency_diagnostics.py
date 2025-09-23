@@ -258,3 +258,21 @@ def format_diagnostics(diag: Diagnostics) -> str:
         f"facts={f_ok}, bb={bb_ok}, bb_w={bbw_ok}, "
         f"combined={c_ok}, inf_inc={inf_inc}"
     )
+
+
+def format_diagnostics_verbose(diag: Diagnostics) -> str:
+    """Return a verbose, explicit diagnostics string using long key names.
+
+    Example: "facts_consistent=True, belief_base_consistent=True, belief_base_weakly_consistent=True, combination_consistent=False, combination_infinity_increase=False"
+    Missing values are shown as None.
+    """
+    f_ok = diag.get("facts_consistent")
+    bb_ok = diag.get("belief_base_consistent")
+    bbw_ok = diag.get("belief_base_weakly_consistent")
+    c_ok = diag.get("combination_consistent")
+    inf_inc = diag.get("combination_infinity_increase")
+    return (
+        f"facts_consistent={f_ok}, belief_base_consistent={bb_ok}, "
+        f"belief_base_weakly_consistent={bbw_ok}, combination_consistent={c_ok}, "
+        f"combination_infinity_increase={inf_inc}"
+    )
