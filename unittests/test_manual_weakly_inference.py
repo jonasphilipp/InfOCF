@@ -77,38 +77,21 @@ def run_case(
 class TestManualWeaklyInference(unittest.TestCase):
     def test_delta1(self):
         # Δ1 = { (Bottom | a) }
-        bb = "signature\n" "a,b\n\n" "conditionals\n" "delta1{\n" "(Bottom|a)\n" "}"
+        bb = "signature\na,b\n\nconditionals\ndelta1{\n(Bottom|a)\n}"
         qs = "(b|a),(a|Top),(Bottom|a)"
         expected = [True, False, True]
         run_case(bb, qs, expected)
 
     def test_delta2(self):
         # Δ2 = { (b|a), (!b|a) }
-        bb = (
-            "signature\n"
-            "a,b\n\n"
-            "conditionals\n"
-            "delta2{\n"
-            "(b|a),\n"
-            "(!b|a)\n"
-            "}"
-        )
+        bb = "signature\na,b\n\nconditionals\ndelta2{\n(b|a),\n(!b|a)\n}"
         qs = "(b|a),(a|Top),(Bottom|a)"
         expected = [True, False, True]
         run_case(bb, qs, expected)
 
     def test_delta3(self):
         # Δ3 = { (b|a), (!b|a), (d|c) }
-        bb = (
-            "signature\n"
-            "a,b,c,d\n\n"
-            "conditionals\n"
-            "delta3{\n"
-            "(b|a),\n"
-            "(!b|a),\n"
-            "(d|c)\n"
-            "}"
-        )
+        bb = "signature\na,b,c,d\n\nconditionals\ndelta3{\n(b|a),\n(!b|a),\n(d|c)\n}"
         qs = "(d|c),(d|a,c),(!d|a,c),(!d|c)"
         expected = [True, True, True, False]
         run_case(bb, qs, expected)

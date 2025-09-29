@@ -61,7 +61,7 @@ def run_case(bb: str, qs: str, expected: list[bool], systems=None):
 class TestWeaklyEdgeCases(unittest.TestCase):
     def test_vacuity_impossible_antecedent(self):
         # a is forbidden by last layer → (b|a) must be True
-        bb = "signature\n" "a,b\n\n" "conditionals\n" "kb{\n" "(Bottom|a)\n" "}"
+        bb = "signature\na,b\n\nconditionals\nkb{\n(Bottom|a)\n}"
         qs = "(b|a)"
         run_case(bb, qs, [True])
 
@@ -84,22 +84,13 @@ class TestWeaklyEdgeCases(unittest.TestCase):
 
     def test_partition_contradiction_vs_knowledge(self):
         # Two contradictory rules on a placed in last layer should still allow unrelated (d|c)
-        bb = (
-            "signature\n"
-            "a,b,c,d\n\n"
-            "conditionals\n"
-            "kb{\n"
-            "(b|a),\n"
-            "(!b|a),\n"
-            "(d|c)\n"
-            "}"
-        )
+        bb = "signature\na,b,c,d\n\nconditionals\nkb{\n(b|a),\n(!b|a),\n(d|c)\n}"
         qs = "(d|c),(d|a,c),(!d|a,c),(!d|c)"
         run_case(bb, qs, [True, True, True, False])
 
     def test_default_mode_remains_strict(self):
         # Same as first case but in strict mode should treat as inconsistency for inference
-        bb = "signature\n" "a,b\n\n" "conditionals\n" "kb{\n" "(Bottom|a)\n" "}"
+        bb = "signature\na,b\n\nconditionals\nkb{\n(Bottom|a)\n}"
         qs = parse_queries("(b|a),(a|Top),(Bottom|a)")
         belief_base = parse_belief_base(bb)
         for sys in ["system-z", "system-w", "lex_inf"]:

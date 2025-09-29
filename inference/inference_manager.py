@@ -356,9 +356,9 @@ class InferenceManager:
         else:
             pmaxsat_solver = pmaxsat_solver.lower()
         available_solvers = get_env().factory.all_solvers().keys()
-        assert (
-            smt_solver in available_solvers
-        ), f"only {available_solvers} are available as solver"
+        assert smt_solver in available_solvers, (
+            f"only {available_solvers} are available as solver"
+        )
         self.epistemic_state = create_epistemic_state(
             belief_base, inference_system, smt_solver, pmaxsat_solver, weakly
         )

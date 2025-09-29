@@ -255,8 +255,7 @@ def format_diagnostics(diag: Diagnostics) -> str:
     c_ok = diag.get("c_consistent", diag.get("combination_consistent"))
     inf_inc = diag.get("c_infinity_increase", diag.get("combination_infinity_increase"))
     return (
-        f"facts={f_ok}, bb={bb_ok}, bb_w={bbw_ok}, "
-        f"combined={c_ok}, inf_inc={inf_inc}"
+        f"facts={f_ok}, bb={bb_ok}, bb_w={bbw_ok}, combined={c_ok}, inf_inc={inf_inc}"
     )
 
 

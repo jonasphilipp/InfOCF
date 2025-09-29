@@ -201,7 +201,7 @@ class InferenceCorrectnessTest(unittest.TestCase):
                                 )
 
                                 print(
-                                    f"{inference_system:<12} variant={variant.get('label','default'):<6} pmaxsat={pmaxsat_solver or '-':<3} on {belief_base_filepath}, {queries_filepath}"
+                                    f"{inference_system:<12} variant={variant.get('label', 'default'):<6} pmaxsat={pmaxsat_solver or '-':<3} on {belief_base_filepath}, {queries_filepath}"
                                 )
                                 results = inference_operator.inference(
                                     queries,
@@ -254,7 +254,7 @@ class InferenceCorrectnessTest(unittest.TestCase):
                                         f"At least one variant mismatched for belief_base: {row['belief_base']}, "
                                         f"query: {row['query']}, inference_system: {inference_system}. "
                                         f"Expected: {row['result']}. Mismatches (pmaxsat_solver -> result): "
-                                        f"{mismatches[['pmaxsat_solver','result']].to_dict('records')}"
+                                        f"{mismatches[['pmaxsat_solver', 'result']].to_dict('records')}"
                                     ),
                                 )
                             last_index = index

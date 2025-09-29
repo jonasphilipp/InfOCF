@@ -273,7 +273,7 @@ class WeaklyInferenceCSVTest(unittest.TestCase):
                                     weakly=weakly,
                                 )
                                 print(
-                                    f"{system:<12} variant={variant.get('label','default'):<6} "
+                                    f"{system:<12} variant={variant.get('label', 'default'):<6} "
                                     f"pmaxsat={pmaxsat_solver or '-':<3} weakly={weakly} "
                                     f"on {bb_key}, {qs_key}"
                                 )
@@ -364,7 +364,7 @@ class WeaklyInferenceCSVTest(unittest.TestCase):
                             (
                                 f"Mismatch for system={system}, pmaxsat={row_pmax}, "
                                 f"{selector_desc}. Expected: {expected}. "
-                                f"Got: {variant_results[['pmaxsat_solver','result']].to_dict('records')}"
+                                f"Got: {variant_results[['pmaxsat_solver', 'result']].to_dict('records')}"
                             ),
                         )
                     else:
@@ -377,7 +377,7 @@ class WeaklyInferenceCSVTest(unittest.TestCase):
                             (
                                 f"At least one variant mismatched for {selector_desc}, "
                                 f"inference_system={system}. Expected: {expected}. "
-                                f"Mismatches: {mismatches[['pmaxsat_solver','result']].to_dict('records')}"
+                                f"Mismatches: {mismatches[['pmaxsat_solver', 'result']].to_dict('records')}"
                             ),
                         )
 

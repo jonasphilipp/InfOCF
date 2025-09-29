@@ -20,7 +20,7 @@ def build_kb_string(
     conditions: Iterable[str], *, signature: str = "a,b", name: str = "kb"
 ) -> str:
     conds_body = ",\n".join(conditions)
-    return f"signature\n{signature}\n\n" f"conditionals\n{name}{{\n{conds_body}\n}}"
+    return f"signature\n{signature}\n\nconditionals\n{name}{{\n{conds_body}\n}}"
 
 
 def main() -> None:

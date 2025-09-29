@@ -1,6 +1,6 @@
 ## Quickstart
 
-Audience: New team members (domain experts) with no prior codebase knowledge.
+Audience: Users with no prior codebase knowledge.
 
 When to use: You want to parse a small belief base, construct a `PreOCF`, compute ranks, and check a few conditionals within minutes.
 
