@@ -16,7 +16,7 @@ Snippets (planned to be included from `show_preocf.py`):
 ```
 
 ### System Z with facts (examples A–E)
-Note: Handling facts requires extended partitioning. Use `PreOCF.init_system_z(..., facts=[...], extended=True)`.
+Note: When facts are provided, System Z automatically uses extended partitioning (unless you explicitly pass `extended=False`). You typically do not need to set `extended=True` yourself.
 ```python
 # Will include from ../../show_preocf.py once markers exist:
 # [docs:diagnostics:with-facts:start] ... :end
