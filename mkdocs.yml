@@ -42,6 +42,12 @@ nav:
   - Installation: INSTALL.md
   - CL Syntax: CL_SYNTAX.md
   - Documentation: documentation.md
+  - Guides:
+      - Quickstart: guides/quickstart.md
+      - PreOCF basics: guides/preocf_basics.md
+      - Formulas & Acceptance: guides/formulas_and_acceptance.md
+      - Facts & Diagnostics: guides/facts_and_diagnostics.md
+      - C-Revision overview: guides/c_revision_overview.md
   - API Reference:
       - Overview: api.md
       - inference modules: api/inference.md
