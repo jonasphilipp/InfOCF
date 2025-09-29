@@ -18,7 +18,6 @@ plugins:
   - autorefs
   - include-markdown:
       rewrite_relative_urls: true
-      relative_to_docs: true
   - mkdocstrings:
       handlers:
         python:
@@ -26,6 +25,12 @@ plugins:
           options:
             docstring_style: numpy
             show_source: false
+            separate_signature: true
+            show_signature: true
+            show_signature_annotations: true
+            show_symbol_type: true
+            signature_crossrefs: true
+            show_if_no_docstring: false
             filters:
               - "!^_"
             merge_init_into_class: true
