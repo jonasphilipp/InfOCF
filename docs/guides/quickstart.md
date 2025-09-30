@@ -11,7 +11,6 @@ What you'll learn:
 
 Prerequisites:
 - Installed dev environment per `INSTALL.md`
-- Optional: SAT/SMT solvers for advanced features (not needed for the basics)
 
 Steps:
 1) Parse a tiny belief base and queries
