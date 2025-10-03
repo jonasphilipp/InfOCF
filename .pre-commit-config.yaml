@@ -66,6 +66,8 @@ repos:
         name: pip-audit (dependency vulnerability scan)
         args: ['--desc']
         additional_dependencies: ['pip>=25.2']
+        # Temporarily non-blocking until pip 25.3 is released (GHSA-4xh5-x5gv-qwph)
+        stages: [manual]  # Only run when explicitly called with: pre-commit run pip-audit
 
   # Additional optional hooks (run manually)
   - repo: https://github.com/pycqa/pydocstyle
