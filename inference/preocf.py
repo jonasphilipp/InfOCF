@@ -24,6 +24,7 @@ import pathlib
 import pickle
 import warnings
 from abc import ABC, abstractmethod
+from typing import Callable
 
 from BitVector import BitVector
 from pysmt.fnode import FNode
@@ -35,6 +36,7 @@ from inference.belief_base import BeliefBase
 from inference.c_inference import CInference
 from inference.conditional import Conditional
 from inference.consistency_diagnostics import (
+    Diagnostics,
     consistency_diagnostics,
     format_diagnostics_verbose,
 )
@@ -80,12 +82,12 @@ class PreOCF(ABC):
     # epistemic_state: dict
     ranks: dict[str, None | int]
     signature: list[str]
-    conditionals: dict[int, Conditional]
+    conditionals: dict[int, Conditional] | None
     ranking_system: str
-    _z_partition: list[Conditional]
+    _z_partition: list[list[Conditional]]
     _state: dict[str, object]
-    _csp: list[FNode]
-    _optimizer: Optimize
+    _csp: list[FNode] | None
+    _optimizer: Optimize | None
     _impacts: list[int]
 
     # return ranks dict with verbose world names
@@ -93,7 +95,7 @@ class PreOCF(ABC):
     #         strlist =[sig[i] if bv[i] == 1 else '!'+sig[i] for i in range(len(sig))]
     # like above but
     @property
-    def ranks_verbose(self) -> dict[str, None | int]:
+    def ranks_verbose(self) -> dict[tuple[str, ...], None | int]:
         return {self.bv2strtuple(r): self.ranks[r] for r in self.ranks.keys()}
 
     def bv2strtuple(self, bv: BitVector) -> tuple[str, ...]:
@@ -130,7 +132,9 @@ class PreOCF(ABC):
         metadata: dict[str, object] | None = None,
     ):
         self.ranks = ranks
+        assert signature is not None, "signature must not be None"
         self.signature = signature
+        # conditionals can be None for CustomPreOCF
         self.conditionals = conditionals
         self.ranking_system = ranking_system
         # Internal state store (not part of user metadata)
@@ -214,11 +218,11 @@ class PreOCF(ABC):
     # ------------------------------------------------------------------
     # Full-object persistence helpers (no manual key bookkeeping needed)
     # ------------------------------------------------------------------
-    def __getstate__(self):
+    def __getstate__(self) -> dict[str, object]:
         """Return complete object state as dict. Useful for manual state inspection/manipulation."""
         return self.__dict__.copy()
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict[str, object]) -> None:
         """Restore object from state dict."""
         self.__dict__.update(state)
 
@@ -291,8 +295,8 @@ class PreOCF(ABC):
     def init_system_z(
         cls,
         belief_base: BeliefBase,
-        signature: list = None,
-        metadata: dict[str, object] = None,
+        signature: list | None = None,
+        metadata: dict[str, object] | None = None,
         facts: list[str | FNode] | None = None,
         *,
         extended: bool | None = None,
@@ -305,23 +309,25 @@ class PreOCF(ABC):
     def init_random_min_c_rep(
         cls,
         belief_base: BeliefBase,
-        signature: list = None,
-        metadata: dict[str, object] = None,
-    ):
+        signature: list | None = None,
+        metadata: dict[str, object] | None = None,
+    ) -> "RandomMinCRepPreOCF":
         return RandomMinCRepPreOCF(belief_base, signature, metadata)
 
     @classmethod
     def init_custom(
         cls,
         ranks: dict[str, None | int],
-        belief_base: BeliefBase = None,
-        signature: list = None,
-        metadata: dict[str, object] = None,
-    ):
+        belief_base: BeliefBase | None = None,
+        signature: list | None = None,
+        metadata: dict[str, object] | None = None,
+    ) -> "CustomPreOCF":
         return CustomPreOCF(ranks, belief_base, signature, metadata)
 
     @classmethod
-    def create_bitvec_world_dict(cls, signature=None) -> dict[str, None]:
+    def create_bitvec_world_dict(
+        cls, signature: list[str] | None = None
+    ) -> dict[str, int | None]:
         if signature is None:
             # Called as instance method
             if not hasattr(cls, "signature"):
@@ -373,7 +379,7 @@ class PreOCF(ABC):
             A custom PreOCF over the reduced signature whose world ranks
             are the minimum over compatible original worlds.
         """
-        ranks = {}
+        ranks: dict[str, int | None] = {}
         for world in self.ranks.keys():
             # remove all bits whose index matches the one of the signature elements in marginalization
             new_world = "".join(
@@ -387,7 +393,11 @@ class PreOCF(ABC):
                 if ranks.get(new_world) is None:
                     ranks[new_world] = self.ranks[world]
                 else:
-                    ranks[new_world] = min(ranks[new_world], self.ranks[world])
+                    # Both values are guaranteed to be int here due to the check above
+                    curr_rank = ranks[new_world]
+                    world_rank = self.ranks[world]
+                    assert curr_rank is not None and world_rank is not None
+                    ranks[new_world] = min(curr_rank, world_rank)
         # Build new signature list by removing marginalized variables
         new_sig = [s for s in self.signature if s not in marginalization]
         # Return a custom OCF with the marginalized ranks
@@ -410,7 +420,8 @@ class PreOCF(ABC):
         world_symbols = self.symbolize_bitvec(world)
         [solver.add_assertion(s) for s in world_symbols]
         solver.add_assertion(conditionalization)
-        return solver.solve()
+        result: bool = solver.solve()
+        return result
 
     def filter_worlds_by_conditionalization(
         self, conditionalization: FNode
@@ -442,7 +453,7 @@ class PreOCF(ABC):
         """Return the rank of a world; must be implemented by subclasses."""
         raise NotImplementedError
 
-    def symbolize_bitvec(self, bitvec: str):
+    def symbolize_bitvec(self, bitvec: str) -> list[FNode]:
         sig = self.signature
         symbols = [
             Symbol(sig[i], BOOL) if int(bitvec[i]) else Not(Symbol(sig[i], BOOL))
@@ -457,7 +468,7 @@ class PreOCF(ABC):
         rank = self._rec_z_rank(solver, len(self._z_partition) - 1)
         return rank
 
-    def _rec_z_rank(self, solver, partition_index) -> int:
+    def _rec_z_rank(self, solver: Solver, partition_index: int) -> int:
         part = self._z_partition[partition_index]
         [solver.add_assertion(Not(c.make_A_then_not_B())) for c in part]
         if solver.solve():
@@ -470,6 +481,7 @@ class PreOCF(ABC):
 
     def c_vec2ocf(self, world: str) -> int:
         # Compute rank by counting conditionals violated in the world using pysmt
+        assert self.conditionals is not None, "conditionals required for c_vec2ocf"
         rank = 0
         # Convert world bitstring into pysmt boolean assertions
         world_symbols = self.symbolize_bitvec(world)
@@ -550,6 +562,7 @@ class PreOCF(ABC):
 
     # vector: dict[int, int] -> index: conditional index (currently starts at 1)
     def impacts2ocf(self, world: str, vector: dict[int, int]) -> int:
+        assert self.conditionals is not None, "conditionals required for impacts2ocf"
         rank = 0
         signature_symbols = self.symbolize_bitvec(world)
         solver = Solver(name="z3")
@@ -592,14 +605,16 @@ def ranks2tpo(ranks: dict[str, None | int]) -> list[set[str]]:
 
 # convert total preorder to ranks
 # The rank_function takes a layer number and returns the rank for that layer
-def tpo2ranks(tpo: list[set[str]], rank_function: callable) -> dict[str, None | int]:
+def tpo2ranks(
+    tpo: list[set[str]], rank_function: Callable[[int], int]
+) -> dict[str, None | int]:
     """Convert a total preorder to ranks using a layer rank function.
 
     Parameters
     ----------
     tpo : list[set[str]]
         Layers of worlds (0 is most plausible).
-    rank_function : callable
+    rank_function : Callable[[int], int]
         Function mapping layer index -> rank value.
 
     Returns
@@ -607,7 +622,7 @@ def tpo2ranks(tpo: list[set[str]], rank_function: callable) -> dict[str, None | 
     dict[str, int | None]
         World-to-rank mapping.
     """
-    ranks = {}
+    ranks: dict[str, int | None] = {}
     for layer_num, layer in enumerate(tpo):
         for world in layer:
             ranks[world] = rank_function(layer_num)
@@ -626,8 +641,8 @@ class SystemZPreOCF(PreOCF):
     def __init__(
         self,
         belief_base: BeliefBase,
-        signature: list = None,
-        metadata: dict[str, object] = None,
+        signature: list | None = None,
+        metadata: dict[str, object] | None = None,
         *,
         facts: list[str | FNode] | None = None,
         extended: bool | None = None,
@@ -635,8 +650,8 @@ class SystemZPreOCF(PreOCF):
         if signature is None:
             signature = belief_base.signature
         else:
-            signature = tuple(signature)
-        ranks = PreOCF.create_bitvec_world_dict(signature)
+            signature = list(signature)
+        ranks: dict[str, int | None] = PreOCF.create_bitvec_world_dict(signature)
         conditionals = belief_base.conditionals
         super().__init__(ranks, signature, conditionals, "system-z", metadata)
 
@@ -778,7 +793,11 @@ class SystemZPreOCF(PreOCF):
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
         if force_calculation or self.ranks[world] is None:
             self.ranks[world] = self.z_part2ocf(world)
-        return self.ranks[world]
+        rank = self.ranks[world]
+        assert rank is not None, (
+            f"Rank should not be None after calculation for world {world}"
+        )
+        return rank
 
     def z_part2ocf(self, world: str) -> int:
         signature_symbols = self.symbolize_bitvec(world)
@@ -786,7 +805,7 @@ class SystemZPreOCF(PreOCF):
         [solver.add_assertion(s) for s in signature_symbols]
         return self._rec_z_rank(solver, len(self._z_partition) - 1)
 
-    def _rec_z_rank(self, solver, partition_index) -> int:
+    def _rec_z_rank(self, solver: Solver, partition_index: int) -> int:
         part = self._z_partition[partition_index]
         [solver.add_assertion(Not(c.make_A_then_not_B())) for c in part]
         if solver.solve():
@@ -826,7 +845,8 @@ class SystemZPreOCF(PreOCF):
         idx = self.infinity_partition_index
         if idx is None:
             return None
-        return self._z_partition[idx]
+        result: list[Conditional] = self._z_partition[idx]
+        return result
 
     # ------------------------------------------------------------------
     # Convenience formatting & diagnostics helpers
@@ -834,7 +854,10 @@ class SystemZPreOCF(PreOCF):
     @property
     def diagnostics(self) -> dict[str, object] | None:
         """Return stored consistency diagnostics if available."""
-        return self.load_meta("consistency_diagnostics")
+        result = self.load_meta("consistency_diagnostics")
+        if result is None or isinstance(result, dict):
+            return result  # type: ignore[return-value]
+        return None
 
     def partition_layer_sizes(self) -> list[int]:
         """Return the size of each partition layer (ascending by index)."""
@@ -858,7 +881,9 @@ class SystemZPreOCF(PreOCF):
         """Return a single-line diagnostics summary (verbose keys), or 'diag: none' if absent."""
         diag = self.diagnostics
         if isinstance(diag, dict):
-            return f"diag: {format_diagnostics_verbose(diag)}"
+            # Cast to Diagnostics for type checker
+            diag_typed: Diagnostics = diag  # type: ignore[assignment]
+            return f"diag: {format_diagnostics_verbose(diag_typed)}"
         return "diag: none"
 
     def summary(self, brief: bool = True, include_facts: bool = True) -> str:
@@ -912,16 +937,20 @@ class RandomMinCRepPreOCF(PreOCF):
     def __init__(
         self,
         belief_base: BeliefBase,
-        signature: list = None,
-        metadata: dict[str, object] = None,
+        signature: list | None = None,
+        metadata: dict[str, object] | None = None,
     ):
         if signature is None:
             signature = belief_base.signature
         else:
             signature = signature
-        ranks = PreOCF.create_bitvec_world_dict(signature)
+        ranks: dict[str, int | None] = PreOCF.create_bitvec_world_dict(signature)
         conditionals = belief_base.conditionals
         super().__init__(ranks, signature, conditionals, "random_min_c_rep", metadata)
+        # RandomMinCRepPreOCF always needs conditionals
+        assert self.conditionals is not None, (
+            "RandomMinCRepPreOCF requires non-None conditionals"
+        )
         epistemic_state = create_epistemic_state(
             belief_base, "c-inference", "z3", "rc2", weakly=False
         )
@@ -933,11 +962,13 @@ class RandomMinCRepPreOCF(PreOCF):
         self._optimizer = Optimize()
         self._optimizer.set(priority="pareto")
         self._optimizer.add(*self._csp)
+        assert self.conditionals is not None
         [
             self._optimizer.minimize(z3.Int(f"eta_{i}"))
             for i in range(1, len(self.conditionals) + 1)
         ]
         if self._optimizer.check() == sat:
+            assert self.conditionals is not None
             m = self._optimizer.model()
             self._impacts = [
                 int(str(m.eval(z3.Int(f"eta_{i}"))))
@@ -949,9 +980,14 @@ class RandomMinCRepPreOCF(PreOCF):
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
         if force_calculation or self.ranks[world] is None:
             self.ranks[world] = self.c_vec2ocf(world)
-        return self.ranks[world]
+        rank = self.ranks[world]
+        assert rank is not None, (
+            f"Rank should not be None after calculation for world {world}"
+        )
+        return rank
 
     def c_vec2ocf(self, world: str) -> int:
+        assert self.conditionals is not None, "conditionals required for c_vec2ocf"
         rank = 0
         world_symbols = self.symbolize_bitvec(world)
         for idx, cond in self.conditionals.items():
@@ -973,6 +1009,7 @@ class RandomMinCRepPreOCF(PreOCF):
                 "No impacts computed yet. Run the constructor or compute impacts first."
             )
 
+        assert self.conditionals is not None, "conditionals required for save_impacts"
         path = pathlib.Path(path)
         impact_data = {
             "impacts": self._impacts,
@@ -1008,6 +1045,7 @@ class RandomMinCRepPreOCF(PreOCF):
         if not isinstance(impact_data, dict):
             raise ValueError("Impact file does not contain a valid data structure")
 
+        assert self.conditionals is not None, "conditionals required for load_impacts"
         required_keys = ["impacts", "conditionals_count", "ranking_system", "signature"]
         for key in required_keys:
             if key not in impact_data:
@@ -1048,8 +1086,8 @@ class RandomMinCRepPreOCF(PreOCF):
         cls,
         belief_base: BeliefBase,
         impacts_path: str | pathlib.Path,
-        signature: list = None,
-        metadata: dict[str, object] = None,
+        signature: list | None = None,
+        metadata: dict[str, object] | None = None,
     ) -> "RandomMinCRepPreOCF":
         """Create a RandomMinCRepPreOCF instance using pre-computed impacts from a file."""
         # Create instance without computing impacts (we'll override them)
@@ -1058,7 +1096,7 @@ class RandomMinCRepPreOCF(PreOCF):
         # Initialize parent class attributes
         if signature is None:
             signature = belief_base.signature
-        ranks = PreOCF.create_bitvec_world_dict(signature)
+        ranks: dict[str, int | None] = PreOCF.create_bitvec_world_dict(signature)
         conditionals = belief_base.conditionals
         PreOCF.__init__(
             instance, ranks, signature, conditionals, "random_min_c_rep", metadata
@@ -1086,6 +1124,7 @@ class RandomMinCRepPreOCF(PreOCF):
 
     def load_impacts(self, impacts: list[int]) -> None:
         """Load impact vector from a Python list with basic validation."""
+        assert self.conditionals is not None, "conditionals required for import_impacts"
         if not isinstance(impacts, list):
             raise TypeError("Impacts must be a list of integers")
 
@@ -1114,8 +1153,8 @@ class RandomMinCRepPreOCF(PreOCF):
         cls,
         belief_base: BeliefBase,
         impacts: list[int],
-        signature: list = None,
-        metadata: dict[str, object] = None,
+        signature: list | None = None,
+        metadata: dict[str, object] | None = None,
     ) -> "RandomMinCRepPreOCF":
         """Create a RandomMinCRepPreOCF instance using a pre-computed impact vector list."""
         # Create instance without computing impacts (we'll override them)
@@ -1124,7 +1163,7 @@ class RandomMinCRepPreOCF(PreOCF):
         # Initialize parent class attributes
         if signature is None:
             signature = belief_base.signature
-        ranks = PreOCF.create_bitvec_world_dict(signature)
+        ranks: dict[str, int | None] = PreOCF.create_bitvec_world_dict(signature)
         conditionals = belief_base.conditionals
         PreOCF.__init__(
             instance, ranks, signature, conditionals, "random_min_c_rep", metadata
@@ -1152,9 +1191,9 @@ class CustomPreOCF(PreOCF):
     def __init__(
         self,
         ranks: dict[str, None | int],
-        belief_base: BeliefBase = None,
-        signature: list = None,
-        metadata: dict[str, object] = None,
+        belief_base: BeliefBase | None = None,
+        signature: list | None = None,
+        metadata: dict[str, object] | None = None,
     ):
         super().__init__(
             ranks,
@@ -1171,7 +1210,7 @@ class CustomPreOCF(PreOCF):
         return rank
 
 
-def create_preocf(ranking_system: str, *args, **kwargs) -> PreOCF:
+def create_preocf(ranking_system: str, *args, **kwargs) -> PreOCF:  # type: ignore[no-untyped-def]
     """Factory for PreOCF subclasses.
 
     Parameters
