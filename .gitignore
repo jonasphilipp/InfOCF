@@ -222,3 +222,4 @@ MIGRATION*
 # Task files
 # tasks.json
 # tasks/
+mypy_*.txt
