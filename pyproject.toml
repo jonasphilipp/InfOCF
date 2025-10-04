@@ -78,7 +78,7 @@ dev = [
     "isort>=5.12.0",
     "mypy==1.13.0",  # Pin to match pre-commit version
     "flake8>=6.0.0",
-    "ruff==0.8.4",   # Pin to match pre-commit version
+    "ruff==0.13.2",   # Pin to match pre-commit version
     "bandit==1.7.10", # Security linting, matches pre-commit version
     "pip-audit==2.7.3", # Dependency vulnerability scanning, matches pre-commit version
     "pydocstyle==6.3.0", # Documentation style checking (manual)
