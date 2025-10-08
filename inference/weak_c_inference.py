@@ -9,6 +9,15 @@ from inference.consistency_sat import checkTautologies, test_weakly, consistency
 
 ### some cleanup and some more documentation of class' funcitonalities pending
 
+def filtersubsets(k, J):
+    return [q for q in k if all([(t in J) for t in q])]
+
+def filterdictJ(J, vmin):
+    jkeys = set(J.keys())
+    interim = {i:k for i,k in vmin.items() if i in jkeys}
+    result = {i:filtersubsets(k,jkeys) for i,k in interim.items()} ### can this map down a sublist to zero?
+    return result
+
 def naively_make_naivecinference(belief_base):
     epistemic_state = dict()
     epistemic_state['belief_base'] = belief_base
@@ -90,11 +99,10 @@ class WeakCInference():
         for i,c in self.epistemic_state['belief_base'].conditionals.items():
             if solver.solve([c.make_A_then_not_B()]):
                 J_delta[i] = c
-        ### hold them in epistemic state? lol
-        print("Suggested", len(list(J_delta.keys())))
+        ### hold them in epistemic state? 
         self.epistemic_state['J_delta'] = J_delta
     
-        ## compiling base_csp happens more dynamically now, based on the query
+        ## TODO compiling base_csp happens more dynamically now, based on the query
         self.compile_constraint()
 
 
@@ -139,7 +147,7 @@ class WeakCInference():
 
         V = {i:v for i, v in self.epistemic_state['v_cnf_dict'].items() if i in J_delta}
         F = {i:f for i, f in self.epistemic_state['f_cnf_dict'].items() if i in J_delta}
-        NF = {i:f for i, f in self.epistemic_state['nf_cnf_dict'].items() if i in J_delta}
+        NF = {i:f for i, f in self.epistemic_state['nf_cnf_dict'].items()}
 
         self.epistemic_state['v_cnf_dict'] = V
         self.epistemic_state['f_cnf_dict'] = F
@@ -156,9 +164,9 @@ class WeakCInference():
                 xMins_lst = optimizer.minimal_correction_subsets(wcnf, ignore=[i])
 
                 if leading_conditional is V:
-                    self.epistemic_state['vMin'][i] = xMins_lst
+                    self.epistemic_state['vMin'][i] = filterdictJ(J_delta,xMins_lst)
                 else: 
-                    self.epistemic_state['fMin'][i] = xMins_lst
+                    self.epistemic_state['fMin'][i] = filterdictJ(J_delta,xMins_lst)
 
         return (time_ns()/(1e+6))-start_time
     
@@ -188,7 +196,7 @@ class WeakCInference():
 
         V = {i:v for i, v in self.epistemic_state['v_cnf_dict'].items() if i in J_delta}
         F = {i:f for i, f in self.epistemic_state['f_cnf_dict'].items() if i in J_delta}
-        NF = {i:f for i, f in self.epistemic_state['nf_cnf_dict'].items() if i in J_delta}
+        NF = {i:f for i, f in self.epistemic_state['nf_cnf_dict'].items()}
 
         for conditional in transformed_conditionals:
             xMins = []
@@ -200,9 +208,9 @@ class WeakCInference():
             xMins_lst = optimizer.minimal_correction_subsets(wcnf)
 
             if conditional is transformed_conditionals[0]:
-                vMin = xMins_lst
+                vMin = filterdictJ(J_delta,xMins_lst)
             else: 
-                fMin = xMins_lst
+                fMin = filterdictJ(J_delta,xMins_lst)
 
         vSum = self.makeSummation({0:vMin})
         fSum = self.makeSummation({0:fMin})
