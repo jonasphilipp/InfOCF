@@ -29,7 +29,7 @@ class InferenceCorrectnessTest(unittest.TestCase):
         a,b = consistency(ckb, 'z3', True)
         ai,bi = consistency_indices(ckb, 'z3', True)
         assert(a==False)
-        assert(b==False)
+        assert(ai==False)
 
 
 

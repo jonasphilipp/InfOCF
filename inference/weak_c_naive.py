@@ -5,14 +5,40 @@ from inference.inference import Inference
 from inference.conditional import Conditional
 from inference.tseitin_transformation import TseitinTransformation
 from inference.optimizer import create_optimizer
-from inference.consistency_sat import checkTautologies
+from inference.consistency_sat import checkTautologies, get_J_delta
 
 ### some cleanup and some more documentation of class' funcitonalities pending
 
 
-class CInference(Inference):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+def filterlistlist(k, J):
+    return [[t for t in q if t in J] for q in k]
+
+def filterdictJ(J, vmin):
+    jkeys = set(J.keys())
+    print(jkeys)
+    interim = {i:k for i,k in vmin.items() if i in jkeys}
+    result = {i:filterlistlist(k,jkeys) for i,k in interim.items()} ### can this map down a sublist to zero?
+    return result
+
+def naively_make_naivecinference(belief_base):
+    epistemic_state = dict()
+    epistemic_state['belief_base'] = belief_base
+    epistemic_state['smt_solver'] = 'z3'
+    epistemic_state['pmaxsat_solver'] = 'rc2'
+    epistemic_state['result_dict'] = dict()
+    epistemic_state['preprocessing_done'] = False
+    epistemic_state['preprocessing_timed_out'] = False
+    epistemic_state['preprocessing_time'] = 0
+    epistemic_state['kill_time'] = 0
+    return epistemic_state
+
+class NaiveCInference():
+    """
+    .... brilliant design choices were made along the way
+
+    """
+    def __init__(self, belief_base):
+        self.epistemic_state = naively_make_naivecinference(belief_base)
         if 'vMin' not in self.epistemic_state:
             self.epistemic_state['vMin'] = dict()
         if 'fMin' not in self.epistemic_state:
@@ -60,12 +86,7 @@ class CInference(Inference):
         csp.extend(gteZeros)
         return csp
 
-
-    
-
-
-
-    def _preprocess_belief_base(self) -> None:
+    def preprocess_belief_base(self) -> None:
         #self._translation_start_belief_base()
         #for i, conditional in self.epistemic_state.belief_base.conditionals.items():
         #    translated_condtional = Conditional_z3.translate_from_existing(conditional)
@@ -75,15 +96,25 @@ class CInference(Inference):
         tseitin_transformation.belief_base_to_cnf(True, True, True)
         #self._translation_end_belief_base()
         self.compile_constraint()
+        J_delta = get_J_delta(self.epistemic_state['belief_base'])
+
+        ## TODO filter through J_delta
+        vMin = self.epistemic_state['vMin'] 
+        fMin = self.epistemic_state['fMin'] 
+        print(vMin)
+        print(fMin)
+        self.epistemic_state['vMin'] = filterdictJ(J_delta, vMin)
+        self.epistemic_state['fMin'] = filterdictJ(J_delta, fMin)
+        
         #self._translation_start_belief_base()
-        self.base_csp = self.translate()
+        #self.base_csp = self.translate()
         #self._translation_end_belief_base()
         #print("Translation done")
 
 
 
 
-    def _inference(self, query: Conditional) -> bool:
+    def inference(self, query: Conditional) -> bool:
         selffullfilling = True
         for conditional in self.epistemic_state['belief_base'].conditionals.values():
             if is_sat (And(conditional.antecedence, Not(conditional.consequence))):
@@ -175,6 +206,13 @@ class CInference(Inference):
             else: 
                 fMin = xMins_lst
 
+        J_delta = get_J_delta(self.epistemic_state['belief_base'])
+        J_delta[0] = None
+        vMin = filterdictJ(J_delta, vMin)
+        fMin = filterdictJ(J_delta, fMin)
+        
+        #self._translation_start_belief_base()
+        self.base_csp = self.translate()
         vSum = self.makeSummation({0:vMin})
         fSum = self.makeSummation({0:fMin})
         mv, mf = self.freshVars(0)

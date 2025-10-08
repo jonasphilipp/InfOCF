@@ -64,6 +64,31 @@ class TseitinTransformation:
                 self.epistemic_state['nf_cnf_dict'][index] = self.goal2intcnf(g3[0])
         return (time_ns() - start_time) / (1e+6) 
 
+    def layers_z_to_cnf(self, partition):
+        """
+        for (one implementation of) weakly system Z, we need for each layer in the tolerance partition 
+        the conjunction of each conditional in non-falsifying form (self.notAorB) in that layer,
+        in cnf form
+
+        """
+        t = z3.Tactic('tseitin-cnf')
+        ### TODO
+        cnf_layers = dict()
+        ### we start counting at zero
+        t = z3.Tactic('tseitin-cnf')
+        for i,p in enumerate(partition):
+            with Solver(name="z3") as solver:
+                nf_conds = []
+                for conditional in p:
+                    antecedence = solver.converter.convert(conditional.antecedence)
+                    consequence = solver.converter.convert(conditional.consequence)
+                    nf = z3.And(antecedence, z3.Not(consequence))
+                    nf_conds.append(nf)
+                g = t(z3.And(nf_conds))
+                cnf_layers[i] = self.goal2intcnf(g[0])
+        return cnf_layers
+
+
     """
     Transforms query conditional to CNF
 
@@ -85,6 +110,16 @@ class TseitinTransformation:
         AB = self.goal2intcnf(t(z3.And(antecedence, consequence))[0])
         AnotB = self.goal2intcnf(t(z3.And(antecedence, z3.Not(consequence)))[0])
         return [AB, AnotB]
+
+
+    def query_to_implication(self, query: Conditional) -> list[list[list[int]]]:
+        t = z3.Tactic('tseitin-cnf')
+        with Solver(name="z3") as solver:
+            antecedence = solver.converter.convert(query.antecedence)
+            consequence = solver.converter.convert(query.consequence)
+        AB = self.goal2intcnf(t(z3.Implies(antecedence, consequence))[0])
+        return AB
+
     """
     Takes z3 goal in CNF and turns it to CNF of ints. The absolute values of those ints 
     function as unique IDs of the z3 expressions in the goal.

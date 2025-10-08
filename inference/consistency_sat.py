@@ -16,6 +16,29 @@ def checkTautologies(conditionals):
             if not case1 or not case2: return True
 
 
+def test_weakly(ckb):
+    conditionals = [i for i in ckb.conditionals.values()]
+    with Solver(name='z3') as s:
+        return s.solve(toImplicit(conditionals))
+
+
+def get_J_delta(ckb):
+    part,_ = consistency(ckb, 'z3', True)
+    ### compute J_delta
+    J_inf = part[-1]
+    J_delta = dict()
+    solver = Solver(name='z3')
+    [solver.add_assertion(Implies(c.antecedence,c.consequence)) for c in J_inf]
+    for i,c in ckb.conditionals.items():
+
+        if solver.solve([c.make_A_then_not_B()]):
+            J_delta[i] = c
+    ### hold them in epistemic state? lol
+    return J_delta
+
+
+
+
 def consistency(ckb, solver='z3', weakly=False):
     #print(solver)
     conditionals = [i for i in ckb.conditionals.values()]

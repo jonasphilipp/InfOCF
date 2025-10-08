@@ -1,18 +1,29 @@
 from time import time_ns
-from pysmt.shortcuts import Symbol, Int, LE, GE, And, Plus, Not, is_sat, is_unsat, Solver, LT, INT, GT
+from pysmt.shortcuts import Symbol, Int, LE, GE, And, Plus, Not, is_sat, is_unsat, Solver, LT, INT, GT, Implies
 from pysat.formula import WCNF
 from inference.inference import Inference
 from inference.conditional import Conditional
 from inference.tseitin_transformation import TseitinTransformation
 from inference.optimizer import create_optimizer
-from inference.consistency_sat import checkTautologies
+from inference.consistency_sat import checkTautologies, test_weakly, consistency
 
 ### some cleanup and some more documentation of class' funcitonalities pending
 
+def naively_make_naivecinference(belief_base):
+    epistemic_state = dict()
+    epistemic_state['belief_base'] = belief_base
+    epistemic_state['smt_solver'] = 'z3'
+    epistemic_state['pmaxsat_solver'] = 'rc2'
+    epistemic_state['result_dict'] = dict()
+    epistemic_state['preprocessing_done'] = False
+    epistemic_state['preprocessing_timed_out'] = False
+    epistemic_state['preprocessing_time'] = 0
+    epistemic_state['kill_time'] = 0
+    return epistemic_state
 
-class CInference(Inference):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class WeakCInference():
+    def __init__(self, belief_base):
+        self.epistemic_state = naively_make_naivecinference(belief_base)
         if 'vMin' not in self.epistemic_state:
             self.epistemic_state['vMin'] = dict()
         if 'fMin' not in self.epistemic_state:
@@ -34,21 +45,21 @@ class CInference(Inference):
     def freshVars(self, i: int) -> tuple:
         return Symbol(f'mv_{i}', INT), Symbol(f'mf_{i}', INT)
 
-    def minima_encoding(self, mv: int, eta:int, vsums: list, fsums: list) -> list:
-        ###TODO explore 
+    def minima_encoding(self, mv: int, ssums: list) -> list:
         ands = [LE(mv, i) for i in ssums]
         ors = Not(And([LT(mv, i) for i in ssums]))
         ands.append(ors)
-        implicit = [(eta +i >mv) for i in fsums]
-        ands.extend(implicit)
         return ands
 
     def encoding(self, etas: dict, vSums: dict, fSums: dict) -> list:
         csp = []
         for index, eta in etas.items():
             mv, mf = self.freshVars(index)
-            vMin = self.minima_encoding(mv, eta, vSums[index], fSums[index])
+            vMin = self.minima_encoding(mv, vSums[index])
+            fMin = self.minima_encoding(mf, fSums[index])
             csp.extend(vMin)
+            csp.extend(fMin)
+            csp.append(GT(eta, mv - mf))
         return csp
 
     def translate(self) -> list:
@@ -61,29 +72,33 @@ class CInference(Inference):
         return csp
 
 
-    
-
-
-
-    def _preprocess_belief_base(self) -> None:
-        #self._translation_start_belief_base()
-        #for i, conditional in self.epistemic_state.belief_base.conditionals.items():
-        #    translated_condtional = Conditional_z3.translate_from_existing(conditional)
-        #    self._epistemic_state.conditionals[i] = translated_condtional
-        #self.makeCNFs()
+    def preprocess_belief_base(self) -> None:
         tseitin_transformation = TseitinTransformation(self.epistemic_state)
         tseitin_transformation.belief_base_to_cnf(True, True, True)
-        #self._translation_end_belief_base()
+
+        ### check weakly consistency
+        is_weakly = test_weakly(self.epistemic_state['belief_base'])
+        assert(is_weakly)
+        ### Compute tolerance partition
+        self.epistemic_state['partition'],_ = consistency(self.epistemic_state['belief_base'], 'z3', True)
+
+        ### compute J_delta
+        J_inf = self.epistemic_state['partition'][-1]
+        J_delta = dict()
+        solver = Solver(name=self.epistemic_state['smt_solver'])
+        [solver.add_assertion(Implies(c.antecedence,c.consequence)) for c in J_inf]
+        for i,c in self.epistemic_state['belief_base'].conditionals.items():
+            if solver.solve([c.make_A_then_not_B()]):
+                J_delta[i] = c
+        ### hold them in epistemic state? lol
+        print("Suggested", len(list(J_delta.keys())))
+        self.epistemic_state['J_delta'] = J_delta
+    
+        ## compiling base_csp happens more dynamically now, based on the query
         self.compile_constraint()
-        #self._translation_start_belief_base()
-        self.base_csp = self.translate()
-        #self._translation_end_belief_base()
-        #print("Translation done")
 
 
-
-
-    def _inference(self, query: Conditional) -> bool:
+    def inference(self, query: Conditional) -> bool:
         selffullfilling = True
         for conditional in self.epistemic_state['belief_base'].conditionals.values():
             if is_sat (And(conditional.antecedence, Not(conditional.consequence))):
@@ -93,9 +108,6 @@ class CInference(Inference):
 
 
 
-        #self._translation_start_query()
-        #translated_query = Conditional_z3.translate_from_existing(query)
-        #self._translation_end_query()
         solver = Solver(name=self.epistemic_state['smt_solver'])
         for constraint in self.base_csp:
             solver.add_assertion(constraint)
@@ -123,18 +135,27 @@ class CInference(Inference):
     """
     def compile_constraint(self) -> float:
         start_time = time_ns() / (1e+6)
+        J_delta = set(self.epistemic_state['J_delta'].keys())
 
-        for leading_conditional in [self.epistemic_state['v_cnf_dict'], self.epistemic_state['f_cnf_dict']]:
+        V = {i:v for i, v in self.epistemic_state['v_cnf_dict'].items() if i in J_delta}
+        F = {i:f for i, f in self.epistemic_state['f_cnf_dict'].items() if i in J_delta}
+        NF = {i:f for i, f in self.epistemic_state['nf_cnf_dict'].items() if i in J_delta}
+
+        self.epistemic_state['v_cnf_dict'] = V
+        self.epistemic_state['f_cnf_dict'] = F
+        self.epistemic_state['nf_cnf_dict'] = NF
+
+        for leading_conditional in [V,F]:
             for i, conditional in leading_conditional.items():
                 xMins = []
                 wcnf = WCNF()
                 [wcnf.append(c) for c in conditional]
-                [wcnf.append(s, weight=1) for j, softc in self.epistemic_state['nf_cnf_dict'].items() if i != j for s in softc]
+                [wcnf.append(s, weight=1) for j, softc in NF.items() if i != j for s in softc] ### amazing python construction fr fr 
                 
                 optimizer = create_optimizer(self.epistemic_state)
                 xMins_lst = optimizer.minimal_correction_subsets(wcnf, ignore=[i])
 
-                if leading_conditional is self.epistemic_state['v_cnf_dict']:
+                if leading_conditional is V:
                     self.epistemic_state['vMin'][i] = xMins_lst
                 else: 
                     self.epistemic_state['fMin'][i] = xMins_lst
@@ -161,11 +182,19 @@ class CInference(Inference):
         vMin, fMin = [], []
         tseitin_transformation = TseitinTransformation(self.epistemic_state)
         transformed_conditionals = tseitin_transformation.query_to_cnf(query)
+
+        J_delta = self.epistemic_state['J_delta'].keys()
+        
+
+        V = {i:v for i, v in self.epistemic_state['v_cnf_dict'].items() if i in J_delta}
+        F = {i:f for i, f in self.epistemic_state['f_cnf_dict'].items() if i in J_delta}
+        NF = {i:f for i, f in self.epistemic_state['nf_cnf_dict'].items() if i in J_delta}
+
         for conditional in transformed_conditionals:
             xMins = []
             wcnf = WCNF()
             [wcnf.append(c) for c in conditional]
-            [wcnf.append(s, weight=1) for j, softc in self.epistemic_state['nf_cnf_dict'].items() for s in softc]
+            [wcnf.append(s, weight=1) for j, softc in NF for s in softc]
             
             optimizer = create_optimizer(self.epistemic_state)
             xMins_lst = optimizer.minimal_correction_subsets(wcnf)

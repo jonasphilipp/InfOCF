@@ -11,11 +11,6 @@ class Conditional:
     def make_A_then_B(self):
         return And(self.antecedence, self.consequence)
 
-    def setTexts(self,consequenceText, antecedenceText):
-        self.consequenceText=consequenceText
-        self.antecedenceText=antecedenceText
-        self.consequenceVars = set(str.split(self.consequenceText.translate(a))) # type: ignore
-        self.antecedenceVars = set(str.split(self.antecedenceText.translate(a))) # type: ignore
 
 
     def make_A_then_not_B(self):
