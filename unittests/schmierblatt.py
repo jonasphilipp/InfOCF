@@ -20,12 +20,15 @@ class InferenceCorrectnessTest(unittest.TestCase):
         #queries = parse_queries(queriesSTR)
 
         weakCinf = WeakCInference(ckb)
+        bb = weakCinf.epistemic_state['belief_base']
+        z = SystemZRankZ3(bb)
         t1=time()
         weakCinf.preprocess_belief_base()
         t2=time()
         print(weakCinf.epistemic_state['vMin'])
         print(weakCinf.epistemic_state['fMin'])
         print("suggested", t2-t1)
+        [print(z.rank_query(c)) for i,c in bb.conditionals.items()]
 
 
 

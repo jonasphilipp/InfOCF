@@ -24,11 +24,11 @@ class SystemZRankZ3():
         opt = z3.Optimize()
         opt.add(formula)
         partition = self.partition
-        s.add(z3.And([z3.Not(c.make_A_then_not_B()) for c in partition[-1]]))
+        opt.add(z3.And([z3.Not(c.make_A_then_not_B()) for c in partition[-1]]))
         soft = partition[0:len(partition)-1]
         for i,s in enumerate(soft):
-            obj = s.add_soft(z3.And([z3.Not(c.make_A_then_not_B()) for c in s]), weight=2**i)
-        result = s.check()
+            obj = opt.add_soft(z3.And([z3.Not(c.make_A_then_not_B()) for c in s]), weight=2**i)
+        result = opt.check()
 
         if z3.unsat == result : return float('inf')
         if obj.value().py_value() == 0: return 0 
@@ -42,7 +42,7 @@ class SystemZRankZ3():
         query = transform_conditional_to_z3(query)
         vf = query.make_A_then_B()
         ff = query.make_A_then_not_B()
-        return self.rank(vf), self.rank(ff)
+        return self._rank(vf), self._rank(ff)
 
 
 
