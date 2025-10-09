@@ -53,6 +53,7 @@ def parse_queries(string: str) -> Queries:
 
 
 def parse_queries_from_str(string: str) -> Queries:
+    ### bound to fail eventually
     if 'signature' and 'conditionals' in string:
         belief_base = parseCKB(string)
         queries = Queries(belief_base)
@@ -65,12 +66,6 @@ def parse_belief_base_from_str(string: str):
     return parseCKB(string)
 
 def parseCKB(ckbs_string):
-    """
-    stream = InputStream(ckbs_string)
-    lexer = CKBLexer(stream)
-    stream = CommonTokenStream(lexer)
-    parser = CKBParser(stream)
-    """
     #print(ckbs_string)
     tree = getParseTree(ckbs_string)
     visitor = myVisitor()
@@ -79,9 +74,6 @@ def parseCKB(ckbs_string):
     return ckb
 
         
-
-
-
 def parseQuery(querystring):
     ckb_template=f"signature \n a,b,c,d,e,f \n conditionals \n Querydummy \n {{ \n {querystring}\n }}" 
     ckbquery=parseCKB(ckb_template)

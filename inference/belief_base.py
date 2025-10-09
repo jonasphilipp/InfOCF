@@ -1,14 +1,17 @@
 from inference.conditional import Conditional
 
 class BeliefBase:
-    """
-    currently only supports strong conditionals
-    several functionalities currently exist as multiple implementation within this class.
-    The inferior one, that uses if-then-then encoding, will moved somewhere else some day.
-    """
     def __init__(self, signature: list[str], conditionals: dict[int, Conditional], name: str) -> None:
         self.signature=signature
         self.conditionals=conditionals
         self.name = name
+
+
+    def transform_to_z3_objects(self):
+        from conditional_z3 import Conditional_z3 as Cond
+        signature = self.signature
+        conditionals = {i:Cond.translate_from_existing(c) for i,c in self.conditionals.items()}
+        name = self.name
+        return BeliefBase(signature, conditionals, name)
 
 

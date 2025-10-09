@@ -82,7 +82,7 @@ class TseitinTransformation:
                 for conditional in p:
                     antecedence = solver.converter.convert(conditional.antecedence)
                     consequence = solver.converter.convert(conditional.consequence)
-                    nf = z3.And(antecedence, z3.Not(consequence))
+                    nf = z3.Not(z3.And(antecedence, z3.Not(consequence)))
                     nf_conds.append(nf)
                 g = t(z3.And(nf_conds))
                 cnf_layers[i] = self.goal2intcnf(g[0])

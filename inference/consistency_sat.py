@@ -132,9 +132,5 @@ def consistency_indices(ckb, solver, weakly=False):
             #reset the solver sothat it wont consider the currently found partition anymore
             s.pop()
 
-def set_core_minimize(s):
-    s.set("sat.core.minimize",True)  # For Bit-vector theories
-    #s.set("smt.core.minimize",True)  # For general SMT 
-
 
 
