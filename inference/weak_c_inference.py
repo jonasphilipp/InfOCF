@@ -13,7 +13,8 @@ def filtersubsets(k, J):
     return [q for q in k if all([(t in J) for t in q])]
 
 def filterdictJ(J, vmin):
-    jkeys = set(J.keys())
+    print(J,vmin)
+    jkeys = J
     interim = {i:k for i,k in vmin.items() if i in jkeys}
     result = {i:filtersubsets(k,jkeys) for i,k in interim.items()} ### can this map down a sublist to zero?
     return result
@@ -164,9 +165,9 @@ class WeakCInference():
                 xMins_lst = optimizer.minimal_correction_subsets(wcnf, ignore=[i])
 
                 if leading_conditional is V:
-                    self.epistemic_state['vMin'][i] = filterdictJ(J_delta,xMins_lst)
+                    self.epistemic_state['vMin'][i] = filtersubsets(xMins_lst,J_delta)
                 else: 
-                    self.epistemic_state['fMin'][i] = filterdictJ(J_delta,xMins_lst)
+                    self.epistemic_state['fMin'][i] = filtersubsets(xMins_lst,J_delta)
 
         return (time_ns()/(1e+6))-start_time
     
@@ -208,9 +209,9 @@ class WeakCInference():
             xMins_lst = optimizer.minimal_correction_subsets(wcnf)
 
             if conditional is transformed_conditionals[0]:
-                vMin = filterdictJ(J_delta,xMins_lst)
+                vMin = filtersubsets(xMins_lst,J_delta)
             else: 
-                fMin = filterdictJ(J_delta,xMins_lst)
+                fMin = filtersubsets(xMins_lst, J_delta)
 
         vSum = self.makeSummation({0:vMin})
         fSum = self.makeSummation({0:fMin})

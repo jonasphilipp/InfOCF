@@ -8,7 +8,6 @@ import os
 #from .QUERYParser import QUERYParser
 #from .myQueryVisitor import myQueryVisitor
 
-from inference.queries import Queries
 from inference.belief_base import BeliefBase
 
 
@@ -43,7 +42,7 @@ def parse_belief_base(string: str) -> BeliefBase:
     return belief_base
 
 
-def parse_queries(string: str) -> Queries:
+def parse_queries(string: str) :
     if os.path.isfile(string):
         with open(string) as f: file = f.read() 
         queries = parse_queries_from_str(file)
@@ -52,7 +51,8 @@ def parse_queries(string: str) -> Queries:
     return queries
 
 
-def parse_queries_from_str(string: str) -> Queries:
+"""
+def parse_queries_from_str(string: str) :
     ### bound to fail eventually
     if 'signature' and 'conditionals' in string:
         belief_base = parseCKB(string)
@@ -61,6 +61,7 @@ def parse_queries_from_str(string: str) -> Queries:
         query_dict = parseQuery(string)
         if query_dict: queries = Queries(query_dict)
     return queries #type: ignore
+"""
 
 def parse_belief_base_from_str(string: str):
     return parseCKB(string)

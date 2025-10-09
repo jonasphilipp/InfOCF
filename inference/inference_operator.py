@@ -9,7 +9,6 @@ from inference.system_w_z3 import SystemWZ3
 from inference.system_z import SystemZ
 from inference.p_entailment import PEntailment
 from inference.c_inference import CInference
-from inference.queries import Queries
 
 """
 Creates epistemic state dict. Everything we know or find out about a belief base and also some meta 
@@ -115,7 +114,7 @@ class InferenceOperator:
     Returns:
         Pandas data frame containing detailed information about the performed inference.
     """
-    def inference(self, queries: Queries, total_timeout: int=0, inference_timeout: int=0, preprocessing_timeout: int=0, queries_name: str='', multi_inference: bool=False, decimals: int=1) -> pd.DataFrame:
+    def inference(self, queries, total_timeout: int=0, inference_timeout: int=0, preprocessing_timeout: int=0, queries_name: str='', multi_inference: bool=False, decimals: int=1) -> pd.DataFrame:
         if queries_name:
             queries.name = queries_name
         

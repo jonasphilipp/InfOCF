@@ -3,18 +3,16 @@ from inference.inference import Inference
 from inference.consistency_sat import consistency
 from warnings import warn
 from time import process_time
-from tseitin_transformation import TseitinTransformation:
-from conditional_z3 import Conditional_z3
-from belief_base import BeliefBase
+from inference.belief_base import BeliefBase
 import z3
 import math
-from z3tools import *
+from inference.z3tools import *
 
 
 class SystemZRankZ3():
 
     def __init__(self,bb) -> None:
-            partition, _ = consistency(self.epistemic_state['belief_base'], solver=self.epistemic_state['smt_solver'], weakly=True)
+            partition, _ = consistency(bb, 'z3', weakly=True)
             if not partition: warn('belief base inconsistent')
             self.beliefbase = transform_beliefbase_to_z3(bb)
             self.partition = transform_partition_to_z3(partition)
