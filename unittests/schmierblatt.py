@@ -29,6 +29,7 @@ class InferenceCorrectnessTest(unittest.TestCase):
         print(weakCinf.epistemic_state['fMin'])
         print("suggested", t2-t1)
         [print(z.rank_query(c)) for i,c in bb.conditionals.items()]
+        [print(weakCinf.inference(c)) for i,c in bb.conditionals.items()]
 
 
 

@@ -73,7 +73,7 @@ class WeakCInference():
         return csp
 
     def translate(self) -> list:
-        eta = {i: Symbol(f'eta_{i}', INT) for i, _ in enumerate(self.epistemic_state['belief_base'].conditionals, start=1)}
+        eta = {i: Symbol(f'eta_{i}', INT) for i, _ in self.epistemic_state['J_delta'].items()}
         gteZeros = [GE(e, Int(0)) for e in eta.values()]
         vSums = self.makeSummation(self.epistemic_state['vMin'])
         fSums = self.makeSummation(self.epistemic_state['fMin'])
@@ -105,17 +105,10 @@ class WeakCInference():
     
         ## TODO compiling base_csp happens more dynamically now, based on the query
         self.compile_constraint()
+        self.base_csp = self.translate()
 
 
     def inference(self, query: Conditional) -> bool:
-        selffullfilling = True
-        for conditional in self.epistemic_state['belief_base'].conditionals.values():
-            if is_sat (And(conditional.antecedence, Not(conditional.consequence))):
-                selffullfilling = False
-        if selffullfilling:
-            return False
-
-
 
         solver = Solver(name=self.epistemic_state['smt_solver'])
         for constraint in self.base_csp:
@@ -203,7 +196,7 @@ class WeakCInference():
             xMins = []
             wcnf = WCNF()
             [wcnf.append(c) for c in conditional]
-            [wcnf.append(s, weight=1) for j, softc in NF for s in softc]
+            [wcnf.append(s, weight=1) for j, softc in NF.items() for s in softc]
             
             optimizer = create_optimizer(self.epistemic_state)
             xMins_lst = optimizer.minimal_correction_subsets(wcnf)
