@@ -6,6 +6,7 @@ from inference.conditional import Conditional
 from inference.tseitin_transformation import TseitinTransformation
 from inference.optimizer import create_optimizer
 from inference.consistency_sat import checkTautologies, test_weakly, consistency
+from inference.weakly_system_z_rank import SystemZRankZ3
 
 ### some cleanup and some more documentation of class' funcitonalities pending
 
@@ -109,6 +110,11 @@ class WeakCInference():
 
 
     def inference(self, query: Conditional) -> bool:
+        sysz = SystemZRankZ3(self.epistemic_state['belief_base'])
+        vf, ff = sysz.rank_query(query)
+        infty = float('inf')
+        if ff == infty: return True
+        if vf == infty: return False
 
         solver = Solver(name=self.epistemic_state['smt_solver'])
         for constraint in self.base_csp:
@@ -181,9 +187,10 @@ class WeakCInference():
     def compile_and_encode_query(self, query: Conditional) -> tuple[list, float]:
         start_time = time_ns() / 1e+6
 
-        vMin, fMin = [], []
+        vMin, fMin = [[]], [[]]
         tseitin_transformation = TseitinTransformation(self.epistemic_state)
         transformed_conditionals = tseitin_transformation.query_to_cnf(query)
+        #print(transformed_conditionals)
 
         J_delta = self.epistemic_state['J_delta'].keys()
         
@@ -192,6 +199,8 @@ class WeakCInference():
         F = {i:f for i, f in self.epistemic_state['f_cnf_dict'].items() if i in J_delta}
         NF = {i:f for i, f in self.epistemic_state['nf_cnf_dict'].items()}
 
+        countv = 0
+        countf = 0
         for conditional in transformed_conditionals:
             xMins = []
             wcnf = WCNF()
@@ -200,10 +209,12 @@ class WeakCInference():
             
             optimizer = create_optimizer(self.epistemic_state)
             xMins_lst = optimizer.minimal_correction_subsets(wcnf)
-
+            
             if conditional is transformed_conditionals[0]:
+                countv+=1
                 vMin = filtersubsets(xMins_lst,J_delta)
             else: 
+                countf+=1
                 fMin = filtersubsets(xMins_lst, J_delta)
 
         vSum = self.makeSummation({0:vMin})
@@ -211,6 +222,7 @@ class WeakCInference():
         mv, mf = self.freshVars(0)
         vM = self.minima_encoding(mv, vSum[0])
         fM = self.minima_encoding(mf, fSum[0])
+        #print(countv, countf)
         #print(f"vM {vM}")
         #print(f"fM {fM}")
         csp = vM + fM + [GE(mv, mf)]

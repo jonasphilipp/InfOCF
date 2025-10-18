@@ -15,6 +15,7 @@ from parser.Wrappers import parseQuery,parseCKB
 from inference.conditional import Conditional
 from time import time_ns 
 from pysmt.shortcuts import Solver,Implies
+from inference.weakly_system_z_rank import SystemZRankZ3
 
 
 
@@ -132,15 +133,24 @@ def sampleQueries(ckb, VAR, Q, l, u):
     """
     found = []
     s = Solver(name='z3')
-    [s.add_assertion(Implies(j.antecedence,j.consequence)) for j in get_J_delta(ckb).values()]
+    [s.add_assertion(Implies(j.antecedence,j.consequence)) for j in (ckb).conditionals.values()]
+    sysz = SystemZRankZ3(ckb)
+    infty = float('inf')
+    counter = 0
+    counterInfty = 0 
     while len(found) < Q:
         query = (sampleConditional(VAR, l,u))
         q=parseQuery(query)[1]
         s.push()
         difficult = (not s.solve([q.make_A_then_B()])) and (not s.solve([q.make_A_then_not_B()]))
+        counter +=1
         if difficult:
+            vf,ff = sysz.rank_query(q)
+            if ff == infty or vf == infty:
+                counterInfty +=1
+                continue
             found.append(query)
-    return found
+    return found,counter,counterInfty
         
 
 def sampleUNSATQueries(ckb, VAR, Q, l, u):
@@ -149,15 +159,17 @@ def sampleUNSATQueries(ckb, VAR, Q, l, u):
     """
     found = []
     s = Solver(name='z3')
-    [s.add_assertion(Implies(j.antecedence,j.consequence)) for j in get_J_delta(ckb).values()]
+    [s.add_assertion(Implies(j.antecedence,j.consequence)) for j in (ckb).conditionals.values()]
+    counter = 0 
     while len(found) < Q:
         query = (sampleConditional(VAR, l,u))
         q=parseQuery(query)[1]
         s.push()
         difficult = (s.solve([q.make_A_then_B()])) and (not s.solve([q.make_A_then_not_B()]))
+        counter += 1
         if difficult:
             found.append(query)
-    return found
+    return found, counter
 
 def sampleSATQueries(ckb, VAR, Q, l, u):
     """
@@ -165,15 +177,17 @@ def sampleSATQueries(ckb, VAR, Q, l, u):
     """
     found = []
     s = Solver(name='z3')
-    [s.add_assertion(Implies(j.antecedence,j.consequence)) for j in get_J_delta(ckb).values()]
+    [s.add_assertion(Implies(j.antecedence,j.consequence)) for j in (ckb).conditionals.values()]
+    counter = 0
     while len(found) < Q:
         query = (sampleConditional(VAR, l,u))
         q=parseQuery(query)[1]
         s.push()
         difficult = (not s.solve([q.make_A_then_B()])) and (s.solve([q.make_A_then_not_B()]))
+        counter +=1
         if difficult:
             found.append(query)
-    return found
+    return found, counter
 
 def canonical(tMin:T) -> T:
     """
