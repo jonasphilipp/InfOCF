@@ -43,7 +43,8 @@ class WeakCz3():
         ff = query.make_A_then_not_B()
         #TODO
 
-
+    def inference(self,query):
+        #TODO
 
     #replaces every items in the argument by it's sum representation
     def makeSummation(self, minima: dict) -> dict[int, list]:
