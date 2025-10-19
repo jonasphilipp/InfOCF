@@ -14,7 +14,7 @@ def filtersubsets(k, J):
     return [q for q in k if all([(t in J) for t in q])]
 
 def filterdictJ(J, vmin):
-    print(J,vmin)
+    #print(J,vmin)
     jkeys = J
     interim = {i:k for i,k in vmin.items() if i in jkeys}
     result = {i:filtersubsets(k,jkeys) for i,k in interim.items()} ### can this map down a sublist to zero?
@@ -149,9 +149,9 @@ class WeakCInference():
         F = {i:f for i, f in self.epistemic_state['f_cnf_dict'].items() if i in J_delta}
         NF = {i:f for i, f in self.epistemic_state['nf_cnf_dict'].items()}
 
-        self.epistemic_state['v_cnf_dict'] = V
-        self.epistemic_state['f_cnf_dict'] = F
-        self.epistemic_state['nf_cnf_dict'] = NF
+        self.epistemic_state['wv_cnf_dict'] = V
+        self.epistemic_state['wf_cnf_dict'] = F
+        self.epistemic_state['wnf_cnf_dict'] = NF
 
         for leading_conditional in [V,F]:
             for i, conditional in leading_conditional.items():
@@ -187,7 +187,7 @@ class WeakCInference():
     def compile_and_encode_query(self, query: Conditional) -> tuple[list, float]:
         start_time = time_ns() / 1e+6
 
-        vMin, fMin = [[]], [[]]
+        vMin, fMin = [], []
         tseitin_transformation = TseitinTransformation(self.epistemic_state)
         transformed_conditionals = tseitin_transformation.query_to_cnf(query)
         #print(transformed_conditionals)
@@ -197,7 +197,9 @@ class WeakCInference():
 
         V = {i:v for i, v in self.epistemic_state['v_cnf_dict'].items() if i in J_delta}
         F = {i:f for i, f in self.epistemic_state['f_cnf_dict'].items() if i in J_delta}
-        NF = {i:f for i, f in self.epistemic_state['nf_cnf_dict'].items()}
+        NF = {i:f for i, f in self.epistemic_state['wnf_cnf_dict'].items()}
+        #print(NF)
+        #print(transformed_conditionals)
 
         countv = 0
         countf = 0
@@ -223,8 +225,8 @@ class WeakCInference():
         vM = self.minima_encoding(mv, vSum[0])
         fM = self.minima_encoding(mf, fSum[0])
         #print(countv, countf)
-        #print(f"vM {vM}")
-        #print(f"fM {fM}")
+        #print(f"vM {vSum}")
+        #print(f"fM {fSum}")
         csp = vM + fM + [GE(mv, mf)]
         #print(f"csp {csp}")
         return csp ,(time_ns()/(1e+6)-start_time)
