@@ -25,25 +25,23 @@ class InferenceCorrectnessTest(unittest.TestCase):
         unsatqueries = [parseQuery(i) for i in unsatqueries]
         queries = [parseQuery(i) for i in queries]
 
-        weakCinf = WeakCInference(ckb)
-        wcz3 = WeakCz3(ckb)
-        bb = weakCinf.epistemic_state['belief_base']
+        weakCinf = WeakCz3(ckb)
+        corrections = WeakCInference(ckb)
+        corrections.preprocess_belief_base()
+        bb = weakCinf.originalbb
         z = SystemZRankZ3(bb)
         t1=time()
-        weakCinf.preprocess_belief_base()
         t2=time()
         print("suggested", t2-t1)
         #[print(z.rank_query(c)) for i,c in bb.conditionals.items()]
         print('di')
-        [print(weakCinf.inference(c), wcz3.inference(c), z.rank_query(c),c) for i,c in bb.conditionals.items()]
-        """
+        [print(corrections.inference(c), weakCinf.inference(c), z.rank_query(c),c) for i,c in bb.conditionals.items()]
         print('trivial sat')
         [print(weakCinf.inference(c[1]),z.rank_query(c[1]), c[1]) for c in satqueries]
         print('trivial unsat')
         [print(weakCinf.inference(c[1]),z.rank_query(c[1]), c[1]) for c in unsatqueries]
         print(c3, cinf)
         [print(weakCinf.inference(c[1]),z.rank_query(c[1]), c[1]) for c in queries]
-        """
 
 
 

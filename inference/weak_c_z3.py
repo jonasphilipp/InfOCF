@@ -114,9 +114,13 @@ class WeakCz3():
         vSum = self.makeSummation({0:vMin})
         fSum = self.makeSummation({0:fMin})
         v, f = self.freshVars(0)
-        csp = self.minima_encoding(v,0, vSum[0], fSum[0])
-        #print(len(csp))
-        return csp
+        ands = [(f <= i) for i in fSum[0]]
+        ors = z3.Not(z3.And([(f<i) for i in fSum[0]]))
+        ands.append(ors)
+        implicit = [(0+i >=f) for i in vSum[0]]
+        ands.extend(implicit)
+        return ands
+
 
 
     def inference(self, query):
@@ -147,7 +151,7 @@ class WeakCz3():
         return z3.Int(f'mv_{i}'), z3.Int(f'mf_{i}')
 
     def minima_encoding(self, mv: int, eta:int, vsums: list, fsums: list) -> list:
-        ands = [(mv < i) for i in vsums]
+        ands = [(mv <= i) for i in vsums]
         ors = z3.Not(z3.And([(mv<i) for i in vsums]))
         ands.append(ors)
         implicit = [(eta +i >mv) for i in fsums]
