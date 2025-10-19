@@ -40,10 +40,8 @@ class WeakCz3():
             for i,c in self.bb.conditionals.items():
                 if solver.solve([c.make_A_then_not_B()]):
                     J_delta[i] = c
-            ### hold them in epistemic state? 
             self.J_delta = J_delta
     
-            ## TODO compiling base_csp happens more dynamically now, based on the query
             self.compile_constraint()
             self.base_csp = self.translate()
     
@@ -60,7 +58,6 @@ class WeakCz3():
         objectives = {j:opt.add_soft(c.make_A_then_not_B() == False, id=j) for j,c in self.conditionals.items()}    #setting id's to setup multidimensional pareto optimization
         V,F = dict(), dict()
         J_delta_keys = J_delta.keys()
-        
 
         for i,c in enumerate(self.conditionals, start=1):
             #t1 = time()
@@ -75,37 +72,61 @@ class WeakCz3():
             opt.add(consequence)
             while opt.check() == sat:
                 ss =simplyfy({j:k.value() for j,k in objectives.items() if i!=j}))
-                vMin.append(filtersubsets(ss,J_delta_keys)
-
+                vMin.append(filtersubsets(ss,J_delta_keys))
             opt.pop()
             opt.add(Not(consequence))
             while opt.check() == sat:
                 ss = (simplyfy({j:k.value() for j,k in objectives.items() if i!=j}))
-                fMin.append(filtersubsets(ss,J_delta_keys)
+                fMin.append(filtersubsets(ss,J_delta_keys))
             opt.pop()
             V[i] = vMin
             F[i]= fMin
         self.vMin, self.fMin = V,F
         return V,F
+                            
 
-
-    def rank(self, formula):
+    def compile_and_encode_query(self, query):
         """
-        assumes weakly consistent cnflayers, i.e. cnflayer[-1] has rank infinity
+        uses inequality encoding to encode the query. 
         """
-        opt = getOptimizer()
-        opt.add(formula)
-        ##TODO
+        J_delta_keys = J_delta.keys()
+        opt = makeOptimizer()
+        objectives = {j:opt.add_soft(makeAB(c) == False, id=j) for j,c in self.conditionals.items()}    #setting id's for easier bookkeeping
+        antecedence = query.antecedence
+        consequence = query.consequence
+        opt.push()
+        opt.add(antecedence)
+        opt.push() 
+        opt.add(consequence)
+        vMin, fMin = [], []
+        while opt.check() == sat:
+            ss = simplyfy({j:k.value() for j,k in objectives.items()})
+            vMin.append(filtersubsets(ss,J_delta_keys))
+        opt.pop()
+        opt.add(Not(consequence))
+        while opt.check() == sat:
+            ss=(simplyfy({j:k.value() for j,k in objectives.items()}))
+            fMin.append(filtersubsets(ss,J_delta_keys))
+        vSum = self.makeSummation({0:vMin})
+        fSum = self.makeSummation({0:fMin})
+        v, f = self.freshVars(0)
+        vM = self.minima_encoding(v, vSum[0])
+        fM = self.minima_encoding(f, fSum[0])
+        csp = vM + fM + [mv >= mf]
+        #print(len(csp))
+        return csp
 
-    def rank_query(self, query):
-        #TODO
+
+    def inference(self, query):
         query = transform_conditional_to_z3(query)
-        vf = query.make_A_then_B()
-        ff = query.make_A_then_not_B()
-        #TODO
+        base_csp = self.base_csp
+        query_csp = self.compile_and_encode_query(query)
+        s=z3.Solver()
+        s.add(base_csp)
+        s.add(query_csp)
+        result = s.check()
+        return s.check() == z3.unsat
 
-    def inference(self,query):
-        #TODO
 
     #replaces every items in the argument by it's sum representation
     def makeSummation(self, minima: dict) -> dict[int, list]:
