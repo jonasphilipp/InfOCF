@@ -46,7 +46,7 @@ def sampleVars(variables:List[str], l, u)->Tuple[List[str],List[str]]:
     """
     #print(variables)
     V1 = random.choice(range(0,u+1))
-    v = random.choices(variables, k=u)
+    v = variables
     v1=v[:V1]
     v2=v[V1:]
 
@@ -107,24 +107,6 @@ def createVariables(amount:int) ->List[str]:
     return [f'r{i}' for i in range(amount)]
 
 
-def samplingWeaklyCKB(S:int,R:int,l:int, u:int) -> Tuple[str,Conditional,T]:
-    """
-    Will output a consistent CKB with S elements in the signature
-    and R conditionals. 
-    """
-    c=0
-    while True:
-        c+=1
-        print(c)
-        VAR = createVariables(S)
-        conditionals = [(sampleConditional(VAR,l,u)) for _ in range(R)]
-        COND= [parseQuery(c)[1] for c in conditionals]
-        dummyCKB = BeliefBase([(v) for v in VAR], {i:c for i,c in enumerate(COND,start=1)}, "")
-        part,_ = consistency(dummyCKB)
-        weak = test_weakly(dummyCKB)
-        if (part == False) and (weak==True):
-            break
-    return VAR, COND, dummyCKB
 
 
 def samplingStrongCKB(S:int,R:int,l:int, u:int) -> Tuple[str,Conditional,T]:
@@ -229,7 +211,7 @@ def sampleCKBandQueries(S,R,l,u,Q,seed) -> T:
     seed: used for reproducability in pseudorandom generation
     """
     #random.seed(seed)
-    VAR, COND, ckb = samplingWeaklyCKB(S,R,l,u)
+    VAR, COND, ckb = samplingStrongCKB(S,R,l,u)
     queries = sampleQueries(ckb, VAR, Q, l, u)
     return VAR, COND, ckb, queries
 

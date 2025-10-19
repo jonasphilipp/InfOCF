@@ -4,13 +4,13 @@ import unittest
 import pandas as pd
 from time import time
 
-from weakly_generator import  sampleCKBandQueries, sampleQueries, sampleSATQueries, sampleUNSATQueries
+#from weakly_generator import  sampleCKBandQueries, sampleQueries, sampleSATQueries, sampleUNSATQueries
+from strong_generator import  sampleCKBandQueries, sampleQueries, sampleSATQueries, sampleUNSATQueries
 
 from inference.weak_c_inference import WeakCInference
 from inference.inference_operator import InferenceOperator
 from inference.consistency_sat import consistency,consistency_indices
 from inference.weakly_system_z_rank import SystemZRankZ3
-from inference.weak_c_z3 import WeakCz3
 
 from parser.Wrappers import parse_belief_base, parseQuery
 
@@ -26,7 +26,6 @@ class InferenceCorrectnessTest(unittest.TestCase):
         queries = [parseQuery(i) for i in queries]
 
         weakCinf = WeakCInference(ckb)
-        wcz3 = WeakCz3(ckb)
         bb = weakCinf.epistemic_state['belief_base']
         z = SystemZRankZ3(bb)
         t1=time()
@@ -35,15 +34,13 @@ class InferenceCorrectnessTest(unittest.TestCase):
         print("suggested", t2-t1)
         #[print(z.rank_query(c)) for i,c in bb.conditionals.items()]
         print('di')
-        [print(weakCinf.inference(c), wcz3.inference(c), z.rank_query(c),c) for i,c in bb.conditionals.items()]
-        """
+        [print(weakCinf.inference(c), z.rank_query(c),c) for i,c in bb.conditionals.items()]
         print('trivial sat')
         [print(weakCinf.inference(c[1]),z.rank_query(c[1]), c[1]) for c in satqueries]
         print('trivial unsat')
         [print(weakCinf.inference(c[1]),z.rank_query(c[1]), c[1]) for c in unsatqueries]
         print(c3, cinf)
         [print(weakCinf.inference(c[1]),z.rank_query(c[1]), c[1]) for c in queries]
-        """
 
 
 
