@@ -17,6 +17,11 @@ def getOptimizer():
     opt.set(maxsat_engine='rc2')
     return opt
 
+
+def simplyfy(d):
+    ## only simplifies view onto the dict, does not do any rewriting
+    return [a for a,b in d.items() if b==1]
+
 class WeakCz3():
 
     def __init__(self,bb) -> None:
@@ -24,9 +29,65 @@ class WeakCz3():
             if not partition: warn('belief base inconsistent')
             self.beliefbase = transform_beliefbase_to_z3(bb)
             self.partition = transform_partition_to_z3(partition)
+            self.originalbb = bb
+            is_weakly = test_weakly(self.originalbb)
+            assert(is_weakly)
+            ### Compute tolerance partition
+            J_inf = self.epistemic_state['partition'][-1]
+            J_delta = dict()
+            solver = Solver(name=self.epistemic_state['smt_solver'])
+            [solver.add_assertion(Implies(c.antecedence,c.consequence)) for c in J_inf]
+            for i,c in self.bb.conditionals.items():
+                if solver.solve([c.make_A_then_not_B()]):
+                    J_delta[i] = c
+            ### hold them in epistemic state? 
+            self.J_delta = J_delta
     
-    def preprocess(self):
-        #TODO
+            ## TODO compiling base_csp happens more dynamically now, based on the query
+            self.compile_constraint()
+            self.base_csp = self.translate()
+    
+
+
+
+    def compile_constraints(self):
+
+        """
+        because the constraint for the falsifying case is almost the same as for the verifying case,
+        this method uses the assumption stack, which is roughly 1% faster than not using the assumption stack
+        """
+        opt = makeOptimizer()
+        objectives = {j:opt.add_soft(c.make_A_then_not_B() == False, id=j) for j,c in self.conditionals.items()}    #setting id's to setup multidimensional pareto optimization
+        V,F = dict(), dict()
+        J_delta_keys = J_delta.keys()
+        
+
+        for i,c in enumerate(self.conditionals, start=1):
+            #t1 = time()
+            if i not in J_delta_keys: continue
+            cond = self.conditionals[i]
+            antecedence = cond.antecedence
+            consequence = cond.consequence
+            opt.push()
+            opt.add(antecedence)
+            vMin, fMin = [], []
+            opt.push() 
+            opt.add(consequence)
+            while opt.check() == sat:
+                ss =simplyfy({j:k.value() for j,k in objectives.items() if i!=j}))
+                vMin.append(filtersubsets(ss,J_delta_keys)
+
+            opt.pop()
+            opt.add(Not(consequence))
+            while opt.check() == sat:
+                ss = (simplyfy({j:k.value() for j,k in objectives.items() if i!=j}))
+                fMin.append(filtersubsets(ss,J_delta_keys)
+            opt.pop()
+            V[i] = vMin
+            F[i]= fMin
+        self.vMin, self.fMin = V,F
+        return V,F
+
 
     def rank(self, formula):
         """
