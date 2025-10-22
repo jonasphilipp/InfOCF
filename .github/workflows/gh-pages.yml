@@ -33,7 +33,9 @@ jobs:
           python-version: '3.12'
 
       - name: Configure Pages
+        id: pages
         uses: actions/configure-pages@v5
+        continue-on-error: true  # Don't fail if Pages isn't enabled yet
 
       - name: Sync dependencies (dev group)
         run: |
@@ -45,6 +47,7 @@ jobs:
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
+        continue-on-error: true  # Don't fail if Pages isn't enabled yet
         with:
           path: ./site
 
@@ -52,6 +55,7 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     needs: build
     runs-on: ubuntu-latest
+    continue-on-error: true  # Allow to fail gracefully if Pages isn't enabled
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -59,5 +63,6 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true  # Don't fail if Pages isn't enabled yet
         with:
           preview: false
