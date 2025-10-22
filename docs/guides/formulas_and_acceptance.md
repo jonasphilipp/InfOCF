@@ -7,18 +7,24 @@ You will:
 - Compute formula ranks
 - Check acceptance for a set of conditionals
 
-Snippets (planned to be included from `show_preocf.py`):
-
 ### Formula ranks
+
 ```python
-# Will include from ../../show_preocf.py once markers exist:
-# [docs:formulas-acceptance:formula-ranks:start] ... :end
+{%
+   include "../../show_preocf.py"
+   start="[docs:formulas-acceptance:formula-ranks:start]"
+   end="[docs:formulas-acceptance:formula-ranks:end]"
+%}
 ```
 
 ### Conditional acceptance
+
 ```python
-# Will include from ../../show_preocf.py once markers exist:
-# [docs:formulas-acceptance:conditional-acceptance:start] ... :end
+{%
+   include "../../show_preocf.py"
+   start="[docs:formulas-acceptance:conditional-acceptance:start]"
+   end="[docs:formulas-acceptance:conditional-acceptance:end]"
+%}
 ```
 
 References: `PreOCF.formula_rank`, `PreOCF.conditional_acceptance`, `parser.Wrappers`.

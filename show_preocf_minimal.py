@@ -5,6 +5,7 @@ Minimal example of PreOCF usage, focused on the core functionality:
 3. Testing conditional acceptance
 """
 
+# [docs:quickstart-minimal:start]
 from inference.preocf import PreOCF
 from parser.Wrappers import parse_belief_base, parse_queries
 
@@ -55,3 +56,4 @@ conditionals = queries.conditionals
 for cond in conditionals.values():
     accepted = preocf.conditional_acceptance(cond)
     print(f"  {cond}: {'Accepted' if accepted else 'Rejected'}")
+# [docs:quickstart-minimal:end]

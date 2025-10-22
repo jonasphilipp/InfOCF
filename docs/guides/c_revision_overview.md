@@ -8,24 +8,34 @@ You will:
 - Compare gamma_minus to c-representation impacts (eta)
 - Optionally: fix one gamma entry; incremental compilation
 
-Snippets (planned to be included from `show_preocf.py`):
-
 ### C-revision basic flow
+
 ```python
-# Will include from ../../show_preocf.py once markers exist:
-# [docs:c-revision:basic:start] ... :end
+{%
+   include "../../show_preocf.py"
+   start="[docs:c-revision:basic:start]"
+   end="[docs:c-revision:basic:end]"
+%}
 ```
 
 ### Fixed gamma showcase
+
 ```python
-# Will include from ../../show_preocf.py once markers exist:
-# [docs:c-revision:fixed-gamma:start] ... :end
+{%
+   include "../../show_preocf.py"
+   start="[docs:c-revision:fixed-gamma:start]"
+   end="[docs:c-revision:fixed-gamma:end]"
+%}
 ```
 
 ### Incremental compilation
+
 ```python
-# Will include from ../../show_preocf.py once markers exist:
-# [docs:c-revision:incremental:start] ... :end
+{%
+   include "../../show_preocf.py"
+   start="[docs:c-revision:incremental:start]"
+   end="[docs:c-revision:incremental:end]"
+%}
 ```
 
 Notes:

@@ -59,6 +59,7 @@ for idx, cond in belief_base_birds.conditionals.items():
     print(f"  {idx}: {cond}")
 print()
 
+# [docs:preocf-basics:system-z:start]
 # Create a PreOCF using System Z
 print("=== Creating PreOCF with System Z Ranking ===")
 preocf_birds = PreOCF.init_system_z(belief_base_birds)
@@ -104,7 +105,9 @@ for i, world in enumerate(worlds_to_check):
 print()
 print(f"Is OCF (all worlds ranked): {preocf_birds.is_ocf()}")
 print()
+# [docs:preocf-basics:system-z:end]
 
+# [docs:preocf-basics:verbose:start]
 # Compute all ranks
 print("=== Computing All Ranks ===")
 preocf_birds.compute_all_ranks()
@@ -137,9 +140,12 @@ print("Example verbose world representations:")
 for world_tuple, rank in list(verbose_ranks.items())[:5]:
     print(world_tuple, rank)
 print()
+# [docs:preocf-basics:verbose:end]
 
+# [docs:preocf-basics:tpo:start]
 # Working with formulas and conditionals
 print("=== Formula Evaluation ===")
+# [docs:formulas-acceptance:formula-ranks:start]
 # Parse formulas using parser
 formulas_str = ["b", "p", "b,p", "b;p", "!b", "b,!p"]
 formulas = {desc: parse_formula(desc) for desc in formulas_str}
@@ -149,8 +155,10 @@ for desc, formula in formulas.items():
     rank = preocf_birds.formula_rank(formula)
     print(f"  Formula '{desc}': Rank = {rank}")
 print()
+# [docs:formulas-acceptance:formula-ranks:end]
 
 # Conditional acceptance
+# [docs:formulas-acceptance:conditional-acceptance:start]
 print("=== Conditional Acceptance ===")
 conditional_string = "(f|b),(!f|p),(b|p),(w|b),(f|p),(w|p)"
 # Initialize conditionals using the parser
@@ -162,6 +170,7 @@ for cond in queries.conditionals.values():
     acceptance = preocf_birds.conditional_acceptance(cond)
     print(f"  {cond}: {'Accepted' if acceptance else 'Rejected'}")
 print()
+# [docs:formulas-acceptance:conditional-acceptance:end]
 
 # Conditional Acceptance using random_min_c_rep
 print("=== Conditional Acceptance (Random Min C-Representation) ===")
@@ -201,6 +210,7 @@ for i, layer in enumerate(tpo):
     print(f"  Layer {i} (rank {i}): {len(layer)} worlds")
 print(tpo)
 print()
+# [docs:preocf-basics:tpo:end]
 
 # Partial TPO demonstration on a non-OCF instance
 print("=== Partial PreOCF → TPO (manual ranks only) ===")
@@ -707,11 +717,14 @@ print(
 )
 
 
+# [docs:diagnostics:extended-no-facts:start]
 print("\n=== Extended System Z Partition (explicit, no facts) ===")
 # Explicit extended mode without facts
 sz_extended = PreOCF.init_system_z(belief_base_birds, extended=True)
 print(sz_extended.summary())
+# [docs:diagnostics:extended-no-facts:end]
 
+# [docs:diagnostics:with-facts:start]
 print("\n=== System Z Partition with Facts ===")
 print("Belief base (birds) recap:")
 print("  Signature:", belief_base_birds.signature)
@@ -777,11 +790,13 @@ try:
 
 except ValueError as e:
     print("Facts inconsistent:", e)
+# [docs:diagnostics:with-facts:end]
 
 
 ### Show c-revision ###
 
 print("\n\n")
+# [docs:c-revision:basic:start]
 print("=== C-Revision Demonstration ===")
 print(
     "C-revision computes gamma_plus/gamma_minus parameters for belief change using conditionals."
@@ -923,8 +938,10 @@ print(
 print("- Results depend on the initial ranking function and revision conditionals")
 print("- C-revision bridges between different approaches to belief change")
 print()
+# [docs:c-revision:basic:end]
 
 
+# [docs:c-revision:fixed-gamma:start]
 # --- Fixed gamma showcase: add a new conditional and pin its gamma value ---
 print("=== Fixed Gamma Showcase ===")
 print("Demonstrating how to add a new revision conditional and fix its gamma value.")
@@ -963,7 +980,9 @@ else:
         "No feasible model found with fixed gamma value (this should be rare for this demo)."
     )
 print()
+# [docs:c-revision:fixed-gamma:end]
 
+# [docs:c-revision:incremental:start]
 # --- Incremental c-revision compilation demo ---
 print("=== Incremental c-revision compilation demo ===")
 print(
@@ -1012,6 +1031,7 @@ print(f"Full recompute time: {full_time:.2f} ms")
 print(f"Incremental time:   {incr_time:.2f} ms")
 print(f"Speedup:            {speedup:.2f}x")
 print()
+# [docs:c-revision:incremental:end]
 
 
 #### This part is important for the student lars told me about

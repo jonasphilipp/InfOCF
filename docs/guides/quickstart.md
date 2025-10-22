@@ -18,14 +18,16 @@ Steps:
 3) Compute ranks and inspect a few worlds
 4) Check conditional acceptance
 
-Planned snippet (single source of truth):
+Example code:
 
 ```python
-# Snippet will be included from ../../show_preocf_minimal.py
-# between markers [docs:quickstart-minimal:start] and ...:end
-# once markers are added.
+{%
+   include "../../show_preocf_minimal.py"
+   start="[docs:quickstart-minimal:start]"
+   end="[docs:quickstart-minimal:end]"
+%}
 ```
 
 Notes:
-- The code above will be included from `show_preocf_minimal.py` once markers are added.
+- The code above is included from `show_preocf_minimal.py` (single source of truth).
 - For details, see API: `inference.preocf.PreOCF`, `parser.Wrappers`.
