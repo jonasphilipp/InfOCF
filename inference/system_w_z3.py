@@ -1,22 +1,40 @@
-from inference.inference import Inference
+# ---------------------------------------------------------------------------
+# Standard library
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Third-party
+# ---------------------------------------------------------------------------
+from warnings import warn
+
+from z3 import Optimize, Or, Solver, is_true, unsat, z3
+
 from inference.conditional import Conditional
 from inference.conditional_z3 import Conditional_z3
 from inference.consistency_sat import consistency
-from z3 import Optimize, z3, unsat, Or, is_true, unknown
-from warnings import warn
-from time import process_time
+from inference.deadline import Deadline
+
+# ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+from inference.inference import Inference
+from infocf.log_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 def makeOptimizer() -> Optimize:
     opt = z3.Optimize()
-    opt.set(priority='pareto')
-    opt.add_soft(z3.BoolVal(True), id ="dummy1")
-    opt.add_soft(z3.BoolVal(True), id ="dummy2")
+    opt.set(priority="pareto")
+    opt.add_soft(z3.BoolVal(True), id="dummy1")
+    opt.add_soft(z3.BoolVal(True), id="dummy2")
     return opt
+
 
 class SystemWZ3(Inference):
     """
-    Implementation of _preprocess_belief_base() method of inference interface/abstract class. 
+    Implementation of _preprocess_belief_base() method of inference interface/abstract class.
     Calculates z partition.
 
     Context:
@@ -25,23 +43,33 @@ class SystemWZ3(Inference):
     Side Effects:
         partition in epistemic_state
     """
-    def _preprocess_belief_base(self) -> None:
-        partition, _ = consistency(self.epistemic_state['belief_base'], self.epistemic_state['smt_solver'])
-        if not partition: warn('belief base inconsistent')
-        self.epistemic_state['partition'] = []
-        for part in partition: # type: ignore
+
+    def _preprocess_belief_base(self, weakly: bool, deadline: Deadline | None) -> None:
+        partition, _ = consistency(
+            self.epistemic_state["belief_base"],
+            self.epistemic_state["smt_solver"],
+            weakly=weakly,
+        )
+        if not partition:
+            warn("belief base inconsistent")
+            self.epistemic_state["partition"] = []
+            return
+        self.epistemic_state["partition"] = []
+        for part in partition:  # type: ignore
             translated_part = []
             for conditional in part:
-                translated_condtional = Conditional_z3.translate_from_existing(conditional)
+                translated_condtional = Conditional_z3.translate_from_existing(
+                    conditional
+                )
                 translated_part.append(translated_condtional)
-            self.epistemic_state['partition'].append(translated_part)
-    
+            self.epistemic_state["partition"].append(translated_part)
+
     """
-    Implementation of _inference() method of inference interface/abstract class. 
+    Implementation of _inference() method of inference interface/abstract class.
     Performs actual inference.
 
     Context:
-        Called to perform inference after preprocessing has been done. Calls recursive part of 
+        Called to perform inference after preprocessing has been done. Calls recursive part of
         inference algorithm.
 
     Parameters:
@@ -50,16 +78,42 @@ class SystemWZ3(Inference):
     Returns:
         result boolean
     """
-    def _inference(self, query: Conditional) -> bool:
-        #self._translation_start()
+
+    def _inference(
+        self, query: Conditional, weakly: bool, deadline: Deadline | None
+    ) -> bool:
+        # self._translation_start()
         query_z3 = Conditional_z3.translate_from_existing(query)
-        #self._translation_end()
+        # self._translation_end()
         opt = makeOptimizer()
-        opt.set(timeout=int(1000*(self.epistemic_state['kill_time'] - process_time())))
-        result = self._rec_inference(opt, len(self.epistemic_state['partition']) -1, query_z3)
-        #self._inference_end()
+        if deadline and not deadline.expired():
+            opt.set(timeout=deadline.remaining_ms())
+        if not weakly:
+            result = self._rec_inference(
+                opt, len(self.epistemic_state["partition"]) - 1, query_z3
+            )
+        else:
+            # Vacuity checks using only last-layer constraints
+            taut_solver = Solver()
+            taut_solver.add(query_z3.antecedence)
+            for c in self.epistemic_state["partition"][-1]:
+                taut_solver.add(c.make_not_A_or_B())
+            if taut_solver.check() == unsat:
+                return True
+
+            contra_solver = Solver()
+            contra_solver.add(query_z3.make_A_then_not_B())
+            for c in self.epistemic_state["partition"][-1]:
+                contra_solver.add(c.make_not_A_or_B())
+            if contra_solver.check() == unsat:
+                return True
+
+            result = self._rec_inference(
+                opt, len(self.epistemic_state["partition"]) - 2, query_z3
+            )
+        # self._inference_end()
         return result
-    
+
     """
     Recursive part of inference algorithm.
 
@@ -70,11 +124,14 @@ class SystemWZ3(Inference):
         Optimizer (pmaxsat_solver) object, partition_index integer, query conditional_z3
 
     Returns:
-        result of inference as bool 
+        result of inference as bool
     """
-    def _rec_inference(self, opt: Optimize, partition_index: int, query: Conditional) -> bool:
-        assert type(self.epistemic_state['partition']) == list
-        part = self.epistemic_state['partition'][partition_index]
+
+    def _rec_inference(
+        self, opt: Optimize, partition_index: int, query: Conditional_z3
+    ) -> bool:
+        assert type(self.epistemic_state["partition"]) == list
+        part = self.epistemic_state["partition"][partition_index]
         opt.push()
         opt.add(query.make_A_then_B())
         xi_i_set = self.get_all_xi_i(opt, part)
@@ -91,12 +148,11 @@ class SystemWZ3(Inference):
             opt.push()
             [opt.add(c.make_A_then_not_B()) for c in xi_i]
             [opt.add(c.make_A_then_not_B() == False) for c in part if c not in xi_i]
-            result = self._rec_inference(opt, partition_index -1, query)
+            result = self._rec_inference(opt, partition_index - 1, query)
             opt.pop()
             if result == False:
                 return False
         return True
-
 
     """
     Minimal Correction Subset Calculation
@@ -108,26 +164,30 @@ class SystemWZ3(Inference):
         Optimizer (pmaxsat_solver) object, part of partition as list
 
     Returns:
-        Minimal Correction Subset of negated falsified conditionals in part of partition 
+        Minimal Correction Subset of negated falsified conditionals in part of partition
         given hard constraint already contained in optimizer
 
     """
-    def get_all_xi_i(self, opt: Optimize, part: list[Conditional]) -> set:
-        xi_i_set = set() 
+
+    def get_all_xi_i(
+        self, opt: Optimize, part: list[Conditional_z3]
+    ) -> set[frozenset[Conditional_z3]]:
+        xi_i_set: set[frozenset[Conditional_z3]] = set()
         for conditional in part:
             opt.add_soft(conditional.make_A_then_not_B() == False)
         while True:
-            if self.epistemic_state['kill_time'] and process_time() > self.epistemic_state['kill_time']:
-                raise TimeoutError
             check = opt.check()
             if check == unsat:
-               return xi_i_set
+                return xi_i_set
             m = opt.model()
-            xi_i = frozenset([c for c in part if is_true(m.eval(c.make_A_then_not_B()))])
+            xi_i: frozenset[Conditional_z3] = frozenset(
+                [c for c in part if is_true(m.eval(c.make_A_then_not_B()))]
+            )
             xi_i_set.add(xi_i)
-            if xi_i == frozenset(): 
+            if xi_i == frozenset[Conditional_z3]():
                 return xi_i_set
             opt.add(Or([c.make_A_then_not_B() == False for c in xi_i]))
+
 
 """
 Checks if any element of set A is subset of all elements in set B
@@ -141,5 +201,9 @@ Parameters:
 Returns:
     decision as bool
 """
-def any_subset_of_all(A: set , B: set) -> bool:
+
+
+def any_subset_of_all(
+    A: set[frozenset[Conditional_z3]], B: set[frozenset[Conditional_z3]]
+) -> bool:
     return all(any(a.issubset(b) for a in A) for b in B)

@@ -1,14 +1,28 @@
-from inference.conditional import Conditional
-from inference.inference import Inference
-from inference.consistency_sat import consistency
+# ---------------------------------------------------------------------------
+# Standard library
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+
 from warnings import warn
-from pysmt.shortcuts import Solver, Not, is_unsat, And
-from time import process_time
+
+from pysmt.shortcuts import Not, Solver
+
+from inference.conditional import Conditional
+from inference.consistency_sat import consistency
+from inference.deadline import Deadline
+from inference.inference import Inference
+from infocf.log_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 class SystemZ(Inference):
     """
-    Implementation of _preprocess_belief_base() method of inference interface/abstract class. 
+    Implementation of _preprocess_belief_base() method of inference interface/abstract class.
     Calculates z partition.
 
     Context:
@@ -17,17 +31,23 @@ class SystemZ(Inference):
     Side Effects:
         partition in epistemic_state
     """
-    def _preprocess_belief_base(self) -> None:
-            partition, _ = consistency(self.epistemic_state['belief_base'], solver=self.epistemic_state['smt_solver'])
-            if not partition: warn('belief base inconsistent')
-            self.epistemic_state['partition'] = partition #type: ignore
+
+    def _preprocess_belief_base(self, weakly: bool, deadline: Deadline | None) -> None:
+        partition, _ = consistency(
+            self.epistemic_state["belief_base"],
+            solver=self.epistemic_state["smt_solver"],
+            weakly=weakly,
+        )
+        if not partition:
+            warn("belief base inconsistent")
+        self.epistemic_state["partition"] = partition  # type: ignore
 
     """
-    Implementation of _inference() method of inference interface/abstract class. 
+    Implementation of _inference() method of inference interface/abstract class.
     Performs actual inference.
 
     Context:
-        Called to perform inference after preprocessing has been done. Calls recursive part of 
+        Called to perform inference after preprocessing has been done. Calls recursive part of
         inference algorithm.
 
     Parameters:
@@ -36,12 +56,31 @@ class SystemZ(Inference):
     Returns:
         result boolean
     """
-    def _inference(self, query: Conditional) -> bool:
-        assert self.epistemic_state['partition'], 'belief_base inconsistent' 
-        solver = Solver(name=self.epistemic_state['smt_solver'])
-        result = self._rec_inference(solver, len(self.epistemic_state['partition']) -1, query) # type: ignore
+
+    def _inference(
+        self, query: Conditional, weakly: bool, deadline: Deadline | None
+    ) -> bool:
+        assert self.epistemic_state["partition"], "belief_base inconsistent"
+        solver = Solver(name=self.epistemic_state["smt_solver"])
+        if not weakly:
+            result = self._rec_inference(
+                solver, len(self.epistemic_state["partition"]) - 1, query
+            )  # type: ignore
+        else:
+            taut_solver = Solver(name=self.epistemic_state["smt_solver"])
+            taut_solver.add_assertion(query.antecedence)
+            for c in self.epistemic_state["partition"][-1]:
+                taut_solver.add_assertion(c.make_not_A_or_B())
+            if not taut_solver.solve():
+                return True
+            for c in self.epistemic_state["partition"][-1]:
+                solver.add_assertion(c.make_not_A_or_B())
+                solver.push()
+            result = self._rec_inference(
+                solver, len(self.epistemic_state["partition"]) - 2, query
+            )  # type: ignore
+
         return result
-   
 
     """
     Recursive part of inference algorithm.
@@ -53,21 +92,23 @@ class SystemZ(Inference):
         Solver object, partition_index integer, query conditional
 
     Returns:
-        result of inference as bool 
+        result of inference as bool
     """
-    def _rec_inference(self, solver: Solver, partition_index: int, query: Conditional) -> bool: #type: ignore
-        if self.epistemic_state['kill_time'] and process_time() > self.epistemic_state['kill_time']:
-            raise TimeoutError
-        assert type(self.epistemic_state['partition']) == list
-        part = self.epistemic_state['partition'][partition_index]
+
+    def _rec_inference(
+        self, solver: Solver, partition_index: int, query: Conditional
+    ) -> bool:
+        # Deadline enforcement is handled by solver-specific timeouts upstream if needed
+        assert type(self.epistemic_state["partition"]) == list
+        part = self.epistemic_state["partition"][partition_index]
         [solver.add_assertion(Not(c.make_A_then_not_B())) for c in part]
         solver.push()
         solver.add_assertion(query.make_A_then_B())
-        v = solver.solve() 
+        v = solver.solve()
         solver.pop()
         solver.push()
         solver.add_assertion(query.make_A_then_not_B())
-        f = solver.solve() 
+        f = solver.solve()
         solver.pop()
 
         if not v:
@@ -76,6 +117,5 @@ class SystemZ(Inference):
         if f:
             if partition_index == 0:
                 return False
-            return self._rec_inference(solver, partition_index -1, query)
+            return self._rec_inference(solver, partition_index - 1, query)
         return True
-

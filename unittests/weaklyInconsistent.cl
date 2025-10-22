@@ -4,7 +4,7 @@
 signature
 	a,b,c
 
-conditionals 
+conditionals
 empty{
 	(Bottom|Top),
 	(Bottom|Top),
@@ -14,6 +14,6 @@ empty{
 	(Bottom|Top),
 	(Bottom|Top),
 	(Bottom|Top)
-	
+
 }
 """

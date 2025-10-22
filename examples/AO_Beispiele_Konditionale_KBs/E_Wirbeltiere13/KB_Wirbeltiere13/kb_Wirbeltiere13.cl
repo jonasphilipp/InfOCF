@@ -3,19 +3,17 @@ signature
 
 conditionals
 WIRBELTIERE13{
-	(i|w),		
-	(w|m),		
-	(v|m),		
-	(c|m),		
-	(m|e),		
-	(!c|e),		
-	(m|k),		
-	(!v,!c|k),	
-	(w|s),		
-	(g|s),		
-	(s|b),		
+	(i|w),
+	(w|m),
+	(v|m),
+	(c|m),
+	(m|e),
+	(!c|e),
+	(m|k),
+	(!v,!c|k),
+	(w|s),
+	(g|s),
+	(s|b),
 	(f|b),
-    (u|m)	
+    (u|m)
 }
-
-

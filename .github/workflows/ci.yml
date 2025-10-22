@@ -1,0 +1,331 @@
+name: InfOCF CI
+
+on:
+  push:
+    branches: [ main, master, feature/*, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  # Ensure consistent behavior across runners
+  PYTHONUNBUFFERED: 1
+  PYTHONDONTWRITEBYTECODE: 1
+
+jobs:
+  # Job 1: Fast code quality checks (fails fast)
+  code-quality:
+    runs-on: ubuntu-latest
+    name: Code Quality & Linting
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Create virtual environment
+      run: uv venv .venv
+
+    - name: Install dependencies
+      run: |
+        source .venv/bin/activate
+        uv pip install -e ".[dev,testing]"
+
+    - name: Extract project version from pyproject.toml
+      id: extract_version
+      run: |
+        python - <<'PY' > .version
+        import tomllib
+        print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])
+        PY
+        echo "version=$(cat .version)" >> $GITHUB_OUTPUT
+
+    - name: Validate installed package version matches pyproject
+      run: |
+        source .venv/bin/activate
+        PY_VER="${{ steps.extract_version.outputs.version }}"
+        python - <<PY
+        import infocf, sys
+        expected = "${PY_VER}"
+        actual = infocf.__version__
+        print(f"pyproject={expected}, package={actual}")
+        sys.exit(0 if actual == expected else 1)
+        PY
+
+    - name: Run Ruff linting
+      run: |
+        source .venv/bin/activate
+        ruff check . --output-format=github
+
+    - name: Check Ruff formatting
+      run: |
+        source .venv/bin/activate
+        ruff format --check --diff .
+
+    - name: Type checking with MyPy (optional)
+      run: |
+        source .venv/bin/activate
+        mypy --install-types --non-interactive . || echo "MyPy issues found but not blocking CI"
+      continue-on-error: true  # Don't fail on type issues for research codebase
+
+    - name: Security linting with Bandit
+      run: |
+        source .venv/bin/activate
+        bandit -r . --format custom --skip B101,B601,B301,B403 --exclude unittests/ || echo "Bandit security issues found but not blocking CI"
+      continue-on-error: true  # Don't fail on security issues for research codebase
+
+    - name: Dependency vulnerability scan with pip-audit
+      run: |
+        source .venv/bin/activate
+        pip-audit --desc || echo "pip-audit found vulnerabilities but not blocking CI"
+      continue-on-error: true  # Don't fail on vulnerabilities for research codebase
+
+  # Job 2: Core algorithm and functionality tests
+  core-tests:
+    runs-on: ubuntu-latest
+    needs: code-quality
+    name: Core Algorithm Tests
+
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Create virtual environment
+      run: uv venv .venv
+
+    - name: Install dependencies
+      run: |
+        source .venv/bin/activate
+        uv pip install -e ".[dev,testing,solvers]"
+
+    - name: Install Java for ANTLR
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+
+    - name: Download ANTLR
+      run: |
+        mkdir -p antlr
+        wget -O antlr/antlr-4.13.2-complete.jar https://www.antlr.org/download/antlr-4.13.2-complete.jar
+        echo "export CLASSPATH=\".:$(pwd)/antlr/antlr-4.13.2-complete.jar:$CLASSPATH\"" >> $GITHUB_ENV
+
+    - name: Verify package import
+      run: |
+        source .venv/bin/activate
+        python -c "import infocf; print(f'InfOCF v{infocf.__version__} imported successfully')"
+
+    - name: Run test suite with coverage
+      run: |
+        source .venv/bin/activate
+        export CLASSPATH=".:$(pwd)/antlr/antlr-4.13.2-complete.jar:$CLASSPATH"
+        pytest unittests/ -v \
+          --cov=infocf --cov=inference --cov=parser \
+          --cov-report=xml --cov-report=term-missing \
+          --tb=short
+
+    - name: Upload coverage to codecov
+      uses: codecov/codecov-action@v4
+      if: matrix.python-version == '3.11'
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+
+  # Job 3: Installation validation and CLI testing
+  installation-validation:
+    runs-on: ubuntu-latest
+    needs: code-quality
+    name: Installation & CLI Validation
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Test clean installation
+      run: |
+        uv venv test-env
+        source test-env/bin/activate
+        uv pip install -e ".[solvers]"
+
+    - name: Validate CLI entry points
+      run: |
+        source test-env/bin/activate
+        infocf --version
+        infocf --help
+
+    - name: Test basic functionality
+      run: |
+        source test-env/bin/activate
+        python -c "
+        import infocf
+        from infocf import get_package_info, list_inference_operators
+        print('Package info:', get_package_info())
+        print('Available operators:', list_inference_operators())
+        "
+
+    - name: Test solver availability (without system solvers)
+      run: |
+        source test-env/bin/activate
+        python -c "
+        try:
+            from pysmt.shortcuts import get_env
+            solvers = get_env().factory.all_solvers()
+            print(f'Available PySMT solvers: {sorted(solvers)}')
+            print(f'Total: {len(solvers)} solvers')
+        except Exception as e:
+            print(f'PySMT not available: {e}')
+        "
+
+  # Job 4: Generate summary
+  ci-summary:
+    runs-on: ubuntu-latest
+    needs: [code-quality, core-tests, installation-validation]
+    if: always()
+    name: CI Summary
+
+    steps:
+    - name: Check CI status
+      run: |
+        echo "## InfOCF CI Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Code Quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Core Tests | ${{ needs.core-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Installation | ${{ needs.installation-validation.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [[ "${{ needs.code-quality.result }}" == "success" && "${{ needs.core-tests.result }}" == "success" && "${{ needs.installation-validation.result }}" == "success" ]]; then
+          echo "✅ All CI checks passed! InfOCF is ready for research." >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Some CI checks failed. Please review the results above." >> $GITHUB_STEP_SUMMARY
+        fi
+
+  # Job 5: Auto-tag after CI success (on push only)
+  auto-tag-after-ci:
+    needs: [code-quality, core-tests, installation-validation]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Extract version from pyproject.toml
+        id: extract_version
+        run: |
+          python - <<'PY' > .version
+          import tomllib
+          print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])
+          PY
+          echo "version=$(cat .version)" >> $GITHUB_OUTPUT
+
+      - name: Detect pre-release flag from version
+        id: flags
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          echo "Detected version: $VERSION"
+          if echo "$VERSION" | grep -Eq '(a|b|rc|dev)[0-9]+'; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Gate by branch and version type
+        id: gate
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          PRERELEASE="${{ steps.flags.outputs.prerelease }}"
+          echo "Branch: $BRANCH / Pre-release: $PRERELEASE"
+          SHOULD="false"
+          if [ "$BRANCH" = "main" ]; then
+            SHOULD="true"
+          fi
+          if [ "$BRANCH" = "feature/ocf" ] && [ "$PRERELEASE" = "true" ]; then
+            SHOULD="true"
+          fi
+          echo "should_tag=$SHOULD" >> $GITHUB_OUTPUT
+
+      - name: Determine tag name and check existence
+        id: tag_check
+        run: |
+          TAG="v${{ steps.extract_version.outputs.version }}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          git fetch --tags --quiet
+          if git tag -l | grep -qx "$TAG"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            if git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
+              echo "exists=true" >> $GITHUB_OUTPUT
+            else
+              echo "exists=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Create and push tag
+        if: steps.gate.outputs.should_tag == 'true' && steps.tag_check.outputs.exists == 'false'
+        run: |
+          TAG="${{ steps.tag_check.outputs.tag }}"
+          echo "Creating and pushing tag: $TAG"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "${{ steps.flags.outputs.prerelease }}" = "true" ]; then
+            MSG="pre-release: $TAG"
+          else
+            MSG="release: $TAG"
+          fi
+          git tag -a "$TAG" -m "$MSG"
+          git push origin "$TAG"
+
+      - name: Build distributions (sdist and wheel)
+        if: steps.gate.outputs.should_tag == 'true'
+        run: |
+          uv run --with build python -m build
+
+      - name: Create GitHub Release and upload artifacts
+        if: steps.gate.outputs.should_tag == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          tag_name: ${{ steps.tag_check.outputs.tag }}
+          name: infocf ${{ steps.tag_check.outputs.tag }}
+          prerelease: ${{ steps.flags.outputs.prerelease == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

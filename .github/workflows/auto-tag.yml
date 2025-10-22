@@ -1,0 +1,143 @@
+name: Auto Tag From pyproject Version
+
+on:
+  # Run after CI completes to ensure tests passed
+  workflow_run:
+    workflows: [ "InfOCF CI" ]
+    types: [ completed ]
+  # Manual override/testing
+  workflow_dispatch:
+  # Fallback: also allow push trigger, but we'll verify CI status before tagging
+  push:
+    branches: [ "main", "feature/ocf" ]
+
+permissions:
+  contents: write
+
+jobs:
+  auto-tag:
+    # Only proceed automatically when CI succeeded; always allow manual runs
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute context (branch/sha)
+        id: ctx
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            BRANCH="${{ github.event.workflow_run.head_branch }}"
+            SHA="${{ github.event.workflow_run.head_sha }}"
+          else
+            BRANCH="${{ github.ref_name }}"
+            SHA="${{ github.sha }}"
+          fi
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # fetch tags and full history
+          ref: ${{ steps.ctx.outputs.sha }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Extract version from pyproject.toml
+        id: extract_version
+        run: |
+          python - <<'PY' > .version
+          import tomllib
+          print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])
+          PY
+          echo "version=$(cat .version)" >> $GITHUB_OUTPUT
+
+      - name: Detect pre-release flag from version
+        id: flags
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          echo "Detected version: $VERSION"
+          # Treat a*, b*, rc*, and dev* as pre-releases (PEP 440)
+          # Matches e.g. 2.1.1a1, 2.1.1b2, 2.1.1rc1, 2.1.1.dev3
+          if echo "$VERSION" | grep -Eq '(a|b|rc|dev)[0-9]+'; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Gate tagging by branch and version type
+        id: gate
+        run: |
+          BRANCH="${{ steps.ctx.outputs.branch }}"
+          PRERELEASE="${{ steps.flags.outputs.prerelease }}"
+          echo "Branch: $BRANCH / Pre-release: $PRERELEASE"
+          SHOULD="false"
+          # Always tag on main (stable or otherwise)
+          if [ "$BRANCH" = "main" ]; then
+            SHOULD="true"
+          fi
+          if [ "$BRANCH" = "feature/ocf" ] && [ "$PRERELEASE" = "true" ]; then
+            SHOULD="true"
+          fi
+          echo "should_tag=$SHOULD" >> $GITHUB_OUTPUT
+
+      - name: Verify CI success for this commit (on push/manual)
+        id: verify_ci
+        if: github.event_name != 'workflow_run'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const sha = `${{ steps.ctx.outputs.sha }}`;
+            const workflow_id = '.github/workflows/ci.yml';
+            const runs = await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id, per_page: 20});
+            const ok = runs.data.workflow_runs.some(r => r.head_sha === sha && r.name === 'InfOCF CI' && r.conclusion === 'success');
+            core.info(`CI success for ${sha}: ${ok}`);
+            core.setOutput('ok', ok ? 'true' : 'false');
+
+      - name: Determine tag name and check existence
+        id: tag_check
+        run: |
+          TAG="v${{ steps.extract_version.outputs.version }}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          git fetch --tags --quiet
+          if git tag -l | grep -qx "$TAG"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            # Double-check remote existence
+            if git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
+              echo "exists=true" >> $GITHUB_OUTPUT
+            else
+              echo "exists=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Create and push tag
+        if: |
+          steps.tag_check.outputs.exists == 'false' &&
+          steps.gate.outputs.should_tag == 'true' &&
+          (github.event_name == 'workflow_run' || steps.verify_ci.outputs.ok == 'true')
+        run: |
+          TAG="${{ steps.tag_check.outputs.tag }}"
+          echo "Creating and pushing tag: $TAG"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "${{ steps.flags.outputs.prerelease }}" = "true" ]; then
+            MSG="pre-release: $TAG"
+          else
+            MSG="release: $TAG"
+          fi
+          git tag -a "$TAG" -m "$MSG"
+          git push origin "$TAG"
+
+      - name: Skip notice
+        if: |
+          steps.tag_check.outputs.exists == 'true' || steps.gate.outputs.should_tag != 'true' || (github.event_name != 'workflow_run' && steps.verify_ci.outputs.ok != 'true')
+        run: echo "Tag already exists or gating prevented tagging; nothing to do."

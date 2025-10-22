@@ -1,0 +1,106 @@
+name: Build and Release Wheels
+
+on:
+  # Primary trigger: a tag push
+  push:
+    tags: [ "v*" ]
+  # Secondary trigger: when auto-tag completes (in case tag push was implicit)
+  workflow_run:
+    workflows: [ "Auto Tag From pyproject Version", "InfOCF CI" ]
+    types: [ completed ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build (e.g., v2.1.1a2). If empty, uses the current ref or pushed tag."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    # Ensure we only publish if CI for that commit succeeded
+    if: |
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    name: Build sdist and wheel, attach to GitHub Release
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Checkout requested tag (manual)
+      if: github.event_name == 'workflow_dispatch' && inputs.tag != ''
+      run: |
+        git fetch --tags --force
+        git checkout "${{ inputs.tag }}"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.12
+
+    - name: Extract version from pyproject.toml
+      id: extract_version
+      run: |
+        python - <<'PY' > .version
+        import tomllib
+        print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])
+        PY
+        echo "version=$(cat .version)" >> $GITHUB_OUTPUT
+
+    - name: Checkout tag ref (ensure building exactly the tagged commit)
+      run: |
+        git fetch --tags --force
+        git checkout "v${{ steps.extract_version.outputs.version }}"
+
+    - name: Validate tag matches pyproject version (when running on tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        echo "Tag: ${GITHUB_REF_NAME} / Version: v${{ steps.extract_version.outputs.version }}"
+        if [ "v${{ steps.extract_version.outputs.version }}" != "${GITHUB_REF_NAME}" ]; then
+          echo "Tag (=${GITHUB_REF_NAME}) does not match pyproject version (v${{ steps.extract_version.outputs.version }})." >&2
+          exit 1
+        fi
+
+    - name: Validate tag exists (workflow_run/manual)
+      if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+      run: |
+        TAG="v${{ steps.extract_version.outputs.version }}"
+        echo "Ensuring tag exists: $TAG"
+        git fetch --tags --force
+        git show-ref --tags "$TAG" --quiet || { echo "Tag $TAG not found" >&2; exit 1; }
+
+    - name: Detect pre-release flag from version
+      id: flags
+      run: |
+        VERSION="${{ steps.extract_version.outputs.version }}"
+        echo "Detected version: $VERSION"
+        # Treat a*, b*, rc*, and dev* as pre-releases (PEP 440)
+        # Matches e.g. 2.1.1a1, 2.1.1b2, 2.1.1rc1, 2.1.1.dev3
+        if echo "$VERSION" | grep -Eq '(a|b|rc|dev)[0-9]+'; then
+          echo "prerelease=true" >> $GITHUB_OUTPUT
+        else
+          echo "prerelease=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Build distributions (sdist and wheel)
+      run: uv run --with build python -m build
+
+    - name: Create GitHub Release and upload artifacts
+      uses: softprops/action-gh-release@v2
+      with:
+        files: dist/*
+        tag_name: v${{ steps.extract_version.outputs.version }}
+        name: infocf v${{ steps.extract_version.outputs.version }}
+        prerelease: ${{ steps.flags.outputs.prerelease == 'true' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

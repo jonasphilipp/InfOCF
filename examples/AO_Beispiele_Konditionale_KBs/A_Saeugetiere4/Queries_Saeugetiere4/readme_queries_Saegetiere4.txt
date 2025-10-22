@@ -5,4 +5,3 @@ SAEUGETIERE4: Queries
 
 (v|s)	% Sind Schnabeltiere lebendgebärend: (v|s)?
 		% Plausible Antwort: Nein.
-

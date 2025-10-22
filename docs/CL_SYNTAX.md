@@ -11,7 +11,7 @@ conditionals
 <list of conditionals separated by ','>
 }
 ```
-A conditional is of the form `(B|A)` where `A` and `B` are propositional formulas. 
+A conditional is of the form `(B|A)` where `A` and `B` are propositional formulas.
 A propositional formula is made up of variables and the connectors `!` (Negation), `,` (Conjunction) and `;` (Disjunction).
 Variables are strings containing letters and numbers starting with a letter (upper- and lower-case allowed).
 
@@ -23,7 +23,7 @@ If no parentheses are used the precedence is as follows:
 
 Comments are also allowed in the file following the Java comment syntax, i.e., `//` introduces single-line comments and `/*...*/` introduces block comments.
 
-The details of the grammar and example belief bases can be found at the [CLKR-repository](https://www.fernuni-hagen.de/wbs/clkr/html/syntax.html). 
+The details of the grammar and example belief bases can be found at the [CLKR-repository](https://www.fernuni-hagen.de/wbs/clkr/html/syntax.html).
 
 ### Example belief base
 ```
@@ -44,11 +44,10 @@ The `.clq`-format is used for query files containing conditionals over a signatu
 Each `.clq`-file contains a list of conditionals using the same syntax as for `.cl`-files.
 A knowledge base file together with a corresponding query file
 `<kb-file>.cl` , `<query-file>.clq`
-constitute a problem set. 
+constitute a problem set.
 
 ### Example queries
 ```
 (f|p),
 (w|p)
 ```
-

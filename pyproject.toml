@@ -1,0 +1,292 @@
+[build-system]
+requires = ["hatchling>=1.21.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "infocf"
+version = "2.1.2a0"
+description = "InfOCF - Reasoning With Conditional Belief Bases: A library for non-monotonic inference operators"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Christoph Beierle"},
+    {name = "Jonas Haldimann"},
+    {name = "Arthur Sanin"},
+    {name = "Leon Schwarzer"},
+    {name = "Aron Spang"},
+    {name = "Lars-Phillip Spiegel"},
+    {name = "Martin von Berg"},
+]
+maintainers = [
+    {name = "Jonas Haldimann"},
+    {name = "Arthur Sanin"},
+    {name = "Aron Spang"},
+    {name = "Lars-Phillip Spiegel"},
+    {name = "Martin von Berg"},
+]
+keywords = [
+    "reasoning",
+    "conditional-logic",
+    "sat-solving",
+    "belief-bases",
+    "artificial-intelligence",
+    "non-monotonic-reasoning",
+    "OCF",
+    "ranking-function",
+    "system-z",
+    "system-w",
+    "c-inference",
+    "p-entailment",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+requires-python = ">=3.11"
+
+dependencies = [
+    "antlr4-python3-runtime>=4.13.2,<5.0.0",
+    "z3-solver>=4.13.0.0",
+    "pysmt>=0.9.6",
+    "python-sat>=1.8.dev13",
+    "python-sat[pblib]>=1.8.dev13; platform_system != 'Windows'",
+    "numpy>=2.1.1",
+    "pandas>=2.2.2",
+    "func-timeout>=4.3.5",
+    "python-dateutil>=2.9.0.post0",
+    "pytz>=2024.2",
+    "six>=1.16.0",
+    "tzdata>=2024.1",
+    "bitvector>=3.0.0",
+    "greenlet>=3.1.0",
+    "msgpack>=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy==1.13.0",  # Pin to match pre-commit version
+    "flake8>=6.0.0",
+    "ruff==0.13.2",   # Pin to match pre-commit version
+    "bandit==1.7.10", # Security linting, matches pre-commit version
+    "pip-audit==2.7.3", # Dependency vulnerability scanning, matches pre-commit version
+    "pydocstyle==6.3.0", # Documentation style checking (manual)
+    "pre-commit>=3.0.0",
+    "twine>=4.0.0",
+    "build>=0.10.0",
+]
+solvers = [
+    "cvc5>=1.1.2",
+    "z3-solver>=4.13.0.0",
+    "python-sat[aiger]>=1.8.dev13",
+    "pysmt>=0.9.6",
+
+]
+testing = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-xdist>=3.0.0",
+    "coverage>=7.0.0",
+]
+docs = [
+    "sphinx>=6.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+    "myst-parser>=0.18.0",
+]
+
+[project.scripts]
+infocf = "infocf.cli:main"
+
+[project.urls]
+Homepage = "https://www.fernuni-hagen.de/wbs/research/infocf-web/"
+Repository = "https://github.com/jonasphilipp/InfOCF"
+
+[tool.hatch.build.targets.wheel]
+packages = ["infocf", "inference", "parser"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/infocf",
+    "/inference",
+    "/parser",
+    "/docs",
+    "/examples",
+    "/unittests",
+    "README.md",
+    "LICENSE",
+    "FEATURES_FUNCTIONALITIES_LIST.md",
+]
+exclude = [
+    "/.git",
+    "/output",
+    "/local",
+    "/.taskmaster",
+    "/.cursor",
+    "/.roo",
+    "/.__pycache__",
+    "/.pytest_cache",
+    "/.venv",
+    "/venv",
+    "/venv_*",
+    "/.solvers",
+    "*.nix",
+    "flake.*",
+    "birds_state.json",
+    "todo_*",
+    "*_local_helper.py",
+]
+
+# Tool configurations
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  parser/CKB.*\.py
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+skip = ["parser/CKB*.py"]
+known_first_party = ["infocf", "inference", "parser"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+    "parser/CKB.*\\.py$",
+    "venv/",
+    ".venv/",
+    "output/",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["unittests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+    "--tb=short",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "system_z: marks tests specific to System Z inference",
+    "system_w: marks tests specific to System W inference",
+    "c_inference: marks tests specific to c-inference",
+    "p_entailment: marks tests specific to p-entailment",
+    "parser: marks tests for the parser module",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["infocf", "inference", "parser"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "parser/CKB*.py",
+    "venv/*",
+    ".venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+exclude = [
+    ".git",
+    "__pycache__",
+    "parser/CKB*.py",
+    "venv",
+    ".venv",
+    "output",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "C",  # flake8-comprehensions
+    "B",  # flake8-bugbear
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+    # Research-friendly ignores
+    "F841",  # unused variables (common in research experimentation)
+    "B007",  # unused loop variables (common in research iteration)
+    "E721",  # type comparisons (research flexibility)
+    "E712",  # boolean comparisons (research readability)
+    "E711",  # None comparisons (research readability)
+    "C408",  # dict() vs {} (research verbosity preference)
+    "C416",  # list comprehensions (research readability)
+    "C419",  # unnecessary comprehensions (research clarity)
+    "B028",  # stacklevel warnings (research context)
+    "E741",  # ambiguous variable names (research math notation)
+    "F821",  # undefined name (research imports)
+    "E402",  # module imports (research organization)
+    "F403",  # star imports (research convenience)
+    "B006",  # mutable defaults (research patterns)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.pydocstyle]
+convention = "numpy"
+add-ignore = [
+    "D100",  # Missing docstring in public module
+    "D104",  # Missing docstring in public package
+    "D213",  # Multi-line docstring summary should start at the second line
+    "D203",  # 1 blank line required before class docstring
+]
+match = "(?!.*test_).*\\.py"
+match-dir = "(?!unittests).*"
+
+[dependency-groups]
+dev = [
+    "mkdocs>=1.6.1",
+    "mkdocs-autorefs>=1.4.3",
+    "mkdocs-material>=9.6.18",
+    "mkdocs-section-index>=0.3.10",
+    "mkdocs-include-markdown-plugin>=6.2.0",
+    "mkdocstrings[python]>=0.30.0",
+    "pymdown-extensions>=10.16.1",
+    "twine>=6.1.0",
+]

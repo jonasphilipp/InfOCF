@@ -1,0 +1,63 @@
+site_name: InfOCF
+site_description: Reasoning With Conditional Belief Bases
+site_url: https://infocf.local
+repo_url: https://github.com/jonasphilipp/InfOCF
+repo_name: InfOCF
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+    - navigation.indexes
+    - content.footnote.tooltips
+
+plugins:
+  - search
+  - autorefs
+  - include-markdown:
+      rewrite_relative_urls: true
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["."]
+          options:
+            docstring_style: numpy
+            show_source: false
+            separate_signature: true
+            show_signature: true
+            show_signature_annotations: true
+            show_symbol_type: true
+            signature_crossrefs: true
+            show_if_no_docstring: false
+            filters:
+              - "!^_"
+            merge_init_into_class: true
+            inherited_members: true
+            members_order: source
+
+nav:
+  - Home: index.md
+  - Installation: INSTALL.md
+  - CL Syntax: CL_SYNTAX.md
+  - Documentation: documentation.md
+  - Guides:
+      - Quickstart: guides/quickstart.md
+      - PreOCF basics: guides/preocf_basics.md
+      - Formulas & Acceptance: guides/formulas_and_acceptance.md
+      - Facts & Diagnostics: guides/facts_and_diagnostics.md
+      - C-Revision overview: guides/c_revision_overview.md
+  - API Reference:
+      - Overview: api.md
+      - inference modules: api/inference.md
+      - parser modules: api/parser.md
+      - preocf module: api/preocf.md
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - footnotes
+  - pymdownx.details
+  - pymdownx.superfences

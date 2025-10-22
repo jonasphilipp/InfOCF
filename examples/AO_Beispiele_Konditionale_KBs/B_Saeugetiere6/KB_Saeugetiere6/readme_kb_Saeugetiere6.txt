@@ -14,4 +14,3 @@ SAEUGETIERE6 {
 	(m|k),		% 5.Kloakentiere sind Säugetiere.
 	(!v,!c|k)	% 6.Kloakentiere sind nicht lebendgebärend und haben keine Plazenta.
 }
-

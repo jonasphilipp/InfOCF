@@ -1,15 +1,32 @@
-from inference.inference import Inference
-from inference.tseitin_transformation import TseitinTransformation
-from inference.consistency_sat import consistency_indices
-from inference.optimizer import create_optimizer
-from inference.conditional import Conditional
-from z3 import unsat, Or, is_true
+# ---------------------------------------------------------------------------
+# Standard library
+# ---------------------------------------------------------------------------
+
 from warnings import warn
+
+# ---------------------------------------------------------------------------
+# Third-party
+# ---------------------------------------------------------------------------
 from pysat.formula import WCNF
+
+from inference.conditional import Conditional
+from inference.consistency_sat import consistency_indices
+from inference.deadline import Deadline
+
+# ---------------------------------------------------------------------------
+# Project modules
+# ---------------------------------------------------------------------------
+from inference.inference import Inference
+from inference.optimizer import create_optimizer
+from inference.tseitin_transformation import TseitinTransformation
+from infocf.log_setup import get_logger
+
+logger = get_logger(__name__)
+
 
 class SystemW(Inference):
     """
-    Implementation of _preprocess_belief_base() method of inference interface/abstract class. 
+    Implementation of _preprocess_belief_base() method of inference interface/abstract class.
     Calculates z partition.
 
     Context:
@@ -18,19 +35,24 @@ class SystemW(Inference):
     Side Effects:
         partition in epistemic_state
     """
-    def _preprocess_belief_base(self) -> None:
-        self.epistemic_state['partition'], _ = consistency_indices(self.epistemic_state['belief_base'], self.epistemic_state['smt_solver'])
-        if not self.epistemic_state['partition']: warn('belief base inconsistent')
+
+    def _preprocess_belief_base(self, weakly: bool, deadline: Deadline | None) -> None:
+        self.epistemic_state["partition"], _ = consistency_indices(
+            self.epistemic_state["belief_base"],
+            self.epistemic_state["smt_solver"],
+            weakly,
+        )
+        if not self.epistemic_state["partition"]:
+            warn("belief base inconsistent")
         tseitin_transformation = TseitinTransformation(self.epistemic_state)
         tseitin_transformation.belief_base_to_cnf(False, True, True)
-   
 
     """
-    Implementation of _inference() method of inference interface/abstract class. 
+    Implementation of _inference() method of inference interface/abstract class.
     Performs actual inference.
 
     Context:
-        Called to perform inference after preprocessing has been done. Calls recursive part of 
+        Called to perform inference after preprocessing has been done. Calls recursive part of
         inference algorithm.
 
     Parameters:
@@ -39,19 +61,31 @@ class SystemW(Inference):
     Returns:
         result boolean
     """
-    def _inference(self, query: Conditional) -> bool:
-        #self._inference_start()
-        #self._translation_start()
+
+    def _inference(
+        self, query: Conditional, weakly: bool, deadline: Deadline | None
+    ) -> bool:
+        # self._inference_start()
+        # self._translation_start()
         tseitin_transformation = TseitinTransformation(self.epistemic_state)
         translated_query = tseitin_transformation.query_to_cnf(query)
-        self.epistemic_state['v_cnf_dict'][0] = translated_query[0]
-        self.epistemic_state['f_cnf_dict'][0] = translated_query[1]
+        self.epistemic_state["v_cnf_dict"][0] = translated_query[0]
+        self.epistemic_state["f_cnf_dict"][0] = translated_query[1]
         wcnf = WCNF()
-        result = self._rec_inference(wcnf ,len(self.epistemic_state['partition']) -1)
-        #self._inference_end()
+        if not weakly:
+            result = self._rec_inference(
+                wcnf, len(self.epistemic_state["partition"]) - 1, deadline
+            )
+        else:
+            # all indices in the last partition
+            for index in self.epistemic_state["partition"][-1]:
+                [wcnf.append(c) for c in self.epistemic_state["nf_cnf_dict"][index]]
+            result = self._rec_inference(
+                wcnf, len(self.epistemic_state["partition"]) - 2, deadline
+            )
+        # self._inference_end()
         return result
 
-    
     """
     Recursive part of inference algorithm.
 
@@ -62,22 +96,34 @@ class SystemW(Inference):
         Set of hard_constraints in wcnf format, partition_index integer
 
     Returns:
-        result of inference as bool 
+        result of inference as bool
     """
-    def _rec_inference(self, hard_constraints: WCNF, partition_index: int) -> bool:
-        assert type(self.epistemic_state['partition']) == list
-        part = self.epistemic_state['partition'][partition_index]
+
+    def _rec_inference(
+        self, hard_constraints: WCNF, partition_index: int, deadline: Deadline | None
+    ) -> bool:
+        assert type(self.epistemic_state["partition"]) == list
+        part = self.epistemic_state["partition"][partition_index]
         wcnf = hard_constraints.copy()
         for index in part:
-            softc = self.epistemic_state['nf_cnf_dict'][index]
+            softc = self.epistemic_state["nf_cnf_dict"][index]
             [wcnf.append(s, weight=1) for s in softc]
         wcnf_prime = wcnf.copy()
-        [wcnf.append(c) for c in self.epistemic_state['v_cnf_dict'][0]]
-        [wcnf_prime.append(c) for c in self.epistemic_state['f_cnf_dict'][0]]
+        [wcnf.append(c) for c in self.epistemic_state["v_cnf_dict"][0]]
+        [wcnf_prime.append(c) for c in self.epistemic_state["f_cnf_dict"][0]]
         optimizer = create_optimizer(self.epistemic_state)
-        ignore = [item for sublist in self.epistemic_state['partition'] if sublist != part for item in sublist]
-        xi_i_list = optimizer.minimal_correction_subsets(wcnf, ignore=ignore)
-        xi_i_prime_list = optimizer.minimal_correction_subsets(wcnf_prime, ignore=ignore)
+        ignore = [
+            item
+            for sublist in self.epistemic_state["partition"]
+            if sublist != part
+            for item in sublist
+        ]
+        xi_i_list = optimizer.minimal_correction_subsets(
+            wcnf, ignore=ignore, deadline=deadline
+        )
+        xi_i_prime_list = optimizer.minimal_correction_subsets(
+            wcnf_prime, ignore=ignore, deadline=deadline
+        )
         xi_i_set = frozenset([frozenset(l) for l in xi_i_list])
         xi_i_prime_set = frozenset([frozenset(l) for l in xi_i_prime_list])
         if not any_subset_of_all(xi_i_set, xi_i_prime_set):
@@ -87,10 +133,18 @@ class SystemW(Inference):
                 return False
             hard_constraints_new = hard_constraints.copy()
             for i in xi_i:
-                [hard_constraints_new.append(c) for c in self.epistemic_state['f_cnf_dict'][i]]
+                [
+                    hard_constraints_new.append(c)
+                    for c in self.epistemic_state["f_cnf_dict"][i]
+                ]
             for i in frozenset(part) - xi_i:
-                [hard_constraints_new.append(c) for c in self.epistemic_state['nf_cnf_dict'][i]]
-            result = self._rec_inference(hard_constraints_new, partition_index -1)
+                [
+                    hard_constraints_new.append(c)
+                    for c in self.epistemic_state["nf_cnf_dict"][i]
+                ]
+            result = self._rec_inference(
+                hard_constraints_new, partition_index - 1, deadline
+            )
             if result == False:
                 return False
         return True
@@ -108,5 +162,12 @@ Parameters:
 Returns:
     decision as bool
 """
-def any_subset_of_all(A: frozenset, B: frozenset) -> bool:
+
+
+from typing import FrozenSet
+
+
+def any_subset_of_all(
+    A: FrozenSet[FrozenSet[int]], B: FrozenSet[FrozenSet[int]]
+) -> bool:
     return all(any(a.issubset(b) for a in A) for b in B)

@@ -27,8 +27,27 @@ InfOCF-Web 2.0 is build on top of InfOCF and supports nonmonotonic reasoning fro
 
 To install InfOCF follow the steps in the [installation guide](docs/INSTALL.md).
 
+### Build and serve docs locally
+
+See the Documentation guide for steps: [docs/documentation.md](docs/documentation.md).
+
 ### Usage
 
-The usage of InfOCF is demonstrated in [show.py](show.py).
+The usage of InfOCF is demonstrated in [show.py](https://github.com/jonasphilipp/InfOCF/blob/HEAD/show.py).
 
-A small example showing how to get started can be found in [show_minimal.py](show_minimal.py).
+A small example showing how to get started can be found in [show_minimal.py](https://github.com/jonasphilipp/InfOCF/blob/HEAD/show_minimal.py).
+
+#### Incremental c-revision compilation (advanced)
+
+This repository includes an incremental compilation path for c-revision that avoids full recompilation when adding new revision conditionals.
+
+- Demo: see the "Incremental c-revision compilation demo" section in [show_preocf.py](https://github.com/jonasphilipp/InfOCF/blob/HEAD/show_preocf.py)
+- Benchmark script: `benchmarks/benchmark_incremental_c_revision.py`
+
+To run the benchmark:
+
+```bash
+uv run python benchmarks/benchmark_incremental_c_revision.py
+```
+
+It prints mean times over a few configurations and the speedup factor of the incremental approach compared to full recomputation.

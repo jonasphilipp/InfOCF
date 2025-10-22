@@ -10,10 +10,10 @@ myid:
 	num=ID ',' myid
         |num=ID NEWLINE
 	;
-    
+
 
 conditionals:
-	 NEWLINE* 'conditionals' NEWLINE+ name=ID NEWLINE*  '{' NEWLINE*  '}' NEWLINE* 
+	 NEWLINE* 'conditionals' NEWLINE+ name=ID NEWLINE*  '{' NEWLINE*  '}' NEWLINE*
 	| NEWLINE* 'conditionals' NEWLINE+ name=ID NEWLINE*  '{' NEWLINE* condition '}'  NEWLINE* conditionals*
 	;
 
@@ -23,7 +23,7 @@ condition:
         ;
 
 
-formula:	
+formula:
 	 '!' formula 				#Negation
 	| left=formula ',' right=formula				#And
 	| left=formula ';' right=formula				#Or
@@ -31,7 +31,7 @@ formula:
 	| atom=ID 				#Var
 	;
 
-      
+
 ID: ([A-Z]|[a-z])([0-9]|[a-z]|[A-Z]|'_'|'-')* ;
 WS: (' '|'\t') -> skip;
 COMMENT: '//' ~( '\r' | '\n' )* -> skip;

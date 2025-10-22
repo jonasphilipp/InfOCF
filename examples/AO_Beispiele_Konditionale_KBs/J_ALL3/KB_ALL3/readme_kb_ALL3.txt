@@ -15,10 +15,10 @@ Signatur
 Konditionale
 ALL3 {
 	(g|a),		% 1.Akute Lymphatische Leukämie hat normalerweise eine günstige Prognose.
-	(!g|a,(o;p;s;u;v;w;x;y;z)),		
-				% 2.Wenn man ALL und eines der unter „o“ bis „z“ ausgewiesenen Merkmale hat, 
+	(!g|a,(o;p;s;u;v;w;x;y;z)),
+				% 2.Wenn man ALL und eines der unter „o“ bis „z“ ausgewiesenen Merkmale hat,
 				% so deutet dies normalerweise auf eine ungünstige Prognose hin.
-	(g|a,(o;p;s;u;v;w;x;y;z),t)		
-				% 3.Wenn man ALL, eines der unter „o“ bis „z“ ausgewiesenen Merkmale hat 
+	(g|a,(o;p;s;u;v;w;x;y;z),t)
+				% 3.Wenn man ALL, eines der unter „o“ bis „z“ ausgewiesenen Merkmale hat
 				% und eine gezielte Therapie vorhanden ist, so deutet dies normalerweise auf eine günstige Prognose hin.
 }
