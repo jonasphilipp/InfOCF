@@ -175,3 +175,28 @@ class WeakCz3():
         csp.extend(gteZeros)
         return csp
 
+    def compile_query_into_psr(self, query):
+        query = transform_conditional_to_z3(query)
+        base_csp = self.base_csp
+        J_delta_keys = self.J_delta.keys()
+        opt = getOptimizer()
+        objectives = {j:opt.add_soft(c.make_A_then_not_B() == False, id=j) for j,c in self.bb.conditionals.items()}    #setting id's for easier bookkeeping
+        antecedence = query.antecedence
+        consequence = query.consequence
+        opt.push()
+        opt.add(antecedence)
+        opt.push() 
+        opt.add(consequence)
+        vMin, fMin = [], []
+        while opt.check() == z3.sat:
+            ss = simplyfy({j:k.value() for j,k in objectives.items()})
+            vMin.append(ss)
+        opt.pop()
+        opt.add(z3.Not(consequence))
+        while opt.check() == z3.sat:
+            ss=simplyfy({j:k.value() for j,k in objectives.items()})
+            fMin.append(ss)
+        vMin = filtersubsets(vMin,J_delta_keys)
+        fMin = filtersubsets(fMin,J_delta_keys)
+        return vMin, fMin
+

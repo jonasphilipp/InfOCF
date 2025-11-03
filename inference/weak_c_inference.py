@@ -40,6 +40,26 @@ class WeakCInference():
         if 'fMin' not in self.epistemic_state:
             self.epistemic_state['fMin'] = dict()
 
+        tseitin_transformation = TseitinTransformation(self.epistemic_state)
+        tseitin_transformation.belief_base_to_cnf(True, True, True)
+
+        ### check weakly consistency
+        is_weakly = test_weakly(self.epistemic_state['belief_base'])
+        assert(is_weakly)
+        ### Compute tolerance partition
+        self.epistemic_state['partition'],_ = consistency(self.epistemic_state['belief_base'], 'z3', True)
+
+        ### compute J_delta
+        J_inf = self.epistemic_state['partition'][-1]
+        J_delta = dict()
+        solver = Solver(name=self.epistemic_state['smt_solver'])
+        [solver.add_assertion(Implies(c.antecedence,c.consequence)) for c in J_inf]
+        for i,c in self.epistemic_state['belief_base'].conditionals.items():
+            if solver.solve([c.make_A_then_not_B()]):
+                J_delta[i] = c
+        ### hold them in epistemic state? 
+        self.epistemic_state['J_delta'] = J_delta
+
     #replaces every items in the argument by it's sum representation
     def makeSummation(self, minima: dict) -> dict[int, list]:
         results = dict()
@@ -230,4 +250,55 @@ class WeakCInference():
         csp = vM + fM + [GE(mv, mf)]
         #print(f"csp {csp}")
         return csp ,(time_ns()/(1e+6)-start_time)
+
+
+    """
+    Compiles query using RC2 and encodes it using minima_encoding.
+
+    Context:
+        This method is used to query the KB and do actual inference.
+
+    Parameters:
+        The Query in form of a conditional
+
+    Returns:
+        Constraint satisfaction problem that can be fed into the z3 solver;
+        Execution time
+    """
+    def compile_query_into_psr(self, query: Conditional) -> tuple[list, float]:
+        start_time = time_ns() / 1e+6
+
+        vMin, fMin = [], []
+        tseitin_transformation = TseitinTransformation(self.epistemic_state)
+        transformed_conditionals = tseitin_transformation.query_to_cnf(query)
+        #print(transformed_conditionals)
+
+        J_delta = self.epistemic_state['J_delta'].keys()
+        
+
+        V = {i:v for i, v in self.epistemic_state['v_cnf_dict'].items() if i in J_delta}
+        F = {i:f for i, f in self.epistemic_state['f_cnf_dict'].items() if i in J_delta}
+        NF = {i:f for i, f in self.epistemic_state['wnf_cnf_dict'].items()}
+        #print(NF)
+        #print(transformed_conditionals)
+
+        countv = 0
+        countf = 0
+        for conditional in transformed_conditionals:
+            xMins = []
+            wcnf = WCNF()
+            [wcnf.append(c) for c in conditional]
+            [wcnf.append(s, weight=1) for j, softc in NF.items() for s in softc]
+            
+            optimizer = create_optimizer(self.epistemic_state)
+            xMins_lst = optimizer.minimal_correction_subsets(wcnf)
+            
+            if conditional is transformed_conditionals[0]:
+                countv+=1
+                vMin = filtersubsets(xMins_lst,J_delta)
+            else: 
+                countf+=1
+                fMin = filtersubsets(xMins_lst, J_delta)
+
+        return vMin, fMin
 

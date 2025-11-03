@@ -16,6 +16,7 @@ from inference.conditional import Conditional
 from time import time_ns 
 from pysmt.shortcuts import Solver,Implies
 from inference.weakly_system_z_rank import SystemZRankZ3
+from inference.weak_c_z3 import WeakCz3
 
 
 
@@ -112,39 +113,47 @@ def samplingWeaklyCKB(S:int,R:int,l:int, u:int) -> Tuple[str,Conditional,T]:
     Will output a consistent CKB with S elements in the signature
     and R conditionals. 
     """
-    c=0
+    count_total=0
+    count_strongly=0
     while True:
-        c+=1
-        print(c)
+        count_total+=1
         VAR = createVariables(S)
         conditionals = [(sampleConditional(VAR,l,u)) for _ in range(R)]
         COND= [parseQuery(c)[1] for c in conditionals]
         dummyCKB = BeliefBase([(v) for v in VAR], {i:c for i,c in enumerate(COND,start=1)}, "")
         part,_ = consistency(dummyCKB)
         weak = test_weakly(dummyCKB)
-        if (part == False) and (weak==True):
-            break
-    return VAR, COND, dummyCKB
+        if (part == True):
+            count_strongly+=1
+        if (part == False):
+            if (weak==True):
+                break
+    return VAR, COND, dummyCKB, count_total,count_strongly
 
 
-def samplingStrongCKB(S:int,R:int,l:int, u:int) -> Tuple[str,Conditional,T]:
+def canonical(x):
+    """ 
+    return a somewhat canonicall representation of a list list
     """
-    Will output a consistent CKB with S elements in the signature
-    and R conditionals. 
+    return sorted([sorted(i) for i in x])
+
+def checkDifficult(v,f):
     """
-    c=0
-    while True:
-        c+=1
-        print(c)
-        VAR = createVariables(S)
-        conditionals = [(sampleConditional(VAR,l,u)) for _ in range(R)]
-        COND= [parseQuery(c)[1] for c in conditionals]
-        dummyCKB = BeliefBase([(v) for v in VAR], {i:c for i,c in enumerate(COND,start=1)}, "")
-        part,_ = consistency(dummyCKB)
-        weak = test_weakly(dummyCKB)
-        if (part != False) and (weak==True):
-            break
-    return VAR, COND, dummyCKB
+    since compilation without checking for rank infinity can produce either [] or [[]], we check for both
+    """
+    if v == [[]] or v==[] : return False
+    if f == [[]] or f==[] : return False
+    if canonical(v) == canonical(f): 
+        print('lhs is rhs', v)
+        return False
+    if len(f) < 2:
+        print('pseudolinear')
+        return False
+    print(v,f)
+    return True
+
+
+
 
 def sampleQueries(ckb, VAR, Q, l, u):
     """
@@ -154,20 +163,22 @@ def sampleQueries(ckb, VAR, Q, l, u):
     s = Solver(name='z3')
     [s.add_assertion(Implies(j.antecedence,j.consequence)) for j in (ckb).conditionals.values()]
     sysz = SystemZRankZ3(ckb)
+    crep = WeakCz3(ckb)
     infty = float('inf')
     counter = 0
     counterInfty = 0 
     while len(found) < Q:
         query = (sampleConditional(VAR, l,u))
+        counter +=1
         q=parseQuery(query)[1]
         s.push()
-        difficult = (not s.solve([q.make_A_then_B()])) and (not s.solve([q.make_A_then_not_B()]))
-        counter +=1
+        vf,ff = sysz.rank_query(q)
+        if ff == infty or vf == infty:
+            counterInfty +=1
+            continue
+        vMin, fMin = crep.compile_query_into_psr(q)
+        difficult = checkDifficult(vMin, fMin)
         if difficult:
-            vf,ff = sysz.rank_query(q)
-            if ff == infty or vf == infty:
-                counterInfty +=1
-                continue
             found.append(query)
     return found,counter,counterInfty
         
@@ -229,9 +240,9 @@ def sampleCKBandQueries(S,R,l,u,Q,seed) -> T:
     seed: used for reproducability in pseudorandom generation
     """
     #random.seed(seed)
-    VAR, COND, ckb = samplingWeaklyCKB(S,R,l,u)
+    VAR, COND, ckb, ct, cs = samplingWeaklyCKB(S,R,l,u)
     queries = sampleQueries(ckb, VAR, Q, l, u)
-    return VAR, COND, ckb, queries
+    return VAR, COND, ckb, queries, ct, cs
 
 
 

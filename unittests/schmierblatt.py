@@ -17,10 +17,10 @@ from parser.Wrappers import parse_belief_base, parseQuery
 class InferenceCorrectnessTest(unittest.TestCase):
 
     def test_random_bothmethods_equal(self):
-        VAR,COND, ckb, queriesSTR = sampleCKBandQueries(20,20,1,3,10,0)
+        VAR,COND, ckb, queriesSTR, ct, cs = sampleCKBandQueries(50,50,1,8,10,0)
         satqueries, c1 = sampleSATQueries(ckb, VAR, 10, 1, 3)
         unsatqueries, c2 = sampleUNSATQueries(ckb, VAR, 10, 1, 3)
-        queries, c3, cinf = queriesSTR
+        queries, c3, countinfty = queriesSTR
         satqueries = [parseQuery(i) for i in satqueries]
         unsatqueries = [parseQuery(i) for i in unsatqueries]
         queries = [parseQuery(i) for i in queries]
@@ -32,7 +32,7 @@ class InferenceCorrectnessTest(unittest.TestCase):
         z = SystemZRankZ3(bb)
         t1=time()
         t2=time()
-        print("suggested", t2-t1)
+        #print("suggested", t2-t1)
         #[print(z.rank_query(c)) for i,c in bb.conditionals.items()]
         print('di')
         [print(corrections.inference(c), weakCinf.inference(c), z.rank_query(c),c) for i,c in bb.conditionals.items()]
@@ -40,8 +40,12 @@ class InferenceCorrectnessTest(unittest.TestCase):
         [print(weakCinf.inference(c[1]),z.rank_query(c[1]), c[1]) for c in satqueries]
         print('trivial unsat')
         [print(weakCinf.inference(c[1]),z.rank_query(c[1]), c[1]) for c in unsatqueries]
-        print(c3, cinf)
+        print('-----')
         [print(weakCinf.inference(c[1]),z.rank_query(c[1]), c[1]) for c in queries]
+        print('total cbb sampled', ct)
+        print('strongly cbb sampled', cs)
+        print('total queries sampled',c3)
+        print('queries ranked infty',countinfty)
 
 
 
