@@ -149,7 +149,6 @@ def checkDifficult(v,f):
     if len(f) < 2:
         print('pseudolinear')
         return False
-    print(v,f)
     return True
 
 
@@ -219,15 +218,6 @@ def sampleSATQueries(ckb, VAR, Q, l, u):
             found.append(query)
     return found, counter
 
-def canonical(tMin:T) -> T:
-    """
-    takes anything that is iterable and sortable and brings 
-    it into a somewhat canonical form
-    """
-    #tMin = sorted(tMin, key=len)
-    tMin = {tuple(sorted(t)) for t in tMin}
-    return tMin
-
 
 
 def sampleCKBandQueries(S,R,l,u,Q,seed) -> T:
@@ -239,7 +229,7 @@ def sampleCKBandQueries(S,R,l,u,Q,seed) -> T:
     Q : samples Q amount of sat queries and Q amount of unsat Queries
     seed: used for reproducability in pseudorandom generation
     """
-    #random.seed(seed)
+    random.seed(seed)
     VAR, COND, ckb, ct, cs = samplingWeaklyCKB(S,R,l,u)
     queries = sampleQueries(ckb, VAR, Q, l, u)
     return VAR, COND, ckb, queries, ct, cs
