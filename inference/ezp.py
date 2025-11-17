@@ -59,11 +59,9 @@ def weakEZP(ckb, solver='z3', weakly=False):
                 return partition, []
             if len(T) == 0:
                 ##partition might be empty?
-                ## do two checks here?
-                if len(partition)>1:   ###last element is always [], we remove it from the partition
-                    return partition[0:-1], C
-                ### if len(partition) == 1: partition has only an empty list as its frist element
-                ## so partition == [[]]
-                return partition, C
+                ## the last element will always be [], so we remove it
+                ## moreover, if the belief base is inconsistent, partition will be = []
+                ## so trying to access partition[0] or partition[-1] will result in error
+                return partition[0:-1], C
 
 
