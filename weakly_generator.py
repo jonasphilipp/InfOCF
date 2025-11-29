@@ -41,15 +41,16 @@ def sample_operation():
     return random.choice([OrFormula,AndFormula,NotFormula])	
 
 
-def sampleVars(variables:List[str], l, u)->Tuple[List[str],List[str]]:
+def sampleVars(variables:List[str], u)->Tuple[List[str],List[str]]:
     """
-    returns two subsets of variables, not possibly disjoint, possibly not.
+    returns two subsets of variables, possibly disjoint, possibly not.
     """
     #print(variables)
-    V1 = random.choice(range(0,u+1))
-    v = random.choices(variables, k=u)
-    v1=v[:V1]
-    v2=v[V1:]
+    V1 = random.choice(range(2,u+1))
+    V2 = random.choice(range(2,u+1))
+    tvars = variables+['Top','Bottom']
+    v1 = random.choices(tvars, k=V1)
+    v2 = random.choices(tvars, k=V2)
 
     return v1,v2
 
@@ -64,17 +65,8 @@ def sampleFormula(variables:List[str]):
     return properties[0]
 
 
-def sampleConditional(variables:List[str], l, u)->List[str]:
-    a,b = sampleVars(variables, l, u)
-    #print(a, b)
-    if len(a) == 0:  
-        inv = random.choice(['Top', 'Bottom'])
-        return "(%s | %s)" % (sampleFormula(b), inv)
-
-    if len(b) == 0:  
-        inv = random.choice(['Top', 'Bottom'])
-        return "(%s | %s)" % (inv, sampleFormula(a))
-
+def sampleConditional(variables:List[str], u)->List[str]:
+    a,b = sampleVars(variables, u)
     return "(%s | %s)" % (sampleFormula(a),sampleFormula(b))
 
 
@@ -118,7 +110,7 @@ def samplingWeaklyCKB(S:int,R:int,l:int, u:int) -> Tuple[str,Conditional,T]:
     while True:
         count_total+=1
         VAR = createVariables(S)
-        conditionals = [(sampleConditional(VAR,l,u)) for _ in range(R)]
+        conditionals = [(sampleConditional(VAR,u)) for _ in range(R)]
         COND= [parseQuery(c)[1] for c in conditionals]
         dummyCKB = BeliefBase([(v) for v in VAR], {i:c for i,c in enumerate(COND,start=1)}, "")
         part,_ = consistency(dummyCKB)
@@ -167,7 +159,7 @@ def sampleQueries(ckb, VAR, Q, l, u):
     counter = 0
     counterInfty = 0 
     while len(found) < Q:
-        query = (sampleConditional(VAR, l,u))
+        query = (sampleConditional(VAR, u))
         counter +=1
         q=parseQuery(query)[1]
         s.push()
@@ -175,6 +167,7 @@ def sampleQueries(ckb, VAR, Q, l, u):
         if ff == infty or vf == infty:
             counterInfty +=1
             continue
+
         vMin, fMin = crep.compile_query_into_psr(q)
         difficult = checkDifficult(vMin, fMin)
         if difficult:
@@ -191,7 +184,7 @@ def sampleUNSATQueries(ckb, VAR, Q, l, u):
     [s.add_assertion(Implies(j.antecedence,j.consequence)) for j in (ckb).conditionals.values()]
     counter = 0 
     while len(found) < Q:
-        query = (sampleConditional(VAR, l,u))
+        query = (sampleConditional(VAR,u))
         q=parseQuery(query)[1]
         s.push()
         difficult = (s.solve([q.make_A_then_B()])) and (not s.solve([q.make_A_then_not_B()]))
@@ -209,7 +202,7 @@ def sampleSATQueries(ckb, VAR, Q, l, u):
     [s.add_assertion(Implies(j.antecedence,j.consequence)) for j in (ckb).conditionals.values()]
     counter = 0
     while len(found) < Q:
-        query = (sampleConditional(VAR, l,u))
+        query = (sampleConditional(VAR, u))
         q=parseQuery(query)[1]
         s.push()
         difficult = (not s.solve([q.make_A_then_B()])) and (s.solve([q.make_A_then_not_B()]))

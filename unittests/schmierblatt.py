@@ -17,7 +17,7 @@ from parser.Wrappers import parse_belief_base, parseQuery
 class InferenceCorrectnessTest(unittest.TestCase):
 
     def test_random_bothmethods_equal(self):
-        VAR,COND, ckb, queriesSTR, ct, cs = sampleCKBandQueries(50,50,1,10,20,0)
+        VAR,COND, ckb, queriesSTR, ct, cs = sampleCKBandQueries(20,20,1,4,20,7)
         satqueries, c1 = sampleSATQueries(ckb, VAR, 10, 1, 3)
         unsatqueries, c2 = sampleUNSATQueries(ckb, VAR, 10, 1, 3)
         queries, c3, countinfty = queriesSTR
@@ -26,6 +26,8 @@ class InferenceCorrectnessTest(unittest.TestCase):
         queries = [parseQuery(i) for i in queries]
 
         weakCinf = WeakCz3(ckb)
+        print(weakCinf.vMin)
+        print(weakCinf.fMin)
         corrections = WeakCInference(ckb)
         corrections.preprocess_belief_base()
         bb = weakCinf.originalbb

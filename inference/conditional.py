@@ -1,4 +1,4 @@
-from pysmt.shortcuts import And, Not
+from pysmt.shortcuts import And, Not,Or, Implies
 
 
 class Conditional:
@@ -7,10 +7,18 @@ class Conditional:
         self.consequence=consequence
         self.weak=weak
         self.textRepresentation = textRepresentation
+        self.A = self.antecedence
+        self.B = self.consequence
+
+    def verify(self):
+        return And(self.A, self.B)
+    def falsify(self):
+        return And(self.A, Not(self.B))
+    def imply(self):
+        return Implies(self.A, self.B)
 
     def make_A_then_B(self):
         return And(self.antecedence, self.consequence)
-
 
 
     def make_A_then_not_B(self):

@@ -60,8 +60,10 @@ class TseitinTransformation:
                 g2 = t(z3.And(antecedence, z3.Not(consequence)))
                 self.epistemic_state['f_cnf_dict'][index] = self.goal2intcnf(g2[0])
             if nf:
-                g3 = t(z3.Or(z3.Not(antecedence), consequence))
+                g3 = t(z3.Not(z3.And(antecedence, z3.Not(consequence))))
+                #g3 = t(z3.Or(z3.Not(antecedence), consequence))
                 self.epistemic_state['nf_cnf_dict'][index] = self.goal2intcnf(g3[0])
+                #print(self.epistemic_state['nf_cnf_dict'][index])
         return (time_ns() - start_time) / (1e+6) 
 
     def layers_z_to_cnf(self, partition):
@@ -109,6 +111,7 @@ class TseitinTransformation:
             consequence = solver.converter.convert(query.consequence)
         AB = self.goal2intcnf(t(z3.And(antecedence, consequence))[0])
         AnotB = self.goal2intcnf(t(z3.And(antecedence, z3.Not(consequence)))[0])
+        #print(AB,AnotB)
         return [AB, AnotB]
 
 
@@ -163,4 +166,5 @@ class TseitinTransformation:
             sign = -1
             expr = expr.children()[0]
         expr_id = self.epistemic_state['pool'].id(expr)
+        if expr_id == 0: print("ID 0!!")
         return sign * expr_id
