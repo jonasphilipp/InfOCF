@@ -40,6 +40,7 @@ class LexInf():
         opt.add(formula)
         soft = self.ezp.partition[::-1]
         goals = []
+        #print(len(soft))
         for i,s in enumerate(soft):
             for c in s:
                 goal =opt.add_soft(Not(c.falsify()), weight=1, id=i)

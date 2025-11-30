@@ -46,7 +46,7 @@ def getEZP(ckb, solver='z3'):
         C = []
         for c in conditionals:
             print(c)
-            if sat == s.check([c.falsify()]):
+            if sat == s.check([c.verify()]):
                 T.append(c)
             else:
                 C.append(c)
