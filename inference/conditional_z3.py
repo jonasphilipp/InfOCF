@@ -1,5 +1,5 @@
 from pysmt.shortcuts import Solver
-from z3 import And, Not
+from z3 import And, Not, Implies
 from inference.conditional import Conditional
 
 
@@ -10,6 +10,17 @@ class Conditional_z3(Conditional):
         self.consequence=consequence
         self.weak=weak
         self.textRepresentation = textRepresentation
+        self.A = self.antecedence
+        self.B = self.consequence
+
+    def verify(self):
+        return And(self.A, self.B)
+
+    def falsify(self):
+        return And(self.A, Not(self.B))
+
+    def imply(self):
+        return Implies(self.A, self.B)
 
     def make_A_then_B(self):
         return And(self.antecedence, self.consequence)

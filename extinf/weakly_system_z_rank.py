@@ -10,6 +10,7 @@ from inference.z3tools import *
 
 
 class SystemZRankZ3():
+    ## TODO refactor to use lexinf 
 
     def __init__(self,bb) -> None:
             partition, _ = consistency(bb, 'z3', weakly=True)

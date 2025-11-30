@@ -12,8 +12,10 @@ class Conditional:
 
     def verify(self):
         return And(self.A, self.B)
+
     def falsify(self):
         return And(self.A, Not(self.B))
+
     def imply(self):
         return Implies(self.A, self.B)
 

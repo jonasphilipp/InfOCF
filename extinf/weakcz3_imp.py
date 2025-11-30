@@ -12,16 +12,6 @@ from pysmt.shortcuts import Solver,Implies, Optimizer
 from pysmt.optimizer import MaxSMTGoal
 from extinf.ezp import EZP, get_J_delta
 
-def filtersubsets(k, J):
-    return [q for q in k if all([(t in J) for t in q])]
-
-def getOptimizer():
-    opt = z3.Optimize()
-    opt.set(priority='pareto')
-    opt.set(maxsat_engine='rc2')
-    return opt
-
-
 def simplyfy(d):
     ## only simplifies view onto the dict, does not do any rewriting
     return [a for a,b in d.items() if b==1]
@@ -30,42 +20,20 @@ class WeakCz3IMP():
 
     def __init__(self,bb) -> None:
             self.bb = bb
-            partition = EZP(bb)
-            ### Compute tolerance partition
-            J_inf = partition[-1]
-            self.J_delta = get_J_delta(J_inf)
+            ezp = EZP(bb)
+            self.J_delta = get_J_delta(ezp.partition)
             self.compile_constraints()
             self.base_csp = self.translate()
-    
-
 
 
     def compile_constraints(self):
-        opt = Optimizer()
-        J_delta_keys = self.J_delta.keys()
-        [opt.add(z3.Implies(c.antecedence,c.consequence)) for j,c in self.bb.conditionals.items() if j not in J_delta_keys]
-        goals= [MaxSMTGoal() for j,c in self.bb.conditionals.items()]   ##setting goals also in j_delta for easier bookkeeping 
-        objectives = {g.add_soft(Not(c.falsifying()), weight=1) for j,c in goals.items()} 
 
         V,F = dict(), dict()
 
         for i,c in enumerate(self.bb.conditionals, start=1):
             #t1 = time()
-            if i not in J_delta_keys: continue
-            cond = self.bb.conditionals[i]
-            opt.push()
-            opt.add(cond.verifying())
-            vMin, fMin = [], []
-            for m,g in opt.pareto_optimize(goals):
-                ss =simplyfy({j:k.py_value() for j,k in enumerate(g,start=1) if i!=j})
-                vMin.append(ss)
-            opt.pop()
-            opt.add(cond.falsifying())
-            vMin, fMin = [], []
-            for m,g in opt.pareto_optimize(goals):
-                ss =simplyfy({j:k.py_value() for j,k in enumerate(g,start=1) if i!=j})
-                fMin.append(ss)
-            opt.pop()
+            if i not in self.J_delta.keys(): continue
+            vMin, fMin = self.compile_query_into_psr(c,i)
             V[i] = vMin
             F[i]= fMin
         self.vMin, self.fMin = V,F
@@ -76,22 +44,7 @@ class WeakCz3IMP():
         """
         uses inequality encoding to encode the query. 
         """
-        opt = Optimizer()
-        J_delta_keys = self.J_delta.keys()
-        [opt.add(z3.Implies(c.antecedence,c.consequence)) for j,c in self.bb.conditionals.items() if j not in J_delta_keys]
-        goals= [MaxSMTGoal() for j,c in self.bb.conditionals.items()]   ##setting goals also in j_delta for easier bookkeeping 
-        objectives = {g.add_soft(Not(c.falsifying()), weight=1) for j,c in goals.items()} 
-        opt.push()
-        opt.add(query.verify())
-        vMin, fMin = [], []
-        for m,g in opt.pareto_optimize(goals):
-            ss =simplyfy({j:k.py_value() for j,k in enumerate(g,start=1) if i!=j})
-            vMin.append(ss)
-        opt.pop()
-        opt.add(query.falsifying())
-        for m,g in opt.pareto_optimize(goals):
-            ss =simplyfy({j:k.py_value() for j,k in enumerate(g,start=1) if i!=j})
-            vMin.append(ss)
+        vMin,fMin = self.compile_query_into_psr(query, -1)
         vSum = self.makeSummation({0:vMin})
         fSum = self.makeSummation({0:fMin})
         v, f = self.freshVars(0)
@@ -156,7 +109,7 @@ class WeakCz3IMP():
         csp.extend(gteZeros)
         return csp
 
-    def compile_query_into_psr(self, query):
+    def compile_query_into_psr(self, query, index):
         opt = Optimizer()
         J_delta_keys = self.J_delta.keys()
         [opt.add(z3.Implies(c.antecedence,c.consequence)) for j,c in self.bb.conditionals.items() if j not in J_delta_keys]
@@ -166,12 +119,12 @@ class WeakCz3IMP():
         opt.add(query.verify())
         vMin, fMin = [], []
         for m,g in opt.pareto_optimize(goals):
-            ss =simplyfy({j:k.py_value() for j,k in enumerate(g,start=1) if i!=j})
+            ss =simplyfy({j:k.py_value() for j,k in enumerate(g,start=1) if j!=index})
             vMin.append(ss)
         opt.pop()
         opt.add(query.falsifying())
         for m,g in opt.pareto_optimize(goals):
-            ss =simplyfy({j:k.py_value() for j,k in enumerate(g,start=1) if i!=j})
+            ss =simplyfy({j:k.py_value() for j,k in enumerate(g,start=1) if j!=index})
             vMin.append(ss)
         return vMin, fMin
 
