@@ -3,7 +3,7 @@ from time import process_time
 from inference.belief_base import BeliefBase
 from extinf.ezp import EZP
 from inference.conditional_z3 import Conditional_z3
-from z3 import Optimize, Not, unsat, sat
+from z3 import Optimize, Not, unsat, sat, BoolVal
 
 
 
@@ -42,6 +42,8 @@ class LexInf():
         goals = []
         #print(len(soft))
         for i,s in enumerate(soft):
+            if len(s) == 0:
+                goal =opt.add_soft(BoolVal(True), weight=1, id=i)
             for c in s:
                 goal =opt.add_soft(c.imply(), weight=1, id=i)
             goals.append(goal)

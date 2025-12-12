@@ -31,13 +31,24 @@ birds002{
 }
 """
 query1="(!races_fixed|Top)"
-
+ex2=  """
+signature
+    quiet, resting, peaceful
+conditionals
+birds002{
+    (resting|quiet),
+    (peaceful,quiet|resting),
+    (quiet;resting|peaceful)
+}
+"""
+query2="(quiet|peaceful)"
+#query2="(peaceful|quiet)"
 class InferenceCorrectnessTest(unittest.TestCase):
 
     def test_random_bothmethods_equal(self):
         seed = 0 
-        ckb=parse_belief_base(ex1)
-        query=parseQuery(query1)[1]
+        ckb=parse_belief_base(ex2)
+        query=parseQuery(query2)[1]
         cinf =WeakCz3IMP(ckb)
         kz=SystemZRank(ckb)
         lexinf = LexInf(ckb)
