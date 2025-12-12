@@ -20,21 +20,21 @@ def test_weakly(ckb):
 
 def get_J_delta(ezp):
     ### assumes condtionals are already in z3 form
-    part = ezp[-1]
     ### compute J_delta
-    J_inf = part[-1]
+    conditionals = {i:Conditional_z3.translate_from_existing(c) for i,c in ezp.bb.conditionals.items()}
+    J_inf = ezp.partition[-1]
     J_delta = dict()
     solver = Solver()
     [solver.add(c.imply()) for c in J_inf]
-    for i,c in ckb.conditionals.items():
-        if solver.solve([c.falsify()]):
+    for i,c in conditionals.items():
+        if sat==solver.check([c.falsify()]):
             J_delta[i] = c
     return J_delta
 
 
 
 
-def getEZP(ckb, solver='z3'):
+def getEZP(ckb):
     conditionals = [Conditional_z3.translate_from_existing(i) for i in ckb.conditionals.values()]
     #partition is a list of lists
     partition = []
@@ -45,7 +45,7 @@ def getEZP(ckb, solver='z3'):
         T = []
         C = []
         for c in conditionals:
-            print(c)
+            #print(c)
             if sat == s.check([c.verify()]):
                 T.append(c)
             else:

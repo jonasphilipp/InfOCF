@@ -8,20 +8,29 @@ import z3
 import math
 from inference.z3tools import *
 from inference.consistency_sat import checkTautologies, test_weakly, consistency
-from pysmt.shortcuts import Solver,Implies, Optimizer
-from pysmt.optimizer import MaxSMTGoal
+from pysmt.shortcuts import Solver,Implies
 from extinf.ezp import EZP, get_J_delta
 
 def simplyfy(d):
     ## only simplifies view onto the dict, does not do any rewriting
     return [a for a,b in d.items() if b==1]
 
+def getOptimizer():
+    opt = z3.Optimize()
+    opt.set(priority='pareto')
+    opt.set(maxsat_engine='rc2')
+    opt.add_soft(z3.BoolVal(True), weight=1,id='dummy1')
+    opt.add_soft(z3.BoolVal(True), weight=1,id='dummy2')
+    opt.add_soft(z3.BoolVal(True), weight=1,id='dummy3')
+    return opt
+    
+
 class WeakCz3IMP():
 
     def __init__(self,bb) -> None:
-            self.bb = bb
+            self.bb = bb.transform_to_z3_objects()
             ezp = EZP(bb)
-            self.J_delta = get_J_delta(ezp.partition)
+            self.J_delta = get_J_delta(ezp)
             self.compile_constraints()
             self.base_csp = self.translate()
 
@@ -30,7 +39,7 @@ class WeakCz3IMP():
 
         V,F = dict(), dict()
 
-        for i,c in enumerate(self.bb.conditionals, start=1):
+        for i,c in self.bb.conditionals.items():
             #t1 = time()
             if i not in self.J_delta.keys(): continue
             vMin, fMin = self.compile_query_into_psr(c,i)
@@ -51,7 +60,7 @@ class WeakCz3IMP():
         ands = [(f <= i) for i in fSum[0]]
         ors = z3.Not(z3.And([(f<i) for i in fSum[0]]))
         ands.append(ors)
-        implicit = [(0+i >=f) for i in vSum[0]]
+        implicit = [(i >=f) for i in vSum[0]]
         ands.extend(implicit)
         return ands
 
@@ -90,6 +99,14 @@ class WeakCz3IMP():
         ands.append(ors)
         implicit = [(eta +i >mv) for i in fsums]
         ands.extend(implicit)
+        
+        if len(fsums)==len(vsums):
+            if all([i in vsums for i in fsums]):
+                print('lhs is rhs', fsums)
+                return [eta > 0]
+        #b1=[j>0 for j in vsums if str(vsums)!='[0]']
+        #b2=[j>0 for j in fsums if str(fsums)!='[0]']
+        #return [(eta > 0+i - j) for i in vsums for j in fsums]+b1+b2
         return ands
 
     def encoding(self, etas: dict, vSums: dict, fSums: dict) -> list:
@@ -110,21 +127,20 @@ class WeakCz3IMP():
         return csp
 
     def compile_query_into_psr(self, query, index):
-        opt = Optimizer()
+        opt = getOptimizer()
         J_delta_keys = self.J_delta.keys()
-        [opt.add(z3.Implies(c.antecedence,c.consequence)) for j,c in self.bb.conditionals.items() if j not in J_delta_keys]
-        goals= [MaxSMTGoal() for j,c in self.bb.conditionals.items()]   ##setting goals also in j_delta for easier bookkeeping 
-        objectives = {g.add_soft(Not(c.falsifying()), weight=1) for j,c in goals.items()} 
+        [opt.add(z3.Not(c.falsify())) for j,c in self.bb.conditionals.items() if j not in J_delta_keys]
+        objectives = {j:opt.add_soft(z3.Not(c.falsify()), weight=1,id=j) for j,c in self.bb.conditionals.items() if j in J_delta_keys} 
         opt.push()
         opt.add(query.verify())
         vMin, fMin = [], []
-        for m,g in opt.pareto_optimize(goals):
-            ss =simplyfy({j:k.py_value() for j,k in enumerate(g,start=1) if j!=index})
+        while opt.check() != z3.unsat:
+            ss =simplyfy({j:k.value().py_value() for j,k in objectives.items() if j!=index})
             vMin.append(ss)
         opt.pop()
-        opt.add(query.falsifying())
-        for m,g in opt.pareto_optimize(goals):
-            ss =simplyfy({j:k.py_value() for j,k in enumerate(g,start=1) if j!=index})
-            vMin.append(ss)
+        opt.add(query.falsify())
+        while opt.check() != z3.unsat:
+            ss =simplyfy({j:k.value().py_value() for j,k in objectives.items() if j!=index})
+            fMin.append(ss)
         return vMin, fMin
 

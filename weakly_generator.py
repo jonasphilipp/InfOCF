@@ -17,6 +17,8 @@ from time import time_ns
 from pysmt.shortcuts import Solver,Implies
 from inference.weakly_system_z_rank import SystemZRankZ3
 from inference.weak_c_z3 import WeakCz3
+from extinf.weaklexinf import LexInf
+from extinf.weak_p_entailment import ExtendedPEntailment
 
 
 
@@ -46,11 +48,12 @@ def sampleVars(variables:List[str], u)->Tuple[List[str],List[str]]:
     returns two subsets of variables, possibly disjoint, possibly not.
     """
     #print(variables)
-    V1 = random.choice(range(2,u+1))
-    V2 = random.choice(range(2,u+1))
-    tvars = variables+['Top','Bottom']
-    v1 = random.choices(tvars, k=V1)
-    v2 = random.choices(tvars, k=V2)
+    V1 = random.choice(range(2,(u+1)//2))
+    V2 = random.choice(range(2,(u+1)//2))
+    tvars = variables
+    random.shuffle(tvars)
+    v1 = tvars[:V1]
+    v2 = tvars[V1:V1+V2]
 
     return v1,v2
 
@@ -69,6 +72,9 @@ def sampleConditional(variables:List[str], u)->List[str]:
     a,b = sampleVars(variables, u)
     return "(%s | %s)" % (sampleFormula(a),sampleFormula(b))
 
+def sampleFact(variables,u):
+    a,b = sampleVars(variables, u)
+    return "(Bottom | !(%s))" % (sampleFormula(b))
 
 
 def makeCKB(allVars:List[str], conditionals:List[str],filename:str):
@@ -114,13 +120,15 @@ def samplingWeaklyCKB(S:int,R:int,l:int, u:int) -> Tuple[str,Conditional,T]:
         COND= [parseQuery(c)[1] for c in conditionals]
         dummyCKB = BeliefBase([(v) for v in VAR], {i:c for i,c in enumerate(COND,start=1)}, "")
         part,_ = consistency(dummyCKB)
-        weak = test_weakly(dummyCKB)
-        if (part == True):
+        if (part != False):
             count_strongly+=1
-        if (part == False):
+            facts = [parseQuery(sampleFact(VAR,u//2))[1] for i in range(R//20)]
+            weakbb=BeliefBase([(v) for v in VAR], {i:c for i,c in enumerate(COND+facts,start=1)}, "")
+            weak = test_weakly(weakbb)
             if (weak==True):
+                print('ckb found')
                 break
-    return VAR, COND, dummyCKB, count_total,count_strongly
+    return VAR, COND, dummyCKB, weakbb, count_total,count_strongly
 
 
 def canonical(x):
@@ -155,6 +163,8 @@ def sampleQueries(ckb, VAR, Q, l, u):
     [s.add_assertion(Implies(j.antecedence,j.consequence)) for j in (ckb).conditionals.values()]
     sysz = SystemZRankZ3(ckb)
     crep = WeakCz3(ckb)
+    lexinf =LexInf(ckb)
+    pent = ExtendedPEntailment(ckb)
     infty = float('inf')
     counter = 0
     counterInfty = 0 
@@ -162,15 +172,21 @@ def sampleQueries(ckb, VAR, Q, l, u):
         query = (sampleConditional(VAR, u))
         counter +=1
         q=parseQuery(query)[1]
-        s.push()
+
         vf,ff = sysz.rank_query(q)
         if ff == infty or vf == infty:
             counterInfty +=1
+            continue
+        if pent.rank_query(q)==True:
+            print('follows by P')
             continue
 
         vMin, fMin = crep.compile_query_into_psr(q)
         difficult = checkDifficult(vMin, fMin)
         if difficult:
+            if lexinf.inference(q)==False:
+                print('bounded by lexinf')
+                continue
             found.append(query)
     return found,counter,counterInfty
         
@@ -223,9 +239,9 @@ def sampleCKBandQueries(S,R,l,u,Q,seed) -> T:
     seed: used for reproducability in pseudorandom generation
     """
     random.seed(seed)
-    VAR, COND, ckb, ct, cs = samplingWeaklyCKB(S,R,l,u)
-    queries = sampleQueries(ckb, VAR, Q, l, u)
-    return VAR, COND, ckb, queries, ct, cs
+    VAR, COND, baseckb, weakckb, ct, cs = samplingWeaklyCKB(S,R,l,u)
+    queries = sampleQueries(weakckb, VAR, Q, l, u)
+    return VAR, COND, baseckb, weakckb, queries, ct, cs
 
 
 

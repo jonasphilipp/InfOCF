@@ -25,7 +25,7 @@ class SystemZRankZ3():
         opt.add(formula)
         partition = self.partition
         opt.add(z3.And([z3.Not(c.make_A_then_not_B()) for c in partition[-1]]))
-        soft = partition[0:len(partition)-1]
+        soft = partition[0:-1]
         for i,s in enumerate(soft):
             obj = opt.add_soft(z3.And([z3.Not(c.make_A_then_not_B()) for c in s]), weight=2**i)
         result = opt.check()
