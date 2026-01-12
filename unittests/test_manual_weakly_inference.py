@@ -10,8 +10,8 @@ How to add cases
 Use `run_case(belief_base_str, queries_str, expected, systems=None)`:
 - belief_base_str / queries_str: inline belief base and queries text
 - expected: list[bool] aligned to the order of queries in `queries_str`
-- systems: defaults to ["system-z", "system-w", "lex_inf"]; z3 variants
-  are also exercised where available via pmaxsat selection
+- systems: defaults to ["p-entailment", "system-z", "system-w", "lex_inf"];
+  z3 variants are also exercised where available via pmaxsat selection
 
 Semantics
 ---------
@@ -36,11 +36,12 @@ def run_case(
 ):
     if systems is None:
         systems = [
+            "p-entailment",
             "system-z",
             "system-w",
             "lex_inf",
-            # Exercise z3 variants where available via pmaxsat selection in operator:
-            # We trigger z3 variants by passing pmaxsat_solver="z3" through InferenceManager API.
+            # exercise z3 variants where available via pmaxsat selection in operator:
+            # we trigger z3 variants by passing pmaxsat_solver="z3" through InferenceManager API.
         ]
 
     belief_base = parse_belief_base(belief_base_str)

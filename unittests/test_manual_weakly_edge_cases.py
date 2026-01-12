@@ -12,7 +12,7 @@ Use the helper `run_case(bb, qs, expected, systems=None)`:
 - bb: inline belief base (string)
 - qs: inline queries (string)
 - expected: list[bool] corresponding to queries order
-- systems: target systems; defaults to ["system-z","system-w","lex_inf"].
+- systems: target systems; defaults to ["p-entailment","system-z","system-w","lex_inf"].
   z3 variants are exercised for supported systems.
 
 Semantics
@@ -33,7 +33,7 @@ from parser.Wrappers import parse_belief_base, parse_queries
 
 def run_case(bb: str, qs: str, expected: list[bool], systems=None):
     if systems is None:
-        systems = ["system-z", "system-w", "lex_inf"]
+        systems = ["p-entailment", "system-z", "system-w", "lex_inf"]
     belief_base = parse_belief_base(bb)
     queries = parse_queries(qs)
     for sys in systems:
