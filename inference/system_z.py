@@ -68,7 +68,7 @@ class SystemZ(Inference):
             )  # type: ignore
         else:
             taut_solver = Solver(name=self.epistemic_state["smt_solver"])
-            taut_solver.add_assertion(query.antecedence)
+            taut_solver.add_assertion(query.make_A_then_not_B())
             for c in self.epistemic_state["partition"][-1]:
                 taut_solver.add_assertion(c.make_not_A_or_B())
             if not taut_solver.solve():
