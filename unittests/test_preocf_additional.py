@@ -10,6 +10,7 @@ from pysmt.shortcuts import And, Implies, Not, Or, Symbol
 from pysmt.typing import BOOL
 
 from inference.belief_base import BeliefBase
+from inference.conditional import Conditional
 from inference.preocf import PreOCF, RandomMinCRepPreOCF
 from parser.Wrappers import parse_belief_base
 
@@ -726,6 +727,476 @@ class TestPreOCFAdditional(unittest.TestCase):
             # Skip if random min c rep fails (dependency issues)
             self.skipTest(f"Simple impact load/save test skipped due to: {e}")
 
+    def test_save_and_load_metadata_pickle_format(self):
+        import tempfile
+        import pickle
+        from pathlib import Path
+
+        preocf = PreOCF.init_custom({"0": 1, "1": 0}, belief_base=None, signature=["a"])
+        preocf.save_meta("k", "v")
+
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "meta.pkl"
+            preocf.save_metadata(p)  # suffix .pkl -> pickle branch
+
+            preocf2 = PreOCF.init_custom({"0": 1, "1": 0}, belief_base=None, signature=["a"])
+            preocf2.load_metadata(p)
+            assert preocf2.load_meta("k") == "v"
+
+        # invalid payload in pickle should raise ValueError
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "invalid.pkl"
+            with p.open("wb") as fd:
+                pickle.dump([1, 2, 3], fd)  # not dict
+
+            with self.assertRaises(ValueError):
+                preocf2.load_metadata(p)
+
+    def test_system_z_extended_true_without_facts(self):
+        from unittest import mock
+        from inference.preocf import SystemZPreOCF
+
+        a = Symbol("a", BOOL)
+        b = Symbol("b", BOOL)
+        bb = BeliefBase(["a", "b"], {1: Conditional(b, a, "(b|a)")}, "bb")
+
+        with mock.patch("inference.preocf.consistency", return_value=([[bb.conditionals[1]]], (1, 1, 1))):
+            with mock.patch("inference.preocf.consistency_diagnostics", return_value={}):
+                sz = SystemZPreOCF(bb, extended=True)
+                assert sz.uses_extended_partition is True
+                assert sz.has_infinity_partition is True
+
+    def test_random_min_c_rep_import_impacts_pickle_branch(self):
+        import tempfile
+        import pickle
+        from pathlib import Path
+        from inference.preocf import PreOCF, RandomMinCRepPreOCF
+        from inference.conditional import Conditional
+
+        a = Symbol("a", BOOL)
+        b = Symbol("b", BOOL)
+        bb = BeliefBase(["a", "b"], {1: Conditional(b, a, "(b|a)")}, "bb")
+
+        inst = RandomMinCRepPreOCF.__new__(RandomMinCRepPreOCF)
+        ranks = PreOCF.create_bitvec_world_dict(bb.signature)
+        PreOCF.__init__(inst, ranks, bb.signature, bb.conditionals, "random_min_c_rep", None)
+        inst._csp = None
+        inst._optimizer = None
+
+        impact_data = {
+            "impacts": [0],
+            "conditionals_count": 1,
+            "ranking_system": "random_min_c_rep",
+            "signature": bb.signature,
+        }
+
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "impacts.pkl"
+            with p.open("wb") as fd:
+                pickle.dump(impact_data, fd)
+
+            inst.import_impacts(p)
+            assert inst._impacts == [0]        
+
+    # ---------------------------------------------------------------------------
+# Additional branch/edge coverage for inference/preocf.py
+# ---------------------------------------------------------------------------
+
+import pathlib
+import pickle
+import tempfile
+
+import pytest
+import warnings
+
+import inference.preocf as pr
+import inference.consistency_diagnostics as diag_mod
+
+from pysmt.shortcuts import FALSE, TRUE, Symbol
+from pysmt.typing import BOOL
+
+from inference.belief_base import BeliefBase
+from inference.conditional import Conditional
+
+
+def _bb(sig=("a",), conds=None, name="bb"):
+    if conds is None:
+        conds = {}
+    return BeliefBase(signature=list(sig), conditionals=conds, name=name)
+
+
+def test_preocf_metadata_type_validation_raises():
+    ranks = pr.PreOCF.create_bitvec_world_dict(["a"])
+    with pytest.raises(TypeError):
+        pr.CustomPreOCF(ranks, None, ["a"], metadata="not-a-dict")  # hits line 148
+
+
+def test_preocf_save_metadata_unknown_suffix_uses_fmt_and_invalid_fmt_raises(tmp_path):
+    ranks = pr.PreOCF.create_bitvec_world_dict(["a"])
+    ocf = pr.CustomPreOCF(ranks, None, ["a"], metadata={"k": "v"})
+
+    # suffix not .json/.pkl -> uses fmt (hits line 184)
+    p = tmp_path / "meta.data"
+    ocf.save_metadata(p, fmt="json")
+    assert p.exists() and p.read_text().strip().startswith("{")
+
+    # invalid fmt (hits line 196)
+    with pytest.raises(ValueError):
+        ocf.save_metadata(tmp_path / "meta2.data", fmt="nope")
+
+
+def test_preocf_save_metadata_json_dump_typeerror_is_wrapped(monkeypatch, tmp_path):
+    ranks = pr.PreOCF.create_bitvec_world_dict(["a"])
+    ocf = pr.CustomPreOCF(ranks, None, ["a"], metadata={"k": "v"})
+
+    def boom(*a, **k):
+        raise TypeError("forced")
+
+    monkeypatch.setattr(pr.json, "dump", boom)
+
+    with pytest.raises(TypeError, match="not JSON-serialisable"):
+        ocf.save_metadata(tmp_path / "meta.data", fmt="json")  # hits lines 193-194
+
+
+def test_create_bitvec_world_dict_without_signature_raises():
+    # signature=None and no cls.signature -> hits lines 333-337
+    with pytest.raises(ValueError):
+        pr.PreOCF.create_bitvec_world_dict()
+
+
+def test_preocf_base_z_partition_recursion_paths():
+    # Covers PreOCF.z_part2ocf + PreOCF._rec_z_rank (lines 465-480)
+
+    a = Symbol("a", BOOL)
+
+    # UNSAT in last partition -> returns partition_index+1 (hits line 480)
+    ocf1 = pr.CustomPreOCF({"0": 0, "1": 0}, None, ["a"])
+    cond_unsat = Conditional(consequence=a, antecedence=TRUE(), textRepresentation="(a|Top)")
+    ocf1._z_partition = [[], [cond_unsat]]
+    assert ocf1.z_part2ocf("0") == 2
+
+    # SAT all the way down to index 0 -> returns 0 (hits lines 475-478)
+    ocf2 = pr.CustomPreOCF({"0": 0, "1": 0}, None, ["a"])
+    cond_sat = Conditional(consequence=a, antecedence=a, textRepresentation="(a|a)")
+    ocf2._z_partition = [[cond_sat], [cond_sat]]
+    assert ocf2.z_part2ocf("0") == 0
+
+
+def test_preocf_c_vec2ocf_counts_violations_with_impacts():
+    # Covers lines 484-498
+    b = Symbol("b", BOOL)
+    ocf = pr.CustomPreOCF({"0": 0, "1": 0}, None, ["b"])
+    ocf.conditionals = {1: Conditional(consequence=b, antecedence=TRUE(), textRepresentation="(b|Top)")}
+    ocf._impacts = [5]
+    assert ocf.c_vec2ocf("0") == 5  # world "0" violates (b|Top)
+
+
+def test_preocf_impacts2ocf_unsat_adds_vector_value():
+    # Covers lines 565-574
+    b = Symbol("b", BOOL)
+    ocf = pr.CustomPreOCF({"0": 0, "1": 0}, None, ["b"])
+    ocf.conditionals = {1: Conditional(consequence=b, antecedence=TRUE(), textRepresentation="(b|Top)")}
+    vector = {1: 7}
+    assert ocf.impacts2ocf("0", vector) == 7  # unsat -> adds vector[last_index]
+
+
+def test_systemz_preocf_facts_success_sets_state_and_metadata(monkeypatch):
+    # Covers big "facts" branch (lines 662-756) + various accessors/formatters
+    a = Symbol("a", BOOL)
+    bb = _bb(sig=("a",), conds={})
+
+    part = [[Conditional(consequence=a, antecedence=a, textRepresentation="(a|a)")]]
+    stats = (1, 2, 3)
+
+    monkeypatch.setattr(pr, "parse_formula", lambda s: a)
+    monkeypatch.setattr(pr, "consistency", lambda _bb, weakly=False: (part, stats))
+    monkeypatch.setattr(pr, "consistency_diagnostics", lambda *a, **k: {"diag": "ok"})
+    monkeypatch.setattr(pr.logger, "warning", lambda *a, **k: None)
+
+    ocf = pr.SystemZPreOCF(bb, signature=("a",), facts=[a, "a"], extended=None)
+
+    assert ocf.uses_extended_partition is True
+    assert ocf.z_partition_stats == {"layers": 1, "calls": 2, "levels": 3}  # hits line 828
+    assert ocf.has_infinity_partition is True
+    assert ocf.infinity_partition_index == len(part) - 1  # hits 838-840 in "true" path elsewhere
+    assert ocf.infinity_partition == part[-1]            # hits 845-849 in "idx not None" path
+
+    # diagnostics dict path + formatting
+    monkeypatch.setattr(pr, "format_diagnostics_verbose", lambda _d: "DIAG")
+    assert ocf.format_diagnostics_line().startswith("diag: ")
+
+    # summary includes facts info (lines 891-903)
+    s = ocf.summary()
+    assert "facts=" in s and "extended=True" in s
+
+    # format_layers_with_conditionals (lines 915-925)
+    txt = ocf.format_layers_with_conditionals()
+    assert "Layer 0" in txt
+
+
+def test_systemz_preocf_facts_extended_false_emits_warning(monkeypatch):
+    # Hits logger.warning lines 668-671
+    a = Symbol("a", BOOL)
+    bb = _bb(sig=("a",), conds={})
+
+    part = [[Conditional(consequence=a, antecedence=a, textRepresentation="(a|a)")]]
+    stats = (1, 1, 1)
+
+    seen = {"warn": 0}
+    monkeypatch.setattr(pr, "parse_formula", lambda s: a)
+    monkeypatch.setattr(pr, "consistency", lambda _bb, weakly=False: (part, stats))
+    monkeypatch.setattr(pr, "consistency_diagnostics", lambda *a, **k: {"diag": "ok"})
+
+    def _warn(*a, **k):
+        seen["warn"] += 1
+
+    monkeypatch.setattr(pr.logger, "warning", _warn)
+
+    _ = pr.SystemZPreOCF(bb, signature=("a",), facts=["a"], extended=False)
+    assert seen["warn"] >= 1
+
+
+def test_systemz_preocf_facts_unknown_vars_raises(monkeypatch):
+    # Hits lines 689-694
+    a_unknown = Symbol("x", BOOL)
+    bb = _bb(sig=("a",), conds={})
+
+    monkeypatch.setattr(pr, "parse_formula", lambda s: a_unknown)
+
+    with pytest.raises(ValueError, match="unknown variable"):
+        _ = pr.SystemZPreOCF(bb, signature=("a",), facts=["x"], extended=None)
+
+
+def test_systemz_preocf_facts_wrong_entry_type_raises():
+    bb = _bb(sig=("a",), conds={})
+    with pytest.raises(TypeError):
+        _ = pr.SystemZPreOCF(bb, signature=("a",), facts=[123], extended=None)  # hits line 684
+
+
+def test_systemz_preocf_facts_inconsistent_partition_raises_with_diag(monkeypatch):
+    # Hits lines 741-747
+    a = Symbol("a", BOOL)
+    bb = _bb(sig=("a",), conds={})
+
+    stats = (0, 0, 0)
+    monkeypatch.setattr(pr, "parse_formula", lambda s: a)
+    monkeypatch.setattr(pr, "consistency", lambda _bb, weakly=False: (False, stats))
+    monkeypatch.setattr(pr, "consistency_diagnostics", lambda *a, **k: {"diag": "bad"})
+    monkeypatch.setattr(diag_mod, "format_diagnostics_verbose", lambda _d: "DIAGTEXT")
+
+    with pytest.raises(ValueError, match=r"system-z: .*DIAGTEXT"):
+        _ = pr.SystemZPreOCF(bb, signature=("a",), facts=["a"], extended=None)
+
+
+def test_systemz_preocf_infinity_partition_none_in_strict_mode(monkeypatch):
+    # Covers lines 838-840 (no infinity), 845-847, 871-878 (non-extended)
+    a = Symbol("a", BOOL)
+    bb = _bb(sig=("a",), conds={})
+
+    part = [[Conditional(consequence=a, antecedence=a, textRepresentation="(a|a)")]]
+    stats = (1, 2, 3)
+
+    monkeypatch.setattr(pr, "consistency", lambda _bb, weakly=False: (part, stats))
+    monkeypatch.setattr(pr, "consistency_diagnostics", lambda *a, **k: {"diag": "ok"})
+
+    ocf = pr.SystemZPreOCF(bb, signature=("a",), facts=None, extended=None)
+    assert ocf.uses_extended_partition is False
+    assert ocf.infinity_partition_index is None
+    assert ocf.infinity_partition is None
+
+    # "layers=[]"
+    ocf._z_partition = []
+    assert ocf.format_partition_layers() == "layers=[]"
+
+
+def test_systemz_preocf_diagnostics_property_filters_non_dict(monkeypatch):
+    # Hits lines 857-860 and 887 ("diag: none")
+    a = Symbol("a", BOOL)
+    bb = _bb(sig=("a",), conds={})
+
+    part = [[Conditional(consequence=a, antecedence=a, textRepresentation="(a|a)")]]
+    stats = (1, 1, 1)
+
+    monkeypatch.setattr(pr, "consistency", lambda _bb, weakly=False: (part, stats))
+    monkeypatch.setattr(pr, "consistency_diagnostics", lambda *a, **k: {"diag": "ok"})
+
+    ocf = pr.SystemZPreOCF(bb, signature=("a",), facts=None, extended=None)
+    ocf.save_meta("consistency_diagnostics", 123)  # non-dict
+    assert ocf.diagnostics is None
+    assert ocf.format_diagnostics_line() == "diag: none"
+
+
+def test_random_min_c_rep_signature_else_branch_is_executed(monkeypatch):
+    # Hits line 946 without running the heavy constructor
+    bb = _bb(sig=("a",), conds={})
+
+    def boom(cls, signature=None):
+        raise RuntimeError("stop-after-946")
+
+    monkeypatch.setattr(pr.PreOCF, "create_bitvec_world_dict", classmethod(boom))
+
+    with pytest.raises(RuntimeError, match="stop-after-946"):
+        _ = pr.RandomMinCRepPreOCF(bb, signature=["a"])
+
+
+def test_random_min_c_rep_no_solution_raises(monkeypatch):
+    # Hits line 978 by forcing Optimize.check() != sat
+    a = Symbol("a", BOOL)
+    bb = _bb(sig=("a",), conds={1: Conditional(consequence=a, antecedence=a, textRepresentation="(a|a)")})
+
+    monkeypatch.setattr(pr, "create_epistemic_state", lambda *a, **k: {"dummy": True})
+
+    class DummyCInf:
+        def __init__(self, _state): self.base_csp = []
+        def preprocess_belief_base(self, _timeout): return None
+
+    monkeypatch.setattr(pr, "CInference", DummyCInf)
+
+    class DummyOptimize:
+        def set(self, **k): return None
+        def add(self, *a): return None
+        def minimize(self, *a): return None
+        def check(self): return "not-sat"  # != z3.sat
+
+    monkeypatch.setattr(pr, "Optimize", DummyOptimize)
+
+    with pytest.raises(ValueError, match="no solution found"):
+        _ = pr.RandomMinCRepPreOCF(bb, signature=["a"])
+
+
+def test_export_import_impacts_error_paths(tmp_path):
+    # Covers lines 1028, 1046, 1052, 1056, 1062, 1069
+    a = Symbol("a", BOOL)
+    conds = {1: Conditional(consequence=a, antecedence=a, textRepresentation="(a|a)")}
+
+    inst = pr.RandomMinCRepPreOCF.__new__(pr.RandomMinCRepPreOCF)
+    ranks = pr.PreOCF.create_bitvec_world_dict(["a"])
+    pr.PreOCF.__init__(inst, ranks, ["a"], conds, "random_min_c_rep", None)
+    inst._impacts = [0]
+    inst._csp = None
+    inst._optimizer = None
+
+    # export_impacts invalid fmt (line 1028)
+    with pytest.raises(ValueError):
+        inst.export_impacts(tmp_path / "imp.data", fmt="nope")
+
+    # import_impacts invalid data structure (line 1046)
+    bad_json = tmp_path / "bad.json"
+    bad_json.write_text('[1,2,3]')
+    with pytest.raises(ValueError, match="does not contain a valid"):
+        inst.import_impacts(bad_json)
+
+    # import_impacts missing key (line 1052)
+    missing_key = tmp_path / "missing.json"
+    missing_key.write_text('{"impacts":[0],"conditionals_count":1,"ranking_system":"random_min_c_rep"}')
+    with pytest.raises(ValueError, match="missing required key"):
+        inst.import_impacts(missing_key)
+
+    # import_impacts size mismatch (line 1056)
+    mismatch = tmp_path / "mismatch.json"
+    mismatch.write_text('{"impacts":[0],"conditionals_count":2,"ranking_system":"random_min_c_rep","signature":["a"]}')
+    with pytest.raises(ValueError, match="size mismatch"):
+        inst.import_impacts(mismatch)
+
+    # import_impacts warnings (lines 1062, 1069) but still imports
+    warnfile = tmp_path / "warn.json"
+    warnfile.write_text('{"impacts":[0],"conditionals_count":1,"ranking_system":"other","signature":["x"]}')
+    with pytest.warns(RuntimeWarning) as rec:
+        inst.import_impacts(warnfile)
+    assert len(rec) >= 2
+    assert inst._impacts == [0]
+
+
+def test_custom_preocf_rank_world_missing_raises():
+    # Hits line 1209
+    ocf = pr.CustomPreOCF({"0": 0}, None, ["a"])
+    with pytest.raises(ValueError, match="provide custom ranking function"):
+        ocf.rank_world("1")
+
+
+def test_create_preocf_factory_branches(monkeypatch):
+    # Hits lines 1231-1238
+    monkeypatch.setattr(pr, "SystemZPreOCF", lambda *a, **k: "Z")
+    monkeypatch.setattr(pr, "RandomMinCRepPreOCF", lambda *a, **k: "R")
+    monkeypatch.setattr(pr, "CustomPreOCF", lambda *a, **k: "C")
+
+    assert pr.create_preocf("system-z", 1) == "Z"
+    assert pr.create_preocf("random_min_c_rep", 1) == "R"
+    assert pr.create_preocf("custom", 1) == "C"
+
+    with pytest.raises(ValueError, match="Unknown ranking system"):
+        pr.create_preocf("nope", 1)
+
+import unittest
+
+from inference.preocf import CustomPreOCF, SystemZPreOCF
+
+
+class _DummyCond:
+    def __init__(self, s: str):
+        self._s = s
+
+    def __str__(self) -> str:
+        return self._s
+
+
+class TestPreOCFEdgeCases(unittest.TestCase):
+    def test_create_bitvec_world_dict_uses_class_signature_when_none(self):
+        class _Tmp(CustomPreOCF):
+            signature = ["a", "b"]
+
+        worlds = _Tmp.create_bitvec_world_dict(signature=None)
+        # 2 variables -> 4 bitvector worlds
+        self.assertEqual(len(worlds), 4)
+        # values are None (dict.fromkeys)
+        self.assertTrue(all(v is None for v in worlds.values()))
+
+    def test_format_partition_layers_non_extended_uses_plain_sizes(self):
+        # Avoid heavy SystemZPreOCF __init__: build instance without calling it.
+        z = SystemZPreOCF.__new__(SystemZPreOCF)
+        z.signature = ["a", "b"]  # used by summary, harmless here
+        z._state = {"z_partition_extended": False}  # => uses_extended_partition == False
+        z._z_partition = [
+            [_DummyCond("(b|a)"), _DummyCond("(!b|a)")],
+            [_DummyCond("(c|a)")],
+        ]
+
+        self.assertEqual(z.format_partition_layers(short=True), "layers=[2,1]")
+
+    def test_summary_when_no_facts_sets_facts_none(self):
+        z = SystemZPreOCF.__new__(SystemZPreOCF)
+        z.signature = ["a", "b"]
+        z._state = {
+            "z_partition_extended": False,
+            "z_facts_present": False,  # triggers facts=None branch
+        }
+        z._z_partition = [[_DummyCond("(b|a)")]]  # non-empty so layers_str isn't empty
+
+        # metadata is a read-only property -> set backing field(s)
+        # (safe even if one of them is unused)
+        z._metadata = {}
+        try:
+            setattr(z, "_SystemZPreOCF__metadata", {})
+        except Exception:
+            pass
+
+        # diagnostics also often a read-only property; set backing field(s)
+        z._diagnostics = None
+        try:
+            setattr(z, "_SystemZPreOCF__diagnostics", None)
+        except Exception:
+            pass
+
+        s = z.summary(brief=True, include_facts=True)
+        self.assertIn("facts=None", s)
+
+    def test_format_layers_with_conditionals_no_partition(self):
+        z = SystemZPreOCF.__new__(SystemZPreOCF)
+        z.signature = ["a"]
+        z._state = {"z_partition_extended": False}
+        z._z_partition = None  # not a list -> triggers "(no partition)"
+
+        self.assertEqual(z.format_layers_with_conditionals(), "(no partition)")
 
 if __name__ == "__main__":
     unittest.main()

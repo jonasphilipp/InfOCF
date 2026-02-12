@@ -100,3 +100,132 @@ def test_formatter_runs():
     # Should contain key names
     for key in ["facts=", "bb=", "bb_w=", "combined=", "inf_inc="]:
         assert key in s
+
+# ---------------------------------------------------------------------------
+# Additional edge-case tests for consistency_diagnostics coverage gaps
+# ---------------------------------------------------------------------------
+
+import inference.consistency_diagnostics as cd
+from pysmt.shortcuts import Symbol
+from pysmt.typing import BOOL
+
+
+def test_facts_jointly_satisfiable_empty_list_true():
+    bb = _birds_bb()
+    assert cd.facts_jointly_satisfiable(bb.signature, []) is True
+
+
+def test_parse_fact_accepts_fnode():
+    bb = _birds_bb()
+    p = Symbol("p", BOOL)
+    assert cd.facts_jointly_satisfiable(bb.signature, [p]) in (True, False)
+
+
+def test_parse_fact_invalid_type_raises_typeerror():
+    bb = _birds_bb()
+    try:
+        cd.facts_jointly_satisfiable(bb.signature, [object()])  # type: ignore[list-item]
+        assert False, "expected TypeError"
+    except TypeError:
+        pass
+
+
+def test_augment_belief_base_with_empty_facts_returns_same_object():
+    bb = _birds_bb()
+    out = cd.augment_belief_base_with_facts(bb, [])
+    assert out is bb
+
+
+def test_inconsistent_facts_warn_path(monkeypatch):
+    bb = _birds_bb()
+    warned = {"called": False}
+
+    monkeypatch.setattr(cd.logger, "warning", lambda *a, **k: warned.__setitem__("called", True))
+
+    diag = cd.consistency_diagnostics(
+        bb,
+        extended=False,
+        uses_facts=True,
+        facts=["p", "!p"],  # inconsistent
+        on_inconsistent="warn",
+    )
+    assert diag["f_consistent"] is False
+    assert warned["called"] is True
+
+
+def test_inconsistent_facts_raise_path():
+    bb = _birds_bb()
+    import pytest
+
+    with pytest.raises(ValueError, match="Facts are mutually inconsistent"):
+        cd.consistency_diagnostics(
+            bb,
+            extended=False,
+            uses_facts=True,
+            facts=["p", "!p"],
+            on_inconsistent="raise",
+        )
+
+
+def test_precomputed_base_extended_is_used():
+    bb = _birds_bb()
+    # force the "precomputed" branch
+    precomputed = {"base_extended": ([[]], ([0], 0, 0))}
+    diag = cd.consistency_diagnostics(
+        bb,
+        extended=True,
+        uses_facts=False,
+        precomputed=precomputed,
+    )
+    assert "bb_w_consistent" in diag
+
+
+def test_precomputed_base_extended_false_sets_both_false():
+    bb = _birds_bb()
+    precomputed = {"base_extended": (False, ([0], 0, 0))}
+    diag = cd.consistency_diagnostics(
+        bb,
+        extended=True,
+        uses_facts=False,
+        precomputed=precomputed,
+    )
+    assert diag["bb_w_consistent"] is False
+    assert diag["bb_consistent"] is False
+
+
+def test_precomputed_combined_extended_is_used():
+    bb = _birds_bb()
+    precomputed = {
+        "base_extended": ([[]], ([0], 0, 0)),
+        "combined_extended": ([[]], ([0], 0, 0)),
+    }
+    diag = cd.consistency_diagnostics(
+        bb,
+        extended=True,
+        uses_facts=True,
+        facts=["b"],
+        precomputed=precomputed,
+    )
+    assert "c_consistent" in diag
+
+
+def test_precomputed_combined_standard_is_used():
+    bb = _birds_bb()
+    precomputed = {"combined_standard": ([[]], ([0], 0, 0))}
+    diag = cd.consistency_diagnostics(
+        bb,
+        extended=False,
+        uses_facts=True,
+        facts=["b"],
+        precomputed=precomputed,
+    )
+    assert "c_consistent" in diag
+
+
+def test_format_diagnostics_verbose_runs():
+    bb = _birds_bb()
+    diag = cd.consistency_diagnostics(bb, extended=True, uses_facts=True, facts=["b"])
+    s = cd.format_diagnostics_verbose(diag)
+    assert isinstance(s, str)
+    assert "facts_consistent=" in s
+    assert "belief_base_consistent=" in s

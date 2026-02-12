@@ -297,6 +297,134 @@ class TestCompileFunction(unittest.TestCase):
 
                 for world in dict1.keys():
                     self.assertEqual(dict1[world], dict2[world])
+import types
+import pytest
+
+import inference.c_revision as cr
+
+
+class _DummyRanking:
+    # nur damit compile_alt/compile_alt_fast initial laufen können
+    signature = ["A", "B"]
+    ranks = {"00": 0}
+
+    def rank_world(self, w: str) -> int:
+        return 0
+
+    def world_satisfies_conditionalization(self, w: str, _expr) -> bool:
+        return False
+
+
+def test_compile_alt_raises_if_missing_index_attr():
+    dummy_cond = types.SimpleNamespace(textRepresentation="X")  # kein .index
+    with pytest.raises(ValueError):
+        cr.compile_alt(_DummyRanking(), [dummy_cond])  # type: ignore[arg-type]
+
+
+def test_compile_alt_fast_raises_if_invalid_index():
+    # index None oder nicht int
+    from pysmt.shortcuts import Symbol
+    from inference.conditional import Conditional
+
+    A = Symbol("A")
+    B = Symbol("B")
+    cond = Conditional(A, B, "(A|B)")
+    cond.index = None  # invalid
+
+    with pytest.raises(ValueError):
+        cr.compile_alt_fast(_DummyRanking(), [cond])  # type: ignore[arg-type]
+
+
+def test_symbolize_minima_expression_skips_malformed_triple():
+    # malformed entry wird übersprungen
+    minima = {1: [[0, []]]}  # len(triple)<3
+    out = cr.symbolize_minima_expression(minima)
+    assert out == {1: []}
+
+
+def test_symbolize_minima_expression_includes_gamma_plus_when_enabled():
+    # accepted_indices & not gamma_plus_zero
+    minima = {1: [[3, [7], []]]}  # rank=3, accepted=[7], rejected=[]
+    out = cr.symbolize_minima_expression(minima, gamma_plus_zero=False)
+    assert 1 in out
+    assert len(out[1]) == 1  # accepted-term wurde erzeugt
+
+
+def test_encoding_emits_debug_logs_when_enabled(monkeypatch):
+    # debug logging
+    logs = {"debug": []}
+
+    class _L:
+        def isEnabledFor(self, *_a, **_k):
+            return True
+
+        def debug(self, msg, *args):
+            logs["debug"].append((msg, args))
+
+    monkeypatch.setattr(cr, "logger", _L())
+
+    from pysmt.shortcuts import Int
+
+    gammas = {1: (Int(0), Int(1))}
+    vSums = {1: [Int(0)]}
+    fSums = {1: [Int(0)]}
+    _ = cr.encoding(gammas, vSums, fSums)
+
+    assert any("gamma %s" in m for m, _ in logs["debug"])
+    assert any("vSums %s" in m for m, _ in logs["debug"])
+    assert any("fSums %s" in m for m, _ in logs["debug"])
+
+
+def test_translate_to_csp_fixed_gamma_plus_branch():
+    # fixed_gamma_plus wird als Int(const) gesetzt
+    compilation = ({1: []}, {1: []})
+    from pysmt.shortcuts import Int
+
+    csp = cr.translate_to_csp(compilation, fixed_gamma_plus={1: 5})
+    assert isinstance(csp, list)
+
+
+def test_solve_and_get_model_returns_none_when_unsat_no_opt():
+    # ohne minimize_vars -> Solver unsat -> None
+    from pysmt.shortcuts import FALSE
+
+    assert cr.solve_and_get_model([FALSE()], minimize_vars=None) is None
+
+
+def test_c_revision_uses_model_to_csp_and_injects_fixed_gamma_plus(monkeypatch):
+    from pysmt.shortcuts import TRUE
+    from inference.conditional import Conditional
+    from pysmt.shortcuts import Symbol
+
+    A = Symbol("A")
+    B = Symbol("B")
+    c = Conditional(A, B, "(A|B)")
+    c.index = 1
+
+    class _Model:
+        def to_csp(self, **_kw):
+            return [TRUE()]  # satisfiable dummy
+
+    # vermeide echte Optimierung: gib leeres Model zurück
+    monkeypatch.setattr(cr, "solve_and_get_model", lambda _csp, _min: {})
+
+    out = cr.c_revision(
+        _DummyRanking(), [c], model=_Model(), fixed_gamma_plus={1: 9}
+    )
+    assert out is not None
+    assert out["gamma+_1"] == 9
+
+
+def test_extract_cond_masks_returns_none_on_signature_miss():
+    # KeyError -> None
+    from pysmt.shortcuts import Symbol
+    from inference.conditional import Conditional
+
+    A = Symbol("A")
+    B = Symbol("B")
+    c = Conditional(A, B, "(A|B)")
+    # sig_index absichtlich ohne "A"/"B"
+    assert cr._extract_cond_masks(c, {}) is None
 
 
 if __name__ == "__main__":
