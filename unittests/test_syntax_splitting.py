@@ -1,13 +1,12 @@
 # test_syntax_splitting.py
-# Benötigt: pytest, pysmt, more-itertools (wie im Projekt)
-
+# Benötigt: pytest, pysmt, more-itertools 
 import os
 import pytest
-from pysmt.shortcuts import Symbol, TRUE, Or
+from pysmt.shortcuts import Symbol, TRUE, And, Or, Not
 
 from inference.conditional import Conditional
 
-# Importiere die zu testenden Funktionen aus deinem Modul
+# Importiere die zu testenden Funktionen 
 from synsplit.split import (
     atoms,
     interpretations,
@@ -27,13 +26,13 @@ from synsplit.split import (
 
 @pytest.fixture
 def symbols():
-    # drei Standardatome
-    return Symbol("a"), Symbol("b"), Symbol("c")
+    # vier Standardatome
+    return Symbol("a"), Symbol("b"), Symbol("c"), Symbol("d"), Symbol("f"), Symbol("g"), Symbol("o"), Symbol("r"), Symbol("s"), Symbol("u")
 
 
 @pytest.fixture
 def cond_a(symbols):
-    a, b, c = symbols
+    a, b, c, d, f, g, o, r, s, u = symbols
     # (a | ⊤): nutzt ausschließlich Atom 'a'
     cnd = Conditional(consequence=a, antecedence=TRUE(), textRepresentation="(a|⊤)")
     cnd.index = 1
@@ -42,7 +41,7 @@ def cond_a(symbols):
 
 @pytest.fixture
 def cond_b(symbols):
-    a, b, c = symbols
+    a, b, c, d, f, g, o, r, s, u = symbols
     # (b | ⊤): nutzt ausschließlich Atom 'b'
     cnd = Conditional(consequence=b, antecedence=TRUE(), textRepresentation="(b|⊤)")
     cnd.index = 2
@@ -51,7 +50,7 @@ def cond_b(symbols):
 
 @pytest.fixture
 def cond_ab(symbols):
-    a, b, c = symbols
+    a, b, c, d, f, g, o, r, s, u = symbols
     # (a ∨ b | ⊤): Nicht-Literal, nutzt {a,b}
     cnd = Conditional(
         consequence=Or(a, b), antecedence=TRUE(), textRepresentation="(a∨b|⊤)"
@@ -59,6 +58,165 @@ def cond_ab(symbols):
     cnd.index = 3
     return cnd
 
+@pytest.fixture
+def cond_a_b(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (a | b): Literal, nutzt {a,b}
+    cnd = Conditional(
+        consequence=a, antecedence=b, textRepresentation="(a|b)"
+    )
+    cnd.index = 4
+    return cnd
+
+@pytest.fixture
+def cond_b_c(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (b | c): Literal, nutzt {b,c}
+    cnd = Conditional(
+        consequence=b, antecedence=c, textRepresentation="(b|c)"
+    )
+    cnd.index = 5
+    return cnd
+
+@pytest.fixture
+def cond_nota_c(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (¬a | c): Literal, nutzt {¬a,c}
+    cnd = Conditional(
+        consequence=Not(a), antecedence=c, textRepresentation="(¬a|c)"
+    )
+    cnd.index = 6
+    return cnd
+
+@pytest.fixture
+def cond_d_b(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (d | b): Literal, nutzt {d,b}
+    cnd = Conditional(
+        consequence=d, antecedence=b, textRepresentation="(d|b)"
+    )
+    cnd.index = 7
+    return cnd
+
+@pytest.fixture
+def cond_g_b(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (g | b): Literal, nutzt {g,b}
+    cnd = Conditional(
+        consequence=g, antecedence=b, textRepresentation="(g|b)"
+    )
+    cnd.index = 8
+    return cnd
+
+@pytest.fixture
+def cond_nots_r(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (¬s | r): Literal, nutzt {¬s,r}
+    cnd = Conditional(
+        consequence=Not(s), antecedence=r, textRepresentation="(¬s|r)"
+    )
+    cnd.index = 9
+    return cnd
+
+@pytest.fixture
+def cond_notr_s(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (¬r | s): Literal, nutzt {¬r,s}
+    cnd = Conditional(
+        consequence=Not(r), antecedence=s, textRepresentation="(¬r|s)"
+    )
+    cnd.index = 10
+    return cnd
+
+@pytest.fixture
+def cond_b_sr(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (b | sr): Literal, nutzt {b,s,r}
+    cnd = Conditional(
+        consequence=b, antecedence=And(s,r), textRepresentation="(b|sr)"
+    )
+    cnd.index = 11
+    return cnd
+
+@pytest.fixture
+def cond_u_or(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (u | or): Literal, nutzt {u,o,r}
+    cnd = Conditional(
+        consequence=u, antecedence=And(o,r), textRepresentation="(u|or)"
+    )
+    cnd.index = 12
+    return cnd
+
+@pytest.fixture
+def cond_noto_r(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (¬o | r): Literal, nutzt {¬o,r}
+    cnd = Conditional(
+        consequence=Not(o), antecedence=r, textRepresentation="(¬o|r)"
+    )
+    cnd.index = 13
+    return cnd
+
+@pytest.fixture
+def cond_o_snotr(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (o | s¬r): Literal, nutzt {o,s,¬r}
+    cnd = Conditional(
+        consequence=o, antecedence=And(s,Not(r)), textRepresentation="(o|s¬r)"
+    )
+    cnd.index = 14
+    return cnd
+
+@pytest.fixture
+def cond_notd_a(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (¬d | a): Literal, nutzt {¬d,a}
+    cnd = Conditional(
+        consequence=Not(d), antecedence=a, textRepresentation="(¬d|a)"
+    )
+    cnd.index = 15
+    return cnd
+
+@pytest.fixture
+def cond_c_ab(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (c | ab): Literal, nutzt {c,a,b}
+    cnd = Conditional(
+        consequence=c, antecedence=And(a,b), textRepresentation="(c|ab)"
+    )
+    cnd.index = 16
+    return cnd
+
+@pytest.fixture
+def cond_c_b(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (c | b): Literal, nutzt {c,b}
+    cnd = Conditional(
+        consequence=c, antecedence=b, textRepresentation="(c|b)"
+    )
+    cnd.index = 17
+    return cnd
+
+@pytest.fixture
+def cond_g_c(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (g | c): Literal, nutzt {g,c}
+    cnd = Conditional(
+        consequence=g, antecedence=c, textRepresentation="(g|c)"
+    )
+    cnd.index = 18
+    return cnd
+
+@pytest.fixture
+def cond_f_b(symbols):
+    a, b, c, d, f, g, o, r, s, u = symbols
+    # (f | b): Literal, nutzt {f,b}
+    cnd = Conditional(
+        consequence=f, antecedence=b, textRepresentation="(f|b)"
+    )
+    cnd.index = 19
+    return cnd
 
 # ------------------------------
 # atoms(): für Conditional & FNode
@@ -80,7 +238,7 @@ def test_atoms_on_conditional_and_formula(cond_a, cond_ab):
 # ------------------------------
 
 def test_interpretation_truth(symbols):
-    a, b, c = symbols
+    a, b, c, d, f, g, o, r, s, u = symbols
     # A = a ∨ b
     A = Or(a, b)
 
@@ -113,7 +271,7 @@ def test_in_sigma3_only_positive_and_negative(cond_a, cond_ab):
 # ------------------------------
 # calculate_conditional_syntax_splittings()
 # ------------------------------
-
+""" 
 def test_calculate_conditional_syntax_splittings_simple(cond_a, cond_b):
     # Sigma = {a,b}
     sigma = {"a", "b"}
@@ -136,12 +294,35 @@ def test_calculate_conditional_syntax_splittings_simple(cond_a, cond_b):
                 found = True
                 break
     assert found, "Erwartetes ({a}|{b})-Splitting nicht gefunden."
+"""   
+
+# [Heyninck et al. AIII 2023, Example 8]
+def test_calculate_conditional_syntax_splittings_simple(cond_c_b, cond_g_c, cond_f_b):
+    # Sigma = {b,c,g,f}
+    sigma = {"b", "c", "g", "f"}
+    # Delta enthält drei Konditionale
+    delta = {cond_c_b, cond_g_c, cond_f_b}
+
+    splittings = calculate_conditional_syntax_splittings(sigma, delta)
+
+    #   sigma3 = {b}, sigma1 = {c,g}, sigma2 = {f}
+    #   delta1 = {cond_c_b, cond_g_c}, delta2 = {cond_f_b}
+    assert len(splittings) > 0
+
+    # prüfe, dass unser erwartetes Splitting tatsächlich enthalten ist
+    found = False
+    for sigma3, sigma1, sigma2, delta1, delta2 in splittings:
+        if sigma3 == {"b"} and sigma1 == {"c", "g"} and sigma2 == {"f"}:
+            if delta1 == {cond_c_b, cond_g_c} and delta2 == {cond_f_b}:
+                found = True
+                break
+    assert found, "Erwartetes Bicycle-Splitting (Σ3={b}, Σ1={c,g}, Σ2={f}) nicht gefunden."  
 
 
 # ------------------------------
 # filter_genuine_splittings()
 # ------------------------------
-
+"""
 def test_filter_genuine_splittings_behaviour(cond_a, cond_b):
     # baue zwei Splittings: eins genuin, eins nicht genuin
     sigma3 = set()
@@ -154,15 +335,40 @@ def test_filter_genuine_splittings_behaviour(cond_a, cond_b):
     filtered = filter_genuine_splittings([genuin, not_genuin])
     assert genuin in filtered
     assert not_genuin not in filtered
+"""
+
+# [Spiegel et al. IJCAI 2025, Example 8] // [Heyninck et al. AIII 2023, Example 8]
+def test_filter_genuine_splittings_behaviour(cond_nots_r, cond_notr_s, cond_b_sr, cond_o_snotr, cond_noto_r, cond_u_or, cond_c_b, cond_g_c, cond_f_b):
+    # baue zwei Splittings: eins genuin, eins nicht genuin
+    # erste Splitting ([Spiegel et al. IJCAI 2025, Example 8]):
+    sigma3 = {"s", "r"}
+    sigma1 = {"b"}
+    sigma2 = {"o", "u"}
+    delta1 = {cond_nots_r, cond_notr_s}
+    delta2 = {cond_nots_r, cond_notr_s, cond_b_sr, cond_o_snotr, cond_noto_r, cond_u_or}
+    # nicht genuin: delta1 ⊆ delta2
+    not_genuin = (sigma3, sigma1, sigma2, delta1, delta2)
+
+    # zweite Splitting ([Heyninck et al. AIII 2023, Example 8]):
+    sigma3_b = {"b"}
+    sigma1_b = {"f"}
+    sigma2_b = {"c", "g"}
+    delta1_b = {cond_f_b}
+    delta2_b = {cond_c_b, cond_g_c}
+    # genuin: delta1 \nsubseteq delta2 und delta2 \nsubseteq delta1 
+    genuin = (sigma3_b, sigma1_b, sigma2_b, delta1_b, delta2_b)
+
+    filtered = filter_genuine_splittings([genuin, not_genuin])
+    assert genuin in filtered
+    assert not_genuin not in filtered    
 
 
 # ------------------------------
 # filter_safe_conditional_syntax_splittings()
 # ------------------------------
 
+"""
 def test_filter_safe_conditional_syntax_splittings_trivial_empty_relevant(cond_a, cond_b):
-    # Konstruiere ein Splitting, bei dem "relevante" Konditionale leer werden.
-    # Trick: generalized=True und alle Konditionale liegen ausschließlich in sigma3.
     sigma3 = {"a", "b"}
     sigma1 = set()
     sigma2 = set()
@@ -173,20 +379,62 @@ def test_filter_safe_conditional_syntax_splittings_trivial_empty_relevant(cond_a
     # generalized=True: Konditionale, die nur in sigma3 liegen, werden ignoriert ⇒ relevant = ∅
     safe = filter_safe_conditional_syntax_splittings(splittings, generalized=True)
     assert (sigma3, sigma1, sigma2, delta1, delta2) in safe
+"""
 
-
-def test_filter_safe_conditional_syntax_splittings_non_generalized_simple(cond_a, cond_b):
-    # Sigma = {a,b}, sigma3 = ∅, sigma1={a}, sigma2={b}, Delta wie zuvor
-    sigma3 = set()
-    sigma1 = {"a"}
-    sigma2 = {"b"}
-    delta1 = {cond_a}
-    delta2 = {cond_b}
+# [Spiegel et al. IJCAI 2025, Example 7]
+def test_filter_safe_conditional_syntax_splittings_trivial_empty_relevant(cond_nots_r, cond_notr_s, cond_b_sr, cond_g_b, cond_o_snotr, cond_noto_r, cond_u_or):
+    sigma3 = {"s", "r"}
+    sigma1 = {"b", "g"}
+    sigma2 = {"o", "u"}
+    delta1 = {cond_nots_r, cond_notr_s, cond_b_sr, cond_g_b}
+    delta2 = {cond_nots_r, cond_notr_s, cond_o_snotr, cond_noto_r, cond_u_or}
     splittings = [(sigma3, sigma1, sigma2, delta1, delta2)]
 
-    # Für diese sehr einfache, „separierte“ KB sollte Sicherheit erfüllt sein
+    # generalized=True
+    safe = filter_safe_conditional_syntax_splittings(splittings, generalized=True)
+    assert (sigma3, sigma1, sigma2, delta1, delta2) in safe
+
+    # generalized=False
+    safe = filter_safe_conditional_syntax_splittings(splittings, generalized=False)
+    assert (sigma3, sigma1, sigma2, delta1, delta2) not in safe
+
+
+# [Heyninck et al. AIII 2023, Example 7]
+def test_filter_safe_conditional_syntax_splittings_non_generalized_simple(cond_a_b, cond_b_c, cond_nota_c, cond_d_b):
+    # Sigma = {a,b,c,d}, sigma3 = {b}, sigma1={a,c}, sigma2={d}, 
+    sigma3 = {"b"}
+    sigma1 = {"a","c"}
+    sigma2 = {"d"}
+    delta1 = {cond_a_b, cond_b_c, cond_nota_c}
+    delta2 = {cond_d_b}
+    splittings = [(sigma3, sigma1, sigma2, delta1, delta2)]
+
+    # generalized=True
+    safe = filter_safe_conditional_syntax_splittings(splittings, generalized=True)
+    assert (sigma3, sigma1, sigma2, delta1, delta2) in safe
+
+    # generalized=False
     safe = filter_safe_conditional_syntax_splittings(splittings, generalized=False)
     assert (sigma3, sigma1, sigma2, delta1, delta2) in safe
+
+
+# [Heyninck et al. AIII 2023, Example 6]
+def test_filter_safe_conditional_syntax_splittings_rejects_non_safe_splitting(cond_d_b, cond_notd_a, cond_c_ab):
+    # Sigma = {a,b,c,d}, sigma3 = {a,b}, sigma1={d}, sigma2={c}, 
+    sigma3 = {"a","b"}
+    sigma1 = {"d"}
+    sigma2 = {"c"}
+    delta1 = {cond_d_b, cond_notd_a}
+    delta2 = {cond_c_ab}
+    splittings = [(sigma3, sigma1, sigma2, delta1, delta2)]
+
+    # generalized=True
+    safe = filter_safe_conditional_syntax_splittings(splittings, generalized=True)
+    assert (sigma3, sigma1, sigma2, delta1, delta2) not in safe
+
+    # generalized=False
+    safe = filter_safe_conditional_syntax_splittings(splittings, generalized=False)
+    assert (sigma3, sigma1, sigma2, delta1, delta2) not in safe    
 
 
 # ------------------------------

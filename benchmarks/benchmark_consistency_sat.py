@@ -55,8 +55,8 @@ from inference.consistency_sat import consistency, consistency_indices
 BENCH_ROUNDS = int(os.getenv("BENCH_ROUNDS", "6"))
 BENCH_WARMUP = int(os.getenv("BENCH_WARMUP", "1"))
 
-# MAX_COND hält das Ganze im Zaum – consistency() macht viele solver calls
-MAX_COND = int(os.getenv("MAX_COND", "40"))  # Default bewusst moderat
+# MAX_COND hält das Ganze in Grenzen
+MAX_COND = int(os.getenv("MAX_COND", "40"))  
 
 # ---------------------------
 # Helper: BeliefBases generieren
@@ -75,7 +75,6 @@ def _make_belief_base(n_vars: int, n_conds: int, seed: int, make_unsat: bool) ->
     idx = 1
 
     # viele "einfache" Regeln (p | ⊤) oder (¬p | ⊤)
-    # Das erzeugt solver-lastige Arbeit, bleibt aber kontrollierbar.
     for _ in range(max(0, n_conds - (2 if make_unsat else 0))):
         v = vars_[rnd.randrange(n_vars)]
         cons = v if rnd.random() < 0.7 else Not(v)  # etwas mehr positive Literale

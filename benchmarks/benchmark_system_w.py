@@ -21,7 +21,6 @@ def _add_project_paths():
         if c.is_dir():
             sys.path.insert(0, str(c.resolve()))
 
-    # falls inference/ als Unterordner gefunden wird: dessen Parent auch hinzufügen
     try:
         for d in root.rglob("inference"):
             if d.is_dir():

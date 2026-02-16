@@ -114,7 +114,7 @@ def test_conditional_construction(benchmark):
 
 def test_conditional_set_insert(benchmark, conditional_list):
     """
-    Misst: Hashing + Set-Insert (wichtig für Performance in eurem Code).
+    Misst: Hashing + Set-Insert.
     """
     benchmark.group = "conditional-set-insert"
 
@@ -147,7 +147,6 @@ def test_conditional_dict_keys(benchmark, conditional_list):
 def test_conditional_equality_pairs(benchmark, conditional_list):
     """
     Misst: viele Equality-Vergleiche.
-    Falls Conditional kein __eq__ hat, misst es trotzdem die Objektgleichheit (Baseline).
     """
     benchmark.group = "conditional-eq"
 

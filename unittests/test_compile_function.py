@@ -297,6 +297,7 @@ class TestCompileFunction(unittest.TestCase):
 
                 for world in dict1.keys():
                     self.assertEqual(dict1[world], dict2[world])
+                    
 import types
 import pytest
 

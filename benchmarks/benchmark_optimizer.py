@@ -118,7 +118,7 @@ def _make_epistemic_state_with_nf_cnf_dict(
     return {
         "pool": pool,
         "nf_cnf_dict": nf_cnf_dict,
-        # optional: pmaxsat_solver steuert RC2-Backend (default "g3" in eurem Code)
+        # optional: pmaxsat_solver steuert RC2-Backend 
         "pmaxsat_solver": "rc2g3",
     }
 

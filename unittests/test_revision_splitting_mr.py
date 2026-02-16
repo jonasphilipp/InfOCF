@@ -19,7 +19,6 @@ from inference.c_revision import (
 # ------------------------------
 SIGMA = ["a", "b", "c"]  # Reihenfolge = Bitpositionen
 
-# Welt-OCF Ψ (Notation "abc" / "ab¬c" ...)
 PSI_HUMAN = {
     "abc": 3,
     "ab¬c": 1,
