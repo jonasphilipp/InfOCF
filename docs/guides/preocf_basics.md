@@ -11,7 +11,7 @@ You will:
 
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:preocf-basics:system-z:start]"
    end="[docs:preocf-basics:system-z:end]"
 %}
@@ -21,7 +21,7 @@ You will:
 
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:preocf-basics:verbose:start]"
    end="[docs:preocf-basics:verbose:end]"
 %}
@@ -31,7 +31,7 @@ You will:
 
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:preocf-basics:tpo:start]"
    end="[docs:preocf-basics:tpo:end]"
 %}

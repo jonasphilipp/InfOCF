@@ -12,7 +12,7 @@ You will:
 
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:c-revision:basic:start]"
    end="[docs:c-revision:basic:end]"
 %}
@@ -22,7 +22,7 @@ You will:
 
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:c-revision:fixed-gamma:start]"
    end="[docs:c-revision:fixed-gamma:end]"
 %}
@@ -32,7 +32,7 @@ You will:
 
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:c-revision:incremental:start]"
    end="[docs:c-revision:incremental:end]"
 %}

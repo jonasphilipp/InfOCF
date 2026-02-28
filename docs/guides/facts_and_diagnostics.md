@@ -11,7 +11,7 @@ You will:
 
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:diagnostics:extended-no-facts:start]"
    end="[docs:diagnostics:extended-no-facts:end]"
 %}
@@ -25,7 +25,7 @@ Current behavior: facts are represented by adding weak constraints of the form `
 
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:diagnostics:with-facts:start]"
    end="[docs:diagnostics:with-facts:end]"
 %}

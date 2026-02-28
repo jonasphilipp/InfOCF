@@ -22,7 +22,7 @@ Example code:
 
 ```python
 {%
-   include "../../show_preocf_minimal.py"
+   include "../../scripts/show_preocf_minimal.py"
    start="[docs:quickstart-minimal:start]"
    end="[docs:quickstart-minimal:end]"
 %}
