@@ -205,6 +205,11 @@ node_modules/
 # OS specific
 .DS_Store
 
+# generated results and state
+results/
+birds_state.json
+synsplit/output/
+
 # local files
 .roomodes
 .taskmasterconfig

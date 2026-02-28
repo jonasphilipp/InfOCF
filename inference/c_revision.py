@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Protocol, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
+
+if TYPE_CHECKING:
+    from inference.belief_base import BeliefBase
 
 import z3
 from pysmt.fnode import FNode
@@ -116,7 +119,7 @@ def compile_alt(
             acc_list: list[int] = []
             rej_list: list[int] = []
 
-            # Skip the leading conditional itself – only consider *other* conditionals
+            # Skip the leading conditional itself - only consider *other* conditionals
             for cond in revision_conditionals:
                 if int(cast(int, cond.index)) == key_index:
                     continue
@@ -154,8 +157,8 @@ def compile_alt_fast(
     2. Evaluate *all* conditionals for that world (both A→B and A→¬B) just once;
     3. Distribute the resulting triple to the respective vMin/fMin buckets.
 
-    The number of expensive solver calls drops from O(|C|²·|W|) to
-    O(|C|·|W|).
+    The number of expensive solver calls drops from O(|C|^2 * |W|) to
+    O(|C| * |W|).
     """
 
     # Signature lookup for mask extraction
@@ -256,11 +259,11 @@ def symbolize_minima_expression(
             # to zero and thus dominate the minima undesirably. Furthermore, if a
             # world does not violate any conditional (no rejected indices) it will
             # again yield a rank-only cost of zero.  This special-case is handled
-            # by *skipping* such triples altogether – except when gamma_plus are *not* all
+            # by *skipping* such triples altogether - except when gamma_plus are *not* all
             # fixed to zero, in which case the gamma_plus variables still have influence.
             # ------------------------------------------------------------------
             # NOTE: We no longer skip gamma_plus-only triples because, with gamma_plus fixed to 0, they
-            #       translate to a *plain* rank cost of 0 – exactly what the original
+            #       translate to a *plain* rank cost of 0 - exactly what the original
             #       c-representation requires for some fMin sets.  Omitting them made
             #       gamma_minus vectors too small (e.g. gamma_minus_2=1 instead of 2).  The downstream
             #       logic already replaces gamma_plus-terms with the bare rank when
@@ -353,6 +356,13 @@ def translate_to_csp(
     return csp
 
 
+def _convert_csp_to_z3(csp: list[FNode]) -> list:
+    """Convert pysmt expressions to native z3 expressions."""
+    pysmt_solver = Solver(name="z3")
+    converter = pysmt_solver.converter
+    return [converter.convert(expr) for expr in csp]
+
+
 def solve_and_get_model(
     csp: list[FNode], minimize_vars: list[str] | None = None
 ) -> dict[str, int] | None:
@@ -367,11 +377,7 @@ def solve_and_get_model(
         first model found is returned without optimisation.
     """
 
-    # Convert pysmt expressions to native z3 expressions so we can leverage
-    # z3's *Optimize* capabilities.
-    pysmt_solver = Solver(name="z3")
-    converter = pysmt_solver.converter
-    z3_csp = [converter.convert(expr) for expr in csp]
+    z3_csp = _convert_csp_to_z3(csp)
 
     # If no optimisation requested, fall back to a plain satisfiable model.
     if not minimize_vars:
@@ -399,7 +405,58 @@ def solve_and_get_model(
     return None
 
 
-# Choose which compilation backend to use – fast by default.
+def solve_pareto_front(
+    csp: list[FNode],
+    minimize_vars: list[str],
+    *,
+    max_solutions: int | None = None,
+) -> list[dict[str, int]]:
+    """Enumerate all Pareto-optimal solutions for *minimize_vars* subject to *csp*.
+
+    Uses z3's built-in Pareto optimisation (``priority='pareto'``) which
+    internally enumerates the full Pareto front via successive ``check()``
+    calls.
+
+    Arguments
+    ---------
+    csp : list[pysmt.FNode]
+        Constraint set (pysmt expressions).
+    minimize_vars : list[str]
+        Variable names to be minimised in the Pareto sense.
+    max_solutions : int | None
+        Optional cap on the number of solutions returned.  ``None`` means
+        enumerate the entire Pareto front.
+
+    Returns
+    -------
+    list[dict[str, int]]
+        Each dict maps variable names to their integer values in a
+        Pareto-optimal solution.  Empty list when no feasible solution exists.
+    """
+    if not minimize_vars:
+        single = solve_and_get_model(csp)
+        return [single] if single is not None else []
+
+    z3_csp = _convert_csp_to_z3(csp)
+
+    opt = z3.Optimize()
+    opt.set(priority="pareto")
+    opt.add(*z3_csp)
+
+    for vname in minimize_vars:
+        opt.minimize(z3.Int(vname))
+
+    results: list[dict[str, int]] = []
+    while opt.check() == z3.sat:
+        m = opt.model()
+        results.append({d.name(): cast(Any, m[d]).as_long() for d in m.decls()})
+        if max_solutions is not None and len(results) >= max_solutions:
+            break
+
+    return results
+
+
+# Choose which compilation backend to use - fast by default.
 _compile_backend = compile_alt_fast
 
 
@@ -471,6 +528,114 @@ def c_revision(
                     model_dict[key] = 0
 
     return model_dict
+
+
+def c_revision_pareto_front(
+    ranking_function: PreOCF,
+    revision_conditionals: list[Conditional],
+    gamma_plus_zero: bool = False,
+    fixed_gamma_minus: dict[int, int] | None = None,
+    fixed_gamma_plus: dict[int, int] | None = None,
+    *,
+    model: HasToCSP | None = None,
+    max_solutions: int | None = None,
+) -> list[dict[str, int]]:
+    """Enumerate all Pareto-optimal gamma_minus vectors for c-revision.
+
+    Same interface as :func:`c_revision` with an additional *max_solutions*
+    parameter.  Returns a list of Pareto-optimal model dicts (empty list if
+    infeasible).
+
+    When *gamma_plus_zero* is True the returned vectors are the Pareto front
+    of the gamma_minus (impact) space, analogous to the set of all minimal
+    eta-vectors from c-representation.
+    """
+    if model is None:
+        compilation = _compile_backend(ranking_function, revision_conditionals)
+        csp = translate_to_csp(
+            compilation,
+            gamma_plus_zero,
+            fixed_gamma_plus=fixed_gamma_plus,
+            fixed_gamma_minus=fixed_gamma_minus,
+        )
+    else:
+        csp = model.to_csp(
+            gamma_plus_zero=gamma_plus_zero,
+            fixed_gamma_plus=fixed_gamma_plus,
+            fixed_gamma_minus=fixed_gamma_minus,
+        )
+
+    minimize_vars = [
+        f"gamma-_{cond.index}"
+        for cond in revision_conditionals
+        if not (fixed_gamma_minus and cond.index in fixed_gamma_minus)
+    ]
+
+    solutions = solve_pareto_front(csp, minimize_vars, max_solutions=max_solutions)
+
+    # patch fixed / zero values into every solution
+    for sol in solutions:
+        if fixed_gamma_minus:
+            for i, val in fixed_gamma_minus.items():
+                sol[f"gamma-_{i}"] = int(val)
+        if fixed_gamma_plus:
+            for i, val in fixed_gamma_plus.items():
+                sol[f"gamma+_{i}"] = int(val)
+        if gamma_plus_zero:
+            for cond in revision_conditionals:
+                key = f"gamma+_{cond.index}"
+                if key not in sol and not (
+                    fixed_gamma_plus and cond.index in fixed_gamma_plus
+                ):
+                    sol[key] = 0
+
+    return solutions
+
+
+def c_inference_pareto_front(
+    belief_base: "BeliefBase",
+    *,
+    max_solutions: int | None = None,
+) -> list[tuple[int, ...]]:
+    """Enumerate Pareto-optimal eta vectors via the c-inference CSP.
+
+    Builds the c-inference constraint satisfaction problem for *belief_base*
+    (using the MaxSAT-based compilation from :class:`CInference`) and
+    enumerates all Pareto-minimal eta vectors.
+
+    This is the library equivalent of the ``calculate_pareto_front`` helper
+    that previously lived in ``run_c_revision_birds_custom.py``.
+
+    Parameters
+    ----------
+    belief_base : BeliefBase
+        Knowledge base whose c-representations are to be enumerated.
+    max_solutions : int | None
+        Optional cap on the number of Pareto-optimal vectors returned.
+
+    Returns
+    -------
+    list[tuple[int, ...]]
+        Each tuple contains the eta values ordered by conditional index
+        (ascending).  Empty list when no c-representation exists
+        (inconsistent KB).
+    """
+    # lazy imports to avoid circular dependency chains
+    from inference.c_inference import CInference  # noqa: E402
+    from inference.inference_manager import create_epistemic_state  # noqa: E402
+
+    es = create_epistemic_state(belief_base, "c-inference", "z3", "rc2", weakly=False)
+    c_inf = CInference(es)
+    c_inf.preprocess_belief_base(0)
+    csp = c_inf.base_csp
+
+    n = len(belief_base.conditionals)
+    minimize_vars = [f"eta_{i}" for i in range(1, n + 1)]
+
+    solutions = solve_pareto_front(csp, minimize_vars, max_solutions=max_solutions)
+
+    indices = sorted(belief_base.conditionals.keys())
+    return [tuple(sol.get(f"eta_{i}", 0) for i in indices) for sol in solutions]
 
 
 # ----------------------------------------------------------------------------
