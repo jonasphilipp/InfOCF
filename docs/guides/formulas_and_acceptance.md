@@ -9,6 +9,8 @@ You will:
 
 ### Formula ranks
 
+*Source: [`scripts/show_preocf.py`](../../scripts/show_preocf.py)*
+
 ```python
 {%
    include "../../scripts/show_preocf.py"
@@ -18,6 +20,8 @@ You will:
 ```
 
 ### Conditional acceptance
+
+*Source: [`scripts/show_preocf.py`](../../scripts/show_preocf.py)*
 
 ```python
 {%

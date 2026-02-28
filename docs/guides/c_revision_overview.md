@@ -30,6 +30,8 @@ You will:
 
 ### Incremental compilation
 
+*Source: [`scripts/show_preocf.py`](../../scripts/show_preocf.py)*
+
 ```python
 {%
    include "../../scripts/show_preocf.py"

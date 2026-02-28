@@ -20,6 +20,8 @@ Steps:
 
 Example code:
 
+*Source: [`scripts/show_preocf_minimal.py`](../../scripts/show_preocf_minimal.py)*
+
 ```python
 {%
    include "../../scripts/show_preocf_minimal.py"
@@ -29,5 +31,4 @@ Example code:
 ```
 
 Notes:
-- The code above is included from `show_preocf_minimal.py` (single source of truth).
 - For details, see API: `inference.preocf.PreOCF`, `parser.Wrappers`.

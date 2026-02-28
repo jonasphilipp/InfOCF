@@ -9,6 +9,8 @@ You will:
 
 ### Extended System Z partition (no facts)
 
+*Source: [`scripts/show_preocf.py`](../../scripts/show_preocf.py)*
+
 ```python
 {%
    include "../../scripts/show_preocf.py"
@@ -18,6 +20,8 @@ You will:
 ```
 
 ### System Z with facts (examples A–E)
+
+*Source: [`scripts/show_preocf.py`](../../scripts/show_preocf.py)*
 
 Note: When facts are provided, System Z automatically uses extended partitioning (unless you explicitly pass `extended=False`). You typically do not need to set `extended=True` yourself.
 

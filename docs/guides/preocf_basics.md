@@ -9,6 +9,8 @@ You will:
 
 ### Create System Z and compute some ranks
 
+*Source: [`scripts/show_preocf.py`](../../scripts/show_preocf.py)*
+
 ```python
 {%
    include "../../scripts/show_preocf.py"
@@ -19,6 +21,8 @@ You will:
 
 ### Compute all ranks and verbose representation
 
+*Source: [`scripts/show_preocf.py`](../../scripts/show_preocf.py)*
+
 ```python
 {%
    include "../../scripts/show_preocf.py"
@@ -28,6 +32,8 @@ You will:
 ```
 
 ### Convert ranks to total preorder (TPO)
+
+*Source: [`scripts/show_preocf.py`](../../scripts/show_preocf.py)*
 
 ```python
 {%
