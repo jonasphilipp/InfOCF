@@ -1,0 +1,250 @@
+Sigma: {'v', 'k', 'm', 'c', 'e'}
+Delta: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Konditionale Syntax-Splittings:
+
+Sigma3: set()
+Sigma1: set(), Sigma2: {'v', 'k', 'm', 'c', 'e'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v'}
+Sigma1: set(), Sigma2: {'m', 'e', 'c', 'k'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'k'}
+Sigma1: set(), Sigma2: {'v', 'e', 'm', 'c'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'m'}
+Sigma1: set(), Sigma2: {'v', 'e', 'c', 'k'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'c'}
+Sigma1: set(), Sigma2: {'v', 'e', 'm', 'k'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'e'}
+Sigma1: set(), Sigma2: {'v', 'c', 'm', 'k'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'k'}
+Sigma1: set(), Sigma2: {'m', 'c', 'e'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'm'}
+Sigma1: set(), Sigma2: {'c', 'e', 'k'}
+Delta1: {(v|m)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'c'}
+Sigma1: set(), Sigma2: {'m', 'k', 'e'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'e'}
+Sigma1: set(), Sigma2: {'m', 'c', 'k'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'m', 'k'}
+Sigma1: set(), Sigma2: {'v', 'c', 'e'}
+Delta1: {(m|k)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'c', 'k'}
+Sigma1: set(), Sigma2: {'v', 'm', 'e'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'e', 'k'}
+Sigma1: set(), Sigma2: {'v', 'm', 'c'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'m', 'c'}
+Sigma1: set(), Sigma2: {'v', 'k', 'e'}
+Delta1: {(c|m)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'m', 'c'}
+Sigma1: {'e'}, Sigma2: {'v', 'k'}
+Delta1: {(c|m), (m|e), (!c|e)}, Delta2: {(c|m), (!v,!c|k), (v|m), (m|k)}
+
+Sigma3: {'m', 'e'}
+Sigma1: set(), Sigma2: {'v', 'c', 'k'}
+Delta1: {(m|e)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'c', 'e'}
+Sigma1: set(), Sigma2: {'v', 'm', 'k'}
+Delta1: {(!c|e)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'm', 'k'}
+Sigma1: set(), Sigma2: {'c', 'e'}
+Delta1: {(v|m), (m|k)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'c', 'k'}
+Sigma1: set(), Sigma2: {'m', 'e'}
+Delta1: {(!v,!c|k)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'e', 'k'}
+Sigma1: set(), Sigma2: {'m', 'c'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'm', 'c'}
+Sigma1: set(), Sigma2: {'k', 'e'}
+Delta1: {(c|m), (v|m)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'm', 'c'}
+Sigma1: {'e'}, Sigma2: {'k'}
+Delta1: {(c|m), (m|e), (!c|e), (v|m)}, Delta2: {(c|m), (!v,!c|k), (v|m), (m|k)}
+
+Sigma3: {'v', 'm', 'e'}
+Sigma1: set(), Sigma2: {'c', 'k'}
+Delta1: {(m|e), (v|m)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'c', 'e'}
+Sigma1: set(), Sigma2: {'m', 'k'}
+Delta1: {(!c|e)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'m', 'c', 'k'}
+Sigma1: set(), Sigma2: {'v', 'e'}
+Delta1: {(c|m), (m|k)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'m', 'c', 'k'}
+Sigma1: {'e'}, Sigma2: {'v'}
+Delta1: {(c|m), (m|e), (!c|e), (m|k)}, Delta2: {(c|m), (!v,!c|k), (v|m), (m|k)}
+
+Sigma3: {'m', 'e', 'k'}
+Sigma1: set(), Sigma2: {'v', 'c'}
+Delta1: {(m|e), (m|k)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'e', 'c', 'k'}
+Sigma1: set(), Sigma2: {'v', 'm'}
+Delta1: {(!c|e)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'m', 'c', 'e'}
+Sigma1: set(), Sigma2: {'v', 'k'}
+Delta1: {(c|m), (m|e), (!c|e)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'c', 'm', 'k'}
+Sigma1: set(), Sigma2: {'e'}
+Delta1: {(c|m), (!v,!c|k), (v|m), (m|k)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'e', 'm', 'k'}
+Sigma1: set(), Sigma2: {'c'}
+Delta1: {(m|e), (v|m), (m|k)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'e', 'c', 'k'}
+Sigma1: set(), Sigma2: {'m'}
+Delta1: {(!c|e), (!v,!c|k)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'e', 'm', 'c'}
+Sigma1: set(), Sigma2: {'k'}
+Delta1: {(c|m), (m|e), (!c|e), (v|m)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'m', 'e', 'c', 'k'}
+Sigma1: set(), Sigma2: {'v'}
+Delta1: {(c|m), (m|e), (!c|e), (m|k)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'k', 'm', 'c', 'e'}
+Sigma1: set(), Sigma2: set()
+Delta1: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Genuine konditionale Syntax-Splittings:
+
+Sigma3: {'m', 'c'}
+Sigma1: {'e'}, Sigma2: {'v', 'k'}
+Delta1: {(c|m), (m|e), (!c|e)}, Delta2: {(c|m), (!v,!c|k), (v|m), (m|k)}
+
+Sigma3: {'v', 'm', 'c'}
+Sigma1: {'e'}, Sigma2: {'k'}
+Delta1: {(c|m), (m|e), (!c|e), (v|m)}, Delta2: {(c|m), (!v,!c|k), (v|m), (m|k)}
+
+Sigma3: {'m', 'c', 'k'}
+Sigma1: {'e'}, Sigma2: {'v'}
+Delta1: {(c|m), (m|e), (!c|e), (m|k)}, Delta2: {(c|m), (!v,!c|k), (v|m), (m|k)}
+
+Sichere konditionale Syntax-Splittings:
+
+Sigma3: set()
+Sigma1: set(), Sigma2: {'v', 'k', 'm', 'c', 'e'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v'}
+Sigma1: set(), Sigma2: {'m', 'e', 'c', 'k'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'m'}
+Sigma1: set(), Sigma2: {'v', 'e', 'c', 'k'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'c'}
+Sigma1: set(), Sigma2: {'v', 'e', 'm', 'k'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'c'}
+Sigma1: set(), Sigma2: {'m', 'k', 'e'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Genuine sichere konditionale Syntax-Splittings:
+
+Generalisierte sichere konditionale Syntax-Splittings:
+
+Sigma3: set()
+Sigma1: set(), Sigma2: {'v', 'k', 'm', 'c', 'e'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v'}
+Sigma1: set(), Sigma2: {'m', 'e', 'c', 'k'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'m'}
+Sigma1: set(), Sigma2: {'v', 'e', 'c', 'k'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'c'}
+Sigma1: set(), Sigma2: {'v', 'e', 'm', 'k'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'm'}
+Sigma1: set(), Sigma2: {'c', 'e', 'k'}
+Delta1: {(v|m)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'c'}
+Sigma1: set(), Sigma2: {'m', 'k', 'e'}
+Delta1: set(), Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'m', 'c'}
+Sigma1: set(), Sigma2: {'v', 'k', 'e'}
+Delta1: {(c|m)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'m', 'c'}
+Sigma1: {'e'}, Sigma2: {'v', 'k'}
+Delta1: {(c|m), (m|e), (!c|e)}, Delta2: {(c|m), (!v,!c|k), (v|m), (m|k)}
+
+Sigma3: {'v', 'm', 'c'}
+Sigma1: set(), Sigma2: {'k', 'e'}
+Delta1: {(c|m), (v|m)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'm', 'c'}
+Sigma1: {'e'}, Sigma2: {'k'}
+Delta1: {(c|m), (m|e), (!c|e), (v|m)}, Delta2: {(c|m), (!v,!c|k), (v|m), (m|k)}
+
+Sigma3: {'m', 'c', 'e'}
+Sigma1: set(), Sigma2: {'v', 'k'}
+Delta1: {(c|m), (m|e), (!c|e)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'c', 'm', 'k'}
+Sigma1: set(), Sigma2: {'e'}
+Delta1: {(c|m), (!v,!c|k), (v|m), (m|k)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'e', 'm', 'c'}
+Sigma1: set(), Sigma2: {'k'}
+Delta1: {(c|m), (m|e), (!c|e), (v|m)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Sigma3: {'v', 'k', 'm', 'c', 'e'}
+Sigma1: set(), Sigma2: set()
+Delta1: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}, Delta2: {(m|e), (m|k), (c|m), (!c|e), (!v,!c|k), (v|m)}
+
+Genuine generalisierte sichere konditionale Syntax-Splittings:
+
+Sigma3: {'m', 'c'}
+Sigma1: {'e'}, Sigma2: {'v', 'k'}
+Delta1: {(c|m), (m|e), (!c|e)}, Delta2: {(c|m), (!v,!c|k), (v|m), (m|k)}
+
+Sigma3: {'v', 'm', 'c'}
+Sigma1: {'e'}, Sigma2: {'k'}
+Delta1: {(c|m), (m|e), (!c|e), (v|m)}, Delta2: {(c|m), (!v,!c|k), (v|m), (m|k)}
