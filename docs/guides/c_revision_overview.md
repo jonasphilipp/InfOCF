@@ -30,7 +30,7 @@ You will:
 
 ### Incremental compilation
 
-*Source: [`scripts/show_preocf.py`](../../scripts/show_preocf.py)*
+*Source: [`scripts/show_preocf.py`](https://github.com/jonasphilipp/InfOCF/blob/main/scripts/show_preocf.py)*
 
 ```python
 {%

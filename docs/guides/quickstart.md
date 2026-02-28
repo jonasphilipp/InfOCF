@@ -20,7 +20,7 @@ Steps:
 
 Example code:
 
-*Source: [`scripts/show_preocf_minimal.py`](../../scripts/show_preocf_minimal.py)*
+*Source: [`scripts/show_preocf_minimal.py`](https://github.com/jonasphilipp/InfOCF/blob/main/scripts/show_preocf_minimal.py)*
 
 ```python
 {%
