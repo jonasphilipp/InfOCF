@@ -512,8 +512,8 @@ class InferenceManager:
             "pmaxsat_solver",
         ]
 
-        # Build an empty DataFrame with desired columns without relying on "columns=" typing quirks
-        df = pd.DataFrame({c: [] for c in columns})
+        # use object dtype so pandas 2.x doesn't infer float64 and reject boolean assignments
+        df = pd.DataFrame({c: pd.Series([], dtype=object) for c in columns})
 
         inference_instance = create_inference_instance(self.epistemic_state)
 
