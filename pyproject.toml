@@ -206,7 +206,7 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
-source = ["infocf", "inference", "parser"]
+source = ["infocf", "inference", "parser", "synsplit"]
 omit = [
     "*/tests/*",
     "*/test_*",
