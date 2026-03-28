@@ -14,6 +14,7 @@ Key Features:
 """
 
 import sys
+from importlib import import_module
 from importlib.metadata import PackageNotFoundError, version
 
 # Version management - sync with pyproject.toml
@@ -30,62 +31,34 @@ if sys.version_info < (3, 11):
 # Core logging functionality (always available)
 from .log_setup import get_logger, setup_logging
 
-# Core inference framework
-try:
-    from inference.belief_base import BeliefBase
-    from inference.c_inference import CInference
+_LAZY_IMPORTS = {
+    "BeliefBase": ("inference.belief_base", "BeliefBase"),
+    "CInference": ("inference.c_inference", "CInference"),
+    "Conditional": ("inference.conditional", "Conditional"),
+    "consistency": ("inference.consistency_sat", "consistency"),
+    "Inference": ("inference.inference", "Inference"),
+    "InferenceManager": ("inference.inference_manager", "InferenceManager"),
+    "LexInf": ("inference.lex_inf", "LexInf"),
+    "LexInfZ3": ("inference.lex_inf_z3", "LexInfZ3"),
+    "PEntailment": ("inference.p_entailment", "PEntailment"),
+    "PreOCF": ("inference.preocf", "PreOCF"),
+    "SystemZPreOCF": ("inference.preocf", "SystemZPreOCF"),
+    "RandomMinCRepPreOCF": ("inference.preocf", "RandomMinCRepPreOCF"),
+    "CustomPreOCF": ("inference.preocf", "CustomPreOCF"),
+    "Queries": ("inference.queries", "Queries"),
+    "SystemW": ("inference.system_w", "SystemW"),
+    "SystemWZ3": ("inference.system_w_z3", "SystemWZ3"),
+    "SystemZ": ("inference.system_z", "SystemZ"),
+    "parse_belief_base": ("parser.Wrappers", "parse_belief_base"),
+    "parse_belief_base_from_str": ("parser.Wrappers", "parse_belief_base_from_str"),
+    "parse_formula": ("parser.Wrappers", "parse_formula"),
+    "parse_queries": ("parser.Wrappers", "parse_queries"),
+    "parse_queries_from_str": ("parser.Wrappers", "parse_queries_from_str"),
+    "parseCKB": ("parser.Wrappers", "parseCKB"),
+    "parseQuery": ("parser.Wrappers", "parseQuery"),
+}
 
-    # Core data structures
-    from inference.conditional import Conditional
-
-    # Utility functions
-    from inference.consistency_sat import consistency
-    from inference.inference import Inference
-    from inference.inference_manager import InferenceManager
-    from inference.lex_inf import LexInf
-    from inference.lex_inf_z3 import LexInfZ3
-    from inference.p_entailment import PEntailment
-
-    # PreOCF functionality
-    from inference.preocf import (
-        CustomPreOCF,
-        PreOCF,
-        RandomMinCRepPreOCF,
-        SystemZPreOCF,
-    )
-    from inference.queries import Queries
-    from inference.system_w import SystemW
-
-    # Z3-optimized variants
-    from inference.system_w_z3 import SystemWZ3
-
-    # Main inference operators
-    from inference.system_z import SystemZ
-
-    # Parser functionality
-    from parser.Wrappers import (
-        parse_belief_base,
-        parse_belief_base_from_str,
-        parse_formula,
-        parse_queries,
-        parse_queries_from_str,
-        parseCKB,
-        parseQuery,
-    )
-
-    _INFERENCE_AVAILABLE = True
-
-except ImportError as e:
-    # Graceful degradation if inference modules aren't available
-    import warnings
-
-    warnings.warn(
-        f"Inference modules not available: {e}. "
-        "Only logging functionality will be accessible.",
-        UserWarning,
-        stacklevel=2,
-    )
-    _INFERENCE_AVAILABLE = False
+_INFERENCE_AVAILABLE = True
 
 # Package metadata
 __author__ = "Christoph Beierle, Jonas Haldimann, Arthur Sanin, Aron Spang, Leon Schwarzer, Lars-Phillip Spiegel, Martin von Berg"
@@ -145,6 +118,17 @@ if _INFERENCE_AVAILABLE:
             "parseQuery",
         ]
     )
+
+
+def __getattr__(name):
+    """Lazily import heavy inference modules to avoid package init cycles."""
+    if name not in _LAZY_IMPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module_name, attr_name = _LAZY_IMPORTS[name]
+    module = import_module(module_name)
+    value = getattr(module, attr_name)
+    globals()[name] = value
+    return value
 
 
 def get_package_info():

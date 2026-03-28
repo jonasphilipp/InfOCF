@@ -24,11 +24,22 @@ import pathlib
 import pickle
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Iterator, MutableMapping
+from dataclasses import dataclass
 from typing import Callable
 
 from BitVector import BitVector
 from pysmt.fnode import FNode
-from pysmt.shortcuts import FALSE, Not, Solver, Symbol, get_free_variables
+from pysmt.shortcuts import (
+    FALSE,
+    TRUE,
+    And,
+    Not,
+    Or,
+    Solver,
+    Symbol,
+    get_free_variables,
+)
 from pysmt.typing import BOOL
 from z3 import Optimize, sat, z3
 
@@ -47,6 +58,50 @@ from parser.Wrappers import parse_formula
 
 # Create a logger object
 logger = get_logger(__name__)
+
+
+@dataclass(frozen=True)
+class SystemZSymbolicBucket:
+    """Symbolic descriptor for one System Z rank bucket."""
+
+    rank: int
+    formula: FNode
+    partition_index: int | None
+    layer_size: int
+    is_infinity: bool
+
+
+class DenseWorldRankMapping(MutableMapping[str, int | None]):
+    """Mapping view over a dense internal rank store indexed by world number."""
+
+    def __init__(self, parent: "PreOCF"):
+        self._parent = parent
+
+    def __getitem__(self, world: str) -> int | None:
+        return self._parent._get_rank_value(world)
+
+    def __setitem__(self, world: str, rank: int | None) -> None:
+        self._parent._set_rank_value(world, rank)
+
+    def __delitem__(self, world: str) -> None:
+        self._parent._set_rank_value(world, None)
+
+    def __iter__(self) -> Iterator[str]:
+        return self._parent.iter_worlds()
+
+    def __len__(self) -> int:
+        return self._parent.world_count
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, MutableMapping):
+            return dict(self.items()) == dict(other.items())
+        if isinstance(other, dict):
+            return dict(self.items()) == other
+        return NotImplemented  # type: ignore[return-value]
+
+    def copy(self) -> dict[str, int | None]:
+        return dict(self.items())
+
 
 # parms: bb, ranks
 
@@ -127,14 +182,33 @@ class PreOCF(ABC):
 
     def __init__(
         self,
-        ranks: dict[str, None | int],
+        ranks: dict[str, None | int] | None,
         signature: list | None,
         conditionals: dict[int, Conditional] | None,
         ranking_system: str,
         metadata: dict[str, object] | None = None,
     ):
-        self.ranks = ranks
         self.signature = signature
+        if signature is not None and ranks is None:
+            self._world_count = 2 ** len(signature)
+            self._rank_store: list[int | None] = [None] * self._world_count
+            self.ranks = DenseWorldRankMapping(self)  # type: ignore[assignment]
+            self._dense_ranks_enabled = True
+        else:
+            if ranks is None:
+                raise ValueError("ranks may only be None when a signature is provided")
+            self.ranks = ranks
+            self._rank_store = []
+            self._world_count = len(ranks)
+            self._dense_ranks_enabled = False
+        if signature is not None:
+            self._signature_symbols = [Symbol(name, BOOL) for name in signature]
+            self._neg_signature_symbols = [
+                Not(symbol) for symbol in self._signature_symbols
+            ]
+        else:
+            self._signature_symbols = []
+            self._neg_signature_symbols = []
         # conditionals can be None for CustomPreOCF
         self.conditionals = conditionals
         self.ranking_system = ranking_system
@@ -147,6 +221,60 @@ class PreOCF(ABC):
             self._metadata = metadata
         else:
             raise TypeError("metadata must be a dict[str, object] or None")
+
+    @property
+    def world_count(self) -> int:
+        return self._world_count
+
+    def world_to_index(self, world: str) -> int:
+        if self.signature is None:
+            raise ValueError("world_to_index requires a named signature")
+        if len(world) != len(self.signature) or any(bit not in "01" for bit in world):
+            raise KeyError(f"invalid world bitstring: {world}")
+        return int(world, 2)
+
+    def index_to_world(self, index: int) -> str:
+        if self.signature is None:
+            raise ValueError("index_to_world requires a named signature")
+        if index < 0 or index >= self.world_count:
+            raise IndexError(f"world index out of bounds: {index}")
+        return format(index, f"0{len(self.signature)}b")
+
+    def iter_worlds(self) -> Iterator[str]:
+        if self._dense_ranks_enabled:
+            for index in range(self.world_count):
+                yield self.index_to_world(index)
+            return
+        yield from self.ranks.keys()
+
+    def iter_world_indices(self) -> Iterator[int]:
+        if self._dense_ranks_enabled:
+            yield from range(self.world_count)
+            return
+        for world in self.ranks.keys():
+            yield self.world_to_index(world)
+
+    def _get_rank_value(self, world: str) -> int | None:
+        if self._dense_ranks_enabled:
+            return self._rank_store[self.world_to_index(world)]
+        return self.ranks[world]
+
+    def _set_rank_value(self, world: str, rank: int | None) -> None:
+        if self._dense_ranks_enabled:
+            self._rank_store[self.world_to_index(world)] = rank
+            return
+        self.ranks[world] = rank
+
+    def _get_rank_value_by_index(self, index: int) -> int | None:
+        if self._dense_ranks_enabled:
+            return self._rank_store[index]
+        return self.ranks[self.index_to_world(index)]
+
+    def _set_rank_value_by_index(self, index: int, rank: int | None) -> None:
+        if self._dense_ranks_enabled:
+            self._rank_store[index] = rank
+            return
+        self.ranks[self.index_to_world(index)] = rank
 
     # ------------------------------------------------------------------
     # Metadata convenience API
@@ -360,8 +488,9 @@ class PreOCF(ABC):
     """
 
     def is_ocf(self) -> bool:
-        for world in self.ranks.keys():
-            if self.ranks[world] is None or self.ranks[world] < 0:  # type: ignore
+        for world in self.iter_worlds():
+            rank = self._get_rank_value(world)
+            if rank is None or rank < 0:
                 return False
         return True
 
@@ -383,7 +512,7 @@ class PreOCF(ABC):
         if self.signature is None:
             raise ValueError("marginalize requires a named signature")
         ranks: dict[str, int | None] = {}
-        for world in self.ranks.keys():
+        for world in self.iter_worlds():
             # remove all bits whose index matches the one of the signature elements in marginalization
             new_world = "".join(
                 [
@@ -392,13 +521,13 @@ class PreOCF(ABC):
                     if self.signature[i] not in marginalization
                 ]
             )
-            if self.ranks[world] is not None:
+            world_rank = self._get_rank_value(world)
+            if world_rank is not None:
                 if ranks.get(new_world) is None:
-                    ranks[new_world] = self.ranks[world]
+                    ranks[new_world] = world_rank
                 else:
                     # Both values are guaranteed to be int here due to the check above
                     curr_rank = ranks[new_world]
-                    world_rank = self.ranks[world]
                     assert curr_rank is not None and world_rank is not None
                     ranks[new_world] = min(curr_rank, world_rank)
         # Build new signature list by removing marginalized variables
@@ -420,8 +549,7 @@ class PreOCF(ABC):
         self, world: str, conditionalization: FNode
     ) -> bool:
         solver = Solver(name="z3")
-        world_symbols = self.symbolize_bitvec(world)
-        [solver.add_assertion(s) for s in world_symbols]
+        self.add_world_assertions(solver, world)
         solver.add_assertion(conditionalization)
         result: bool = solver.solve()
         return result
@@ -429,9 +557,21 @@ class PreOCF(ABC):
     def filter_worlds_by_conditionalization(
         self, conditionalization: FNode
     ) -> list[str]:
+        if self._dense_ranks_enabled:
+            matching_worlds: list[str] = []
+            solver = Solver(name="z3")
+            for index in self.iter_world_indices():
+                solver.push()
+                self.add_world_index_assertions(solver, index)
+                solver.add_assertion(conditionalization)
+                if solver.solve():
+                    matching_worlds.append(self.index_to_world(index))
+                solver.pop()
+            return matching_worlds
+
         return [
             w
-            for w in self.ranks.keys()
+            for w in self.iter_worlds()
             if self.world_satisfies_conditionalization(w, conditionalization)
         ]
 
@@ -445,26 +585,43 @@ class PreOCF(ABC):
         self, conditionalization: FNode
     ) -> dict[str, None | int]:
         worlds = self.filter_worlds_by_conditionalization(conditionalization)
-        conditionalized_ranks = {w: self.ranks[w] for w in worlds}
+        conditionalized_ranks = {w: self._get_rank_value(w) for w in worlds}
         return conditionalized_ranks
 
     def compute_all_ranks(self) -> dict[str, None | int]:
-        return {w: self.rank_world(w) for w in self.ranks.keys()}
+        return {w: self.rank_world(w) for w in self.iter_worlds()}
 
     @abstractmethod
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
         """Return the rank of a world; must be implemented by subclasses."""
         raise NotImplementedError
 
-    def symbolize_bitvec(self, bitvec: str) -> list[FNode]:
+    def _rank_world_index(self, index: int, force_calculation: bool = False) -> int:
+        return self.rank_world(self.index_to_world(index), force_calculation)
+
+    def symbolize_world_index(self, index: int) -> list[FNode]:
         if self.signature is None:
-            raise ValueError("symbolize_bitvec requires a named signature")
-        sig = self.signature
-        symbols = [
-            Symbol(sig[i], BOOL) if int(bitvec[i]) else Not(Symbol(sig[i], BOOL))
-            for i in range(len(sig))
-        ]
-        return symbols
+            raise ValueError("symbolize_world_index requires a named signature")
+        literals: list[FNode] = []
+        width = len(self.signature)
+        for offset in range(width):
+            bit_mask = 1 << (width - offset - 1)
+            if index & bit_mask:
+                literals.append(self._signature_symbols[offset])
+            else:
+                literals.append(self._neg_signature_symbols[offset])
+        return literals
+
+    def add_world_assertions(self, solver: Solver, world: str) -> None:
+        for symbol in self.symbolize_bitvec(world):
+            solver.add_assertion(symbol)
+
+    def add_world_index_assertions(self, solver: Solver, index: int) -> None:
+        for symbol in self.symbolize_world_index(index):
+            solver.add_assertion(symbol)
+
+    def symbolize_bitvec(self, bitvec: str) -> list[FNode]:
+        return self.symbolize_world_index(self.world_to_index(bitvec))
 
     def z_part2ocf(self, world: str) -> int:
         signature_symbols = self.symbolize_bitvec(world)
@@ -524,20 +681,19 @@ class PreOCF(ABC):
         solver = Solver(name="z3")
 
         # Check each world
-        for world in self.ranks.keys():
+        for index in self.iter_world_indices():
             # Push a new scope
             solver.push()
 
             # Add the world's constraints
-            world_symbols = self.symbolize_bitvec(world)
-            [solver.add_assertion(s) for s in world_symbols]
+            self.add_world_index_assertions(solver, index)
 
             # Add the formula to check
             solver.add_assertion(formula)
 
             # If this world satisfies the formula, check its rank
             if solver.solve():
-                rank = self.rank_world(world)
+                rank = self._rank_world_index(index)
                 if min_rank is None or rank < min_rank:
                     min_rank = rank
 
@@ -656,9 +812,8 @@ class SystemZPreOCF(PreOCF):
             signature = belief_base.signature
         else:
             signature = list(signature)
-        ranks: dict[str, int | None] = PreOCF.create_bitvec_world_dict(signature)
         conditionals = belief_base.conditionals
-        super().__init__(ranks, signature, conditionals, "system-z", metadata)
+        super().__init__(None, signature, conditionals, "system-z", metadata)
 
         # If facts provided, augment the belief base with (Bottom | ¬φ) as weakly-placed constraints,
         # where each φ is a formula asserted by the user (negate φ yourself to assert falsehood).
@@ -796,11 +951,22 @@ class SystemZPreOCF(PreOCF):
             self.save_meta("consistency_diagnostics", diag)
 
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
-        if force_calculation or self.ranks[world] is None:
-            self.ranks[world] = self.z_part2ocf(world)
-        rank = self.ranks[world]
+        rank = self._get_rank_value(world)
+        if force_calculation or rank is None:
+            rank = self.z_part2ocf(world)
+            self._set_rank_value(world, rank)
         assert rank is not None, (
             f"Rank should not be None after calculation for world {world}"
+        )
+        return rank
+
+    def _rank_world_index(self, index: int, force_calculation: bool = False) -> int:
+        rank = self._get_rank_value_by_index(index)
+        if force_calculation or rank is None:
+            rank = self.z_part2ocf_index(index)
+            self._set_rank_value_by_index(index, rank)
+        assert rank is not None, (
+            f"Rank should not be None after calculation for world index {index}"
         )
         return rank
 
@@ -808,6 +974,11 @@ class SystemZPreOCF(PreOCF):
         signature_symbols = self.symbolize_bitvec(world)
         solver = Solver(name="z3")
         [solver.add_assertion(s) for s in signature_symbols]
+        return self._rec_z_rank(solver, len(self._z_partition) - 1)
+
+    def z_part2ocf_index(self, index: int) -> int:
+        solver = Solver(name="z3")
+        self.add_world_index_assertions(solver, index)
         return self._rec_z_rank(solver, len(self._z_partition) - 1)
 
     def _rec_z_rank(self, solver: Solver, partition_index: int) -> int:
@@ -818,6 +989,170 @@ class SystemZPreOCF(PreOCF):
                 return 0
             return self._rec_z_rank(solver, partition_index - 1)
         return partition_index + 1
+
+    # ------------------------------------------------------------------
+    # Symbolic System Z helpers
+    # ------------------------------------------------------------------
+    def falsification_formula(self, conditional: Conditional) -> FNode:
+        """Return the falsification formula ``A ∧ ¬B`` for ``(B|A)``."""
+
+        return conditional.make_A_then_not_B()
+
+    def layer_falsification_formula(self, partition_index: int) -> FNode:
+        """Return a formula that is true iff the given layer is falsified."""
+
+        layer = self._z_partition[partition_index]
+        if not layer:
+            return FALSE()
+        return Or(*(self.falsification_formula(c) for c in layer))
+
+    def higher_layers_clear_formula(self, partition_index: int) -> FNode:
+        """Return a formula ensuring no higher partition layer is falsified."""
+
+        constraints = [
+            Not(self.falsification_formula(c))
+            for layer in self._z_partition[partition_index + 1 :]
+            for c in layer
+        ]
+        if not constraints:
+            return TRUE()
+        return And(*constraints)
+
+    def rank_bucket_formula(self, rank: int) -> FNode:
+        """Return a symbolic formula characterizing one System Z rank bucket."""
+
+        max_rank = len(self._z_partition)
+        if rank < 0 or rank > max_rank:
+            raise ValueError(f"rank must be between 0 and {max_rank}, got {rank}")
+
+        if rank == 0:
+            constraints = [
+                Not(self.falsification_formula(c))
+                for layer in self._z_partition
+                for c in layer
+            ]
+            if not constraints:
+                return TRUE()
+            return And(*constraints)
+
+        partition_index = rank - 1
+        return And(
+            self.layer_falsification_formula(partition_index),
+            self.higher_layers_clear_formula(partition_index),
+        )
+
+    def symbolic_rank_buckets(self) -> list[SystemZSymbolicBucket]:
+        """Return symbolic rank-bucket descriptors for all possible ranks."""
+
+        buckets: list[SystemZSymbolicBucket] = [
+            SystemZSymbolicBucket(
+                rank=0,
+                formula=self.rank_bucket_formula(0),
+                partition_index=None,
+                layer_size=0,
+                is_infinity=False,
+            )
+        ]
+
+        last_index = len(self._z_partition) - 1
+        for partition_index, layer in enumerate(self._z_partition):
+            buckets.append(
+                SystemZSymbolicBucket(
+                    rank=partition_index + 1,
+                    formula=self.rank_bucket_formula(partition_index + 1),
+                    partition_index=partition_index,
+                    layer_size=len(layer),
+                    is_infinity=(
+                        self.uses_extended_partition and partition_index == last_index
+                    ),
+                )
+            )
+        return buckets
+
+    @staticmethod
+    def _model_value_as_bool(model, symbol: FNode) -> bool:
+        """Extract a Python bool from a PySMT model entry."""
+
+        if hasattr(model, "get_py_value"):
+            value = model.get_py_value(symbol)
+            if isinstance(value, bool):
+                return value
+
+        if hasattr(model, "get_value"):
+            value = model.get_value(symbol)
+        else:
+            value = model[symbol]
+
+        if hasattr(value, "is_true"):
+            return bool(value.is_true())
+
+        return str(value).lower() == "true"
+
+    def enumerate_formula_worlds(
+        self, formula: FNode, max_worlds: int | None = None
+    ) -> list[str]:
+        """Enumerate worlds satisfying ``formula`` using model blocking."""
+
+        symbols = [Symbol(name, BOOL) for name in self.signature]
+        worlds: list[str] = []
+
+        with Solver(name="z3") as solver:
+            solver.add_assertion(formula)
+            while solver.solve():
+                model = solver.get_model()
+                bits: list[str] = []
+                block_literals: list[FNode] = []
+
+                for symbol in symbols:
+                    value = self._model_value_as_bool(model, symbol)
+                    bits.append("1" if value else "0")
+                    block_literals.append(Not(symbol) if value else symbol)
+
+                worlds.append("".join(bits))
+                if max_worlds is not None and len(worlds) >= max_worlds:
+                    break
+
+                if not block_literals:
+                    break
+                solver.add_assertion(Or(*block_literals))
+
+        return worlds
+
+    def enumerate_rank_bucket_worlds(
+        self, rank: int, max_worlds: int | None = None
+    ) -> list[str]:
+        """Enumerate worlds belonging to the given symbolic rank bucket."""
+
+        return self.enumerate_formula_worlds(
+            self.rank_bucket_formula(rank), max_worlds=max_worlds
+        )
+
+    def materialize_ranks_from_buckets(
+        self, overwrite: bool = False
+    ) -> dict[str, None | int]:
+        """Fill ``self.ranks`` by enumerating symbolic rank buckets."""
+
+        assigned_worlds: set[str] = set()
+
+        for bucket in self.symbolic_rank_buckets():
+            for world in self.enumerate_formula_worlds(bucket.formula):
+                if world in assigned_worlds and not overwrite:
+                    raise ValueError(
+                        f"world {world} was assigned by multiple symbolic buckets"
+                    )
+                self._set_rank_value(world, bucket.rank)
+                assigned_worlds.add(world)
+
+        missing_worlds = [
+            world for world in self.iter_worlds() if self._get_rank_value(world) is None
+        ]
+        if missing_worlds:
+            raise ValueError(
+                "symbolic rank materialization left worlds unassigned: "
+                f"{missing_worlds[:5]}"
+            )
+
+        return self.ranks
 
     # ------------------------------------------------------------------
     # Public accessors for partition metadata
@@ -949,9 +1284,8 @@ class RandomMinCRepPreOCF(PreOCF):
             signature = belief_base.signature
         else:
             signature = signature
-        ranks: dict[str, int | None] = PreOCF.create_bitvec_world_dict(signature)
         conditionals = belief_base.conditionals
-        super().__init__(ranks, signature, conditionals, "random_min_c_rep", metadata)
+        super().__init__(None, signature, conditionals, "random_min_c_rep", metadata)
         # RandomMinCRepPreOCF always needs conditionals
         assert self.conditionals is not None, (
             "RandomMinCRepPreOCF requires non-None conditionals"
@@ -983,11 +1317,22 @@ class RandomMinCRepPreOCF(PreOCF):
             raise ValueError("no solution found for random min c rep")
 
     def rank_world(self, world: str, force_calculation: bool = False) -> int:
-        if force_calculation or self.ranks[world] is None:
-            self.ranks[world] = self.c_vec2ocf(world)
-        rank = self.ranks[world]
+        rank = self._get_rank_value(world)
+        if force_calculation or rank is None:
+            rank = self.c_vec2ocf(world)
+            self._set_rank_value(world, rank)
         assert rank is not None, (
             f"Rank should not be None after calculation for world {world}"
+        )
+        return rank
+
+    def _rank_world_index(self, index: int, force_calculation: bool = False) -> int:
+        rank = self._get_rank_value_by_index(index)
+        if force_calculation or rank is None:
+            rank = self.c_vec2ocf(self.index_to_world(index))
+            self._set_rank_value_by_index(index, rank)
+        assert rank is not None, (
+            f"Rank should not be None after calculation for world index {index}"
         )
         return rank
 
@@ -1101,10 +1446,9 @@ class RandomMinCRepPreOCF(PreOCF):
         # Initialize parent class attributes
         if signature is None:
             signature = belief_base.signature
-        ranks: dict[str, int | None] = PreOCF.create_bitvec_world_dict(signature)
         conditionals = belief_base.conditionals
         PreOCF.__init__(
-            instance, ranks, signature, conditionals, "random_min_c_rep", metadata
+            instance, None, signature, conditionals, "random_min_c_rep", metadata
         )
 
         # Set placeholders for attributes that would normally be computed
@@ -1168,10 +1512,9 @@ class RandomMinCRepPreOCF(PreOCF):
         # Initialize parent class attributes
         if signature is None:
             signature = belief_base.signature
-        ranks: dict[str, int | None] = PreOCF.create_bitvec_world_dict(signature)
         conditionals = belief_base.conditionals
         PreOCF.__init__(
-            instance, ranks, signature, conditionals, "random_min_c_rep", metadata
+            instance, None, signature, conditionals, "random_min_c_rep", metadata
         )
 
         # Set placeholders for attributes that would normally be computed
