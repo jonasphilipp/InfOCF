@@ -49,6 +49,15 @@ _LAZY_IMPORTS = {
     "SystemW": ("inference.system_w", "SystemW"),
     "SystemWZ3": ("inference.system_w_z3", "SystemWZ3"),
     "SystemZ": ("inference.system_z", "SystemZ"),
+    "c_inference_pareto_front": ("inference.c_revision", "c_inference_pareto_front"),
+    "c_inference_pareto_front_details": (
+        "inference.c_revision",
+        "c_inference_pareto_front_details",
+    ),
+    "c_revision_pareto_front_vectors": (
+        "inference.c_revision",
+        "c_revision_pareto_front_vectors",
+    ),
     "parse_belief_base": ("parser.Wrappers", "parse_belief_base"),
     "parse_belief_base_from_str": ("parser.Wrappers", "parse_belief_base_from_str"),
     "parse_formula": ("parser.Wrappers", "parse_formula"),
@@ -108,6 +117,9 @@ if _INFERENCE_AVAILABLE:
             "CustomPreOCF",
             # Utility functions
             "consistency",
+            "c_inference_pareto_front",
+            "c_inference_pareto_front_details",
+            "c_revision_pareto_front_vectors",
             # Parser functionality
             "parse_belief_base",
             "parse_queries",

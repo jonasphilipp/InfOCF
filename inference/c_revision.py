@@ -638,6 +638,104 @@ def c_inference_pareto_front(
     return [tuple(sol.get(f"eta_{i}", 0) for i in indices) for sol in solutions]
 
 
+def c_revision_pareto_front_vectors(
+    belief_base: "BeliefBase",
+    *,
+    max_solutions: int | None = None,
+) -> list[tuple[int, ...]]:
+    """Enumerate Pareto-optimal eta vectors via the c-revision CSP."""
+
+    from inference.preocf import CustomPreOCF  # noqa: E402
+
+    sig = belief_base.signature
+    n = len(sig)
+    ranks = {format(i, f"0{n}b"): 0 for i in range(2**n)}
+    preocf = CustomPreOCF(ranks, belief_base, sig)
+
+    revision_conditionals: list[Conditional] = []
+    for idx, cond in belief_base.conditionals.items():
+        rc = Conditional(cond.consequence, cond.antecedence, cond.textRepresentation)
+        rc.index = idx
+        revision_conditionals.append(rc)
+
+    solutions = c_revision_pareto_front(
+        preocf,
+        revision_conditionals,
+        gamma_plus_zero=True,
+        max_solutions=max_solutions,
+    )
+    indices = sorted(
+        cond.index for cond in revision_conditionals if cond.index is not None
+    )
+    return [tuple(sol.get(f"gamma-_{i}", 0) for i in indices) for sol in solutions]
+
+
+def c_inference_pareto_front_details(
+    belief_base: "BeliefBase",
+    *,
+    backend: str = "c_revision",
+    max_solutions: int | None = None,
+) -> dict[str, object]:
+    """Return a JSON-friendly Pareto front description for c-representations.
+
+    The payload is designed for web/API consumers that need a stable ordering,
+    human-readable conditional metadata, and easy access to per-solution impact
+    vectors without having to know the solver variable naming scheme.
+    """
+
+    indices = sorted(belief_base.conditionals.keys())
+    if backend == "c_revision":
+        vectors = sorted(
+            c_revision_pareto_front_vectors(belief_base, max_solutions=max_solutions)
+        )
+        backend_label = "c-revision"
+    elif backend == "c_inference":
+        vectors = sorted(
+            c_inference_pareto_front(belief_base, max_solutions=max_solutions)
+        )
+        backend_label = "c-inference"
+    else:
+        raise ValueError(f"unknown Pareto backend: {backend}")
+
+    conditional_order = [
+        {
+            "index": idx,
+            "conditional": belief_base.conditionals[idx].textRepresentation,
+            "eta_symbol": f"eta_{idx}",
+        }
+        for idx in indices
+    ]
+
+    solutions = []
+    for position, vector in enumerate(vectors, start=1):
+        impact_entries = [
+            {
+                "index": idx,
+                "conditional": belief_base.conditionals[idx].textRepresentation,
+                "eta_symbol": f"eta_{idx}",
+                "value": value,
+            }
+            for idx, value in zip(indices, vector, strict=False)
+        ]
+        solutions.append(
+            {
+                "id": f"solution_{position}",
+                "solution_number": position,
+                "label": f"Solution {position}",
+                "impact_vector": list(vector),
+                "impacts": impact_entries,
+            }
+        )
+
+    return {
+        "backend": backend,
+        "backend_label": backend_label,
+        "conditional_order": conditional_order,
+        "solution_count": len(solutions),
+        "solutions": solutions,
+    }
+
+
 # ----------------------------------------------------------------------------
 # Helper: quick literal extraction for simple conjunctions of two literals
 # ----------------------------------------------------------------------------
