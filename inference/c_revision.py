@@ -721,7 +721,7 @@ def c_inference_pareto_front_details(
             {
                 "id": f"solution_{position}",
                 "solution_number": position,
-                "label": f"Solution {position}",
+                "label": f"Impact Vector {position}",
                 "impact_vector": list(vector),
                 "impacts": impact_entries,
             }
