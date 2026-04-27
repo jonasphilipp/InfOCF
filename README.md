@@ -51,3 +51,10 @@ uv run python benchmarks/benchmark_incremental_c_revision.py
 ```
 
 It prints mean times over a few configurations and the speedup factor of the incremental approach compared to full recomputation.
+
+### How to cite
+
+When mentioning InfOCF in scientific publications, please use the following references:
+
+- Christoph Beierle, Jonas Haldimann, Arthur Sanin, Leon Schwarzer, Aron Spang, Lars-Phillip Spiegel, Martin von Berg: **Scaling Up Reasoning from Conditional Belief Bases**. SUM 2024, LNAI Vol. 15350, pp 29-44. DOI: [10.1007/978-3-031-76235-2_3](https://doi.org/10.1007/978-3-031-76235-2_3).
+- Christoph Beierle, Jonas Haldimann, Arthur Sanin, Aron Spang, Lars-Phillip Spiegel, Martin von Berg: **The InfOCF Library for Reasoning With Conditional Belief Bases**. JELIA 2025 (1), LNAI Vol. 16094, pp 19-27. DOI: [10.1007/978-3-032-04590-4_2](https://doi.org/10.1007/978-3-032-04590-4_2).
