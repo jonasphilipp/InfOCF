@@ -54,7 +54,34 @@ It prints mean times over a few configurations and the speedup factor of the inc
 
 ### How to cite
 
-When mentioning InfOCF in scientific publications, please use the following references:
+When mentioning InfOCF in scientific publications please use the following reference:
 
-- Christoph Beierle, Jonas Haldimann, Arthur Sanin, Leon Schwarzer, Aron Spang, Lars-Phillip Spiegel, Martin von Berg: **Scaling Up Reasoning from Conditional Belief Bases**. SUM 2024, LNAI Vol. 15350, pp 29-44. DOI: [10.1007/978-3-031-76235-2_3](https://doi.org/10.1007/978-3-031-76235-2_3).
-- Christoph Beierle, Jonas Haldimann, Arthur Sanin, Aron Spang, Lars-Phillip Spiegel, Martin von Berg: **The InfOCF Library for Reasoning With Conditional Belief Bases**. JELIA 2025 (1), LNAI Vol. 16094, pp 19-27. DOI: [10.1007/978-3-032-04590-4_2](https://doi.org/10.1007/978-3-032-04590-4_2).
+<!-- - Christoph Beierle, Jonas Haldimann, Arthur Sanin, Leon Schwarzer, Aron Spang, Lars-Phillip Spiegel, Martin von Berg: **Scaling Up Reasoning from Conditional Belief Bases**. SUM 2024, LNAI Vol. 15350, pp 29-44. DOI: [10.1007/978-3-031-76235-2_3](https://doi.org/10.1007/978-3-031-76235-2_3). -->
+
+Christoph Beierle, Jonas Haldimann, Arthur Sanin, Aron Spang, Lars-Phillip Spiegel, Martin von Berg: **The InfOCF Library for Reasoning With Conditional Belief Bases**. JELIA 2025 (1), LNAI Vol. 16094, pp 19-27. DOI: [10.1007/978-3-032-04590-4_2](https://doi.org/10.1007/978-3-032-04590-4_2).
+
+```tex
+@inproceedings{BeierleHaldimannSaninSpangSpiegelVonBerg2025JELIA,
+  author       = {Christoph Beierle and
+                  Jonas Haldimann and
+                  Arthur Sanin and
+                  Aron Spang and
+                  Lars{-}Phillip Spiegel and
+                  Martin von Berg},
+  editor       = {Giovanni Casini and
+                  Besik Dundua and
+                  Temur Kutsia},
+  title        = {The InfOCF Library for Reasoning With Conditional Belief Bases},
+  booktitle    = {Logics in Artificial Intelligence - 19th European Conference, {JELIA}
+                  2025, Kutaisi, Georgia, September 1-4, 2025, Proceedings, Part {II}},
+  series       = {Lecture Notes in Computer Science},
+  volume       = {16094},
+  pages        = {19--27},
+  publisher    = {Springer},
+  year         = {2025},
+  url          = {https://doi.org/10.1007/978-3-032-04590-4\_2},
+  doi          = {10.1007/978-3-032-04590-4\_2}
+}
+```
+
+
