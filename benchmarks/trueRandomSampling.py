@@ -1,3 +1,4 @@
+import csv
 import os
 import random
 import string
@@ -45,6 +46,15 @@ DEFAULT_OUTPUT_DIR = Path("benchmarks/generated/lexinf_ecsqaru2025")
 DEFAULT_SAMPLES_PER_COMBINATION = 100
 DEFAULT_QUERIES_PER_BELIEF_BASE = 10
 DEFAULT_MAX_ATTEMPTS = 10000
+MANIFEST_HEADER = [
+    "dataset",
+    "consistency",
+    "signature_size",
+    "conditionals",
+    "index",
+    "belief_base_path",
+    "queries_path",
+]
 
 
 def sample_operation():
@@ -255,6 +265,47 @@ def sampleQueries(
     return queries
 
 
+def read_manifest(manifest_path):
+    completed = set()
+    natural_counts = {}
+    natural_totals = {}
+
+    if not manifest_path.exists():
+        return completed, natural_counts, natural_totals
+
+    with manifest_path.open(newline="") as manifest:
+        reader = csv.DictReader(manifest)
+        for row in reader:
+            try:
+                dataset = row["dataset"]
+                consistency_mode = row["consistency"]
+                signature_size = int(row["signature_size"])
+                conditionals_count = int(row["conditionals"])
+                index = int(row["index"])
+            except (KeyError, TypeError, ValueError):
+                continue
+
+            completed.add(
+                (
+                    dataset,
+                    consistency_mode,
+                    signature_size,
+                    conditionals_count,
+                    index,
+                )
+            )
+
+            if dataset == "natural":
+                natural_key = (signature_size, conditionals_count, consistency_mode)
+                natural_counts[natural_key] = max(
+                    natural_counts.get(natural_key, 0), index + 1
+                )
+                total_key = (signature_size, conditionals_count)
+                natural_totals[total_key] = natural_totals.get(total_key, 0) + 1
+
+    return completed, natural_counts, natural_totals
+
+
 def generate_belief_base_sets(
     combinations=LEXINF_ECSQARU_COMBINATIONS,
     samples_per_combination=DEFAULT_SAMPLES_PER_COMBINATION,
@@ -267,12 +318,15 @@ def generate_belief_base_sets(
     output_dir = Path(output_dir)
     manifest_path = output_dir / "manifest.csv"
     output_dir.mkdir(parents=True, exist_ok=True)
+    completed, natural_counts, natural_totals = read_manifest(manifest_path)
 
-    with manifest_path.open("w") as manifest:
-        print(
-            "dataset,consistency,signature_size,conditionals,index,belief_base_path,queries_path",
-            file=manifest,
-        )
+    write_header = not manifest_path.exists() or manifest_path.stat().st_size == 0
+    with manifest_path.open("a", newline="") as manifest:
+        writer = csv.writer(manifest)
+        if write_header:
+            writer.writerow(MANIFEST_HEADER)
+            manifest.flush()
+
         if include_targeted:
             for consistency_mode, inject_bottom in [
                 ("strong", False),
@@ -286,6 +340,16 @@ def generate_belief_base_sets(
                     combo_dir.mkdir(parents=True, exist_ok=True)
 
                     for index in range(samples_per_combination):
+                        manifest_key = (
+                            "targeted",
+                            consistency_mode,
+                            signature_size,
+                            conditionals_count,
+                            index,
+                        )
+                        if manifest_key in completed:
+                            continue
+
                         filename = (
                             combo_dir
                             / f"randomTest_{signature_size}_{conditionals_count}_{index}.cl"
@@ -321,24 +385,24 @@ def generate_belief_base_sets(
                         )
                         makeCKB(variables, conditionals, [], str(filename))
                         makeQueryfile(queries, str(query_filename))
-                        print(
-                            "targeted,%s,%s,%s,%s,%s,%s"
-                            % (
+                        writer.writerow(
+                            [
+                                "targeted",
                                 consistency_mode,
                                 signature_size,
                                 conditionals_count,
                                 index,
                                 filename,
                                 query_filename,
-                            ),
-                            file=manifest,
-                            flush=True,
+                            ]
                         )
+                        manifest.flush()
+                        completed.add(manifest_key)
 
         if include_natural:
-            natural_counts = {}
             for signature_size, conditionals_count in combinations:
-                for index in range(samples_per_combination):
+                total_key = (signature_size, conditionals_count)
+                while natural_totals.get(total_key, 0) < samples_per_combination:
                     variables, conditionals, belief_base = samplingConsistentCKB(
                         signature_size,
                         conditionals_count,
@@ -351,6 +415,7 @@ def generate_belief_base_sets(
                     key = (signature_size, conditionals_count, actual_consistency)
                     natural_index = natural_counts.get(key, 0)
                     natural_counts[key] = natural_index + 1
+                    natural_totals[total_key] = natural_totals.get(total_key, 0) + 1
 
                     combo_dir = (
                         output_dir
@@ -385,19 +450,26 @@ def generate_belief_base_sets(
                     )
                     makeCKB(variables, conditionals, [], str(filename))
                     makeQueryfile(queries, str(query_filename))
-                    print(
-                        "natural,%s,%s,%s,%s,%s,%s"
-                        % (
+                    manifest_key = (
+                        "natural",
+                        actual_consistency,
+                        signature_size,
+                        conditionals_count,
+                        natural_index,
+                    )
+                    writer.writerow(
+                        [
+                            "natural",
                             actual_consistency,
                             signature_size,
                             conditionals_count,
                             natural_index,
                             filename,
                             query_filename,
-                        ),
-                        file=manifest,
-                        flush=True,
+                        ]
                     )
+                    manifest.flush()
+                    completed.add(manifest_key)
 
 
 def canonical(tMin):
