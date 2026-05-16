@@ -63,6 +63,20 @@ def relative_or_absolute(path: Path) -> str:
         return str(path.resolve())
 
 
+def parse_combination(value: str) -> tuple[int, int]:
+    parts = value.replace("/", ",").split(",")
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError(
+            f"expected combination as S/R or S,R, got: {value}"
+        )
+    try:
+        return (int(parts[0]), int(parts[1]))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            f"expected integer combination as S/R or S,R, got: {value}"
+        ) from exc
+
+
 def query_path_for(ckb_path: Path, dataset_root: Path) -> Path:
     query_name = ckb_path.name.replace("randomTest_", "randomQueries_")
     query_name = query_name.removesuffix(".cl") + ".clq"
@@ -218,6 +232,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Include PS005's extra 120/200 combination. By default only the 27 paper combinations are used.",
     )
+    parser.add_argument(
+        "--exclude-combination",
+        action="append",
+        type=parse_combination,
+        default=[],
+        metavar="S/R",
+        help="Exclude a signature/conditionals combination. Can be passed multiple times, e.g. --exclude-combination 100/200.",
+    )
     return parser.parse_args()
 
 
@@ -226,6 +248,14 @@ def main() -> None:
     output_path = resolve_path(args.output)
     resume = not args.no_resume
     combinations = None if args.include_extra_ps005_120_200 else PAPER_COMBINATIONS
+    if args.exclude_combination:
+        excluded = set(args.exclude_combination)
+        combinations = (
+            PAPER_COMBINATIONS | {(120, 200)}
+            if combinations is None
+            else set(combinations)
+        )
+        combinations -= excluded
 
     run_dataset(
         dataset="CLKR-PS005",
