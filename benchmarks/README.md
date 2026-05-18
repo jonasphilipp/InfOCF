@@ -16,4 +16,32 @@ the theoretical details
 Attempts to model CKB's with a lot of 'exceptions within exceptions within exceptions' behavior.
 
 ### trueRandomSampling.py
-Creates entirely random CKB's.
+Creates random CKB benchmark datasets.
+
+The default mode is now `natural-repeated-vars`, which samples conditionals from a
+neutral formula distribution that allows variables to occur repeatedly in one
+formula, classifies each generated belief base as strongly or weakly consistent,
+and writes it below `natural-repeated-vars/{strong,weak}`. This is the preferred
+mode for weak/strong benchmark comparisons because no conditional is artificially
+injected to force weak consistency.
+
+The older read-once formula generator is still available as `natural-read-once`
+for continuity with ECSQARU-style random generation. The older explicit
+`(Bottom | p)` weak stress-test generator is still available as
+`targeted-literal-bottom`; it should not be treated as the canonical weak
+generator.
+
+Examples:
+
+```bash
+uv run python benchmarks/trueRandomSampling.py \
+  --mode natural-repeated-vars \
+  --combination 60/60 \
+  --samples-per-combination 25
+
+uv run python benchmarks/trueRandomSampling.py \
+  --mode natural-read-once
+
+uv run python benchmarks/trueRandomSampling.py \
+  --mode targeted-literal-bottom
+```
