@@ -11,7 +11,7 @@ from parser.Wrappers import parse_belief_base, parse_queries
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FILENAME_RE = re.compile(r"randomTest_(\d+)_(\d+)_(\d+)\.cl$")
-PAPER_COMBINATIONS = {
+DEFAULT_COMBINATIONS = [
     (6, 6),
     (8, 8),
     (10, 10),
@@ -34,12 +34,11 @@ PAPER_COMBINATIONS = {
     (100, 60),
     (100, 100),
     (100, 160),
-    (100, 200),
     (120, 60),
     (120, 80),
     (120, 120),
     (120, 160),
-}
+]
 
 
 def natural_key(path: Path) -> tuple[int, int, int, str]:
@@ -77,37 +76,26 @@ def parse_combination(value: str) -> tuple[int, int]:
         ) from exc
 
 
-def query_path_for(ckb_path: Path, dataset_root: Path) -> Path:
-    query_name = ckb_path.name.replace("randomTest_", "randomQueries_")
-    query_name = query_name.removesuffix(".cl") + ".clq"
-    return dataset_root / "queries" / query_name
+def query_path_for(ckb_path: Path) -> Path:
+    return ckb_path.with_name(ckb_path.name.replace("randomTest_", "randomQueries_"))
 
 
 def iter_cases(
     dataset_root: Path,
+    consistency: str,
+    combinations: set[tuple[int, int]],
     limit: int | None = None,
-    combinations: set[tuple[int, int]] | None = None,
 ) -> list[tuple[Path, Path]]:
-    ckbs_dir = dataset_root / "ckbs"
-    queries_dir = dataset_root / "queries"
-    if not ckbs_dir.is_dir():
-        raise FileNotFoundError(f"missing ckbs directory: {ckbs_dir}")
-    if not queries_dir.is_dir():
-        raise FileNotFoundError(f"missing queries directory: {queries_dir}")
+    consistency_dir = dataset_root / consistency
+    if not consistency_dir.is_dir():
+        raise FileNotFoundError(f"missing consistency directory: {consistency_dir}")
 
     cases = []
-    for ckb_path in sorted(ckbs_dir.glob("randomTest_*.cl"), key=natural_key):
+    for ckb_path in sorted(consistency_dir.rglob("randomTest_*.cl"), key=natural_key):
         signature_size, conditionals_count, _, _ = natural_key(ckb_path)
-        if (
-            combinations is not None
-            and (
-                signature_size,
-                conditionals_count,
-            )
-            not in combinations
-        ):
+        if (signature_size, conditionals_count) not in combinations:
             continue
-        queries_path = query_path_for(ckb_path, dataset_root)
+        queries_path = query_path_for(ckb_path)
         if not queries_path.is_file():
             raise FileNotFoundError(
                 f"missing query file for {ckb_path}: {queries_path}"
@@ -135,12 +123,13 @@ def completed_keys(output_path: Path) -> set[tuple[str, str, str]]:
     )
 
 
-def run_dataset(
+def run_consistency(
     *,
     dataset: str,
     consistency: str,
     dataset_root: Path,
     output_path: Path,
+    combinations: set[tuple[int, int]],
     total_timeout: int,
     preprocessing_timeout: int,
     inference_timeout: int,
@@ -149,21 +138,27 @@ def run_dataset(
     multi_inference: bool,
     limit: int | None,
     resume: bool,
-    combinations: set[tuple[int, int]] | None,
 ) -> None:
-    cases = iter_cases(dataset_root, limit=limit, combinations=combinations)
+    cases = iter_cases(
+        dataset_root,
+        consistency=consistency,
+        combinations=combinations,
+        limit=limit,
+    )
     done = completed_keys(output_path) if resume else set()
 
     for ordinal, (ckb_path, queries_path) in enumerate(cases, start=1):
         belief_base_name = ckb_path.stem
         key = (dataset, consistency, belief_base_name)
         if key in done:
-            print(f"skip {dataset}/{belief_base_name} ({ordinal}/{len(cases)})")
+            print(
+                f"skip {dataset}/{consistency}/{belief_base_name} "
+                f"({ordinal}/{len(cases)})"
+            )
             continue
 
         print(
-            f"run {dataset}/{belief_base_name} "
-            f"consistency={consistency} ({ordinal}/{len(cases)})"
+            f"run {dataset}/{consistency}/{belief_base_name} ({ordinal}/{len(cases)})"
         )
         belief_base = parse_belief_base(str(ckb_path))
         queries = parse_queries(str(queries_path))
@@ -201,22 +196,16 @@ def run_dataset(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Benchmark lex_inf on strong and weak CLKR-style datasets."
+        description="Benchmark lex_inf on natural-repeated-vars generated bases."
     )
     parser.add_argument(
-        "--strong-root",
-        default="local/CLKR-PS005",
-        help="CLKR-style root containing ckbs/ and queries/ for strong bases.",
+        "--dataset-root",
+        default="benchmarks/generated/lexinf_natural_repeated_vars/natural-repeated-vars",
     )
-    parser.add_argument(
-        "--weak-root",
-        default="benchmarks/generated/lexinf_ecsqaru2025/targeted_weak_clkr_format",
-        help="CLKR-style root containing ckbs/ and queries/ for weak bases.",
-    )
+    parser.add_argument("--dataset", default="natural-repeated-vars")
     parser.add_argument(
         "--output",
-        default="local/results_lexinf_strong_vs_weak.csv",
-        help="CSV output path.",
+        default="local/results_lexinf_natural_repeated_vars.csv",
     )
     parser.add_argument("--total-timeout", type=int, default=300)
     parser.add_argument("--preprocessing-timeout", type=int, default=0)
@@ -228,73 +217,47 @@ def parse_args() -> argparse.Namespace:
         "--limit",
         type=int,
         default=None,
-        help="Limit cases per dataset for smoke tests.",
+        help="Limit cases per consistency for smoke tests.",
     )
     parser.add_argument(
         "--no-resume",
         action="store_true",
-        help="Do not skip already completed dataset/belief_base pairs in output CSV.",
+        help="Do not skip already completed dataset/consistency/belief_base rows.",
     )
     parser.add_argument(
-        "--include-extra-ps005-120-200",
-        action="store_true",
-        help="Include PS005's extra 120/200 combination. By default only the 27 paper combinations are used.",
-    )
-    parser.add_argument(
-        "--exclude-combination",
+        "--combination",
         action="append",
         type=parse_combination,
         default=[],
         metavar="S/R",
-        help="Exclude a signature/conditionals combination. Can be passed multiple times, e.g. --exclude-combination 100/200.",
+        help="Combination to include. Defaults to the generated 26-combo grid.",
     )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    combinations = set(args.combination or DEFAULT_COMBINATIONS)
     output_path = resolve_path(args.output)
+    dataset_root = resolve_path(args.dataset_root)
     resume = not args.no_resume
-    combinations = None if args.include_extra_ps005_120_200 else PAPER_COMBINATIONS
-    if args.exclude_combination:
-        excluded = set(args.exclude_combination)
-        combinations = (
-            PAPER_COMBINATIONS | {(120, 200)}
-            if combinations is None
-            else set(combinations)
-        )
-        combinations -= excluded
 
-    run_dataset(
-        dataset="CLKR-PS005",
-        consistency="strong",
-        dataset_root=resolve_path(args.strong_root),
-        output_path=output_path,
-        total_timeout=args.total_timeout,
-        preprocessing_timeout=args.preprocessing_timeout,
-        inference_timeout=args.inference_timeout,
-        smt_solver=args.smt_solver,
-        pmaxsat_solver=args.pmaxsat_solver,
-        multi_inference=args.multi_inference,
-        limit=args.limit,
-        resume=resume,
-        combinations=combinations,
-    )
-    run_dataset(
-        dataset="targeted-weak",
-        consistency="weak",
-        dataset_root=resolve_path(args.weak_root),
-        output_path=output_path,
-        total_timeout=args.total_timeout,
-        preprocessing_timeout=args.preprocessing_timeout,
-        inference_timeout=args.inference_timeout,
-        smt_solver=args.smt_solver,
-        pmaxsat_solver=args.pmaxsat_solver,
-        multi_inference=args.multi_inference,
-        limit=args.limit,
-        resume=resume,
-        combinations=combinations,
-    )
+    for consistency in ["strong", "weak"]:
+        run_consistency(
+            dataset=args.dataset,
+            consistency=consistency,
+            dataset_root=dataset_root,
+            output_path=output_path,
+            combinations=combinations,
+            total_timeout=args.total_timeout,
+            preprocessing_timeout=args.preprocessing_timeout,
+            inference_timeout=args.inference_timeout,
+            smt_solver=args.smt_solver,
+            pmaxsat_solver=args.pmaxsat_solver,
+            multi_inference=args.multi_inference,
+            limit=args.limit,
+            resume=resume,
+        )
 
 
 if __name__ == "__main__":
