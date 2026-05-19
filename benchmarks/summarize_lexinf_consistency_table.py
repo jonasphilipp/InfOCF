@@ -8,6 +8,16 @@ import pandas as pd
 from benchmarks.benchmark_lexinf_natural_repeated_vars import DEFAULT_COMBINATIONS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+WIDE_ROW_SPECS = [
+    ("# strong bases", "strong", "belief_bases", 0),
+    ("strong avg query ms", "strong", "avg_query_time_ms", 1),
+    ("strong solved %", "strong", "solved_query_percent", 1),
+    ("strong timeout %", "strong", "timeout_query_percent", 1),
+    ("# weak bases", "weak", "belief_bases", 0),
+    ("weak avg query ms", "weak", "avg_query_time_ms", 1),
+    ("weak solved %", "weak", "solved_query_percent", 1),
+    ("weak timeout %", "weak", "timeout_query_percent", 1),
+]
 
 
 def resolve_path(path: str) -> Path:
@@ -84,8 +94,8 @@ def format_number(value: float | int | None, digits: int = 1) -> str:
     return f"{value:.{digits}f}"
 
 
-def build_wide_table(summary: pd.DataFrame) -> str:
-    combinations = [
+def included_combinations(summary: pd.DataFrame) -> list[tuple[int, int]]:
+    return [
         combination
         for combination in DEFAULT_COMBINATIONS
         if (
@@ -93,7 +103,10 @@ def build_wide_table(summary: pd.DataFrame) -> str:
             & (summary["number_conditionals"] == combination[1])
         ).any()
     ]
-    lookup = {
+
+
+def build_lookup(summary: pd.DataFrame) -> dict[tuple[int, int, str], object]:
+    return {
         (
             int(row.signature_size),
             int(row.number_conditionals),
@@ -102,23 +115,33 @@ def build_wide_table(summary: pd.DataFrame) -> str:
         for row in summary.itertuples(index=False)
     }
 
-    row_specs = [
-        ("# strong bases", "strong", "belief_bases", 0),
-        ("strong avg query ms", "strong", "avg_query_time_ms", 1),
-        ("strong solved %", "strong", "solved_query_percent", 1),
-        ("strong timeout %", "strong", "timeout_query_percent", 1),
-        ("# weak bases", "weak", "belief_bases", 0),
-        ("weak avg query ms", "weak", "avg_query_time_ms", 1),
-        ("weak solved %", "weak", "solved_query_percent", 1),
-        ("weak timeout %", "weak", "timeout_query_percent", 1),
-    ]
+
+def build_wide_table_csv(summary: pd.DataFrame) -> pd.DataFrame:
+    combinations = included_combinations(summary)
+    lookup = build_lookup(summary)
+
+    rows = []
+    for label, consistency, field, digits in WIDE_ROW_SPECS:
+        row_values = {"metric": label}
+        for combination in combinations:
+            summary_row = lookup.get((*combination, consistency))
+            row_values[f"{combination[0]}/{combination[1]}"] = format_number(
+                getattr(summary_row, field, None), digits=digits
+            )
+        rows.append(row_values)
+    return pd.DataFrame(rows)
+
+
+def build_wide_table(summary: pd.DataFrame) -> str:
+    combinations = included_combinations(summary)
+    lookup = build_lookup(summary)
 
     headers = ["metric", *[f"{s}/{c}" for s, c in combinations]]
     lines = [
         "| " + " | ".join(headers) + " |",
         "| " + " | ".join(["---", *["---:" for _ in combinations]]) + " |",
     ]
-    for label, consistency, field, digits in row_specs:
+    for label, consistency, field, digits in WIDE_ROW_SPECS:
         cells = [label]
         for combination in combinations:
             row = lookup.get((*combination, consistency))
@@ -146,6 +169,11 @@ def parse_args() -> argparse.Namespace:
         default="local/results_lexinf_natural_repeated_vars_table.md",
         help="Paper-style wide Markdown table output.",
     )
+    parser.add_argument(
+        "--table-csv-output",
+        default="local/results_lexinf_natural_repeated_vars_table.csv",
+        help="Paper-style wide CSV table output.",
+    )
     return parser.parse_args()
 
 
@@ -154,15 +182,19 @@ def main() -> None:
     results_path = resolve_path(args.input)
     summary_output = resolve_path(args.summary_output)
     table_output = resolve_path(args.table_output)
+    table_csv_output = resolve_path(args.table_csv_output)
 
     summary = summarize(results_path)
     summary_output.parent.mkdir(parents=True, exist_ok=True)
     table_output.parent.mkdir(parents=True, exist_ok=True)
+    table_csv_output.parent.mkdir(parents=True, exist_ok=True)
     summary.to_csv(summary_output, index=False)
     table_output.write_text(build_wide_table(summary), encoding="utf-8")
+    build_wide_table_csv(summary).to_csv(table_csv_output, index=False)
 
     print(f"wrote {summary_output}")
     print(f"wrote {table_output}")
+    print(f"wrote {table_csv_output}")
 
 
 if __name__ == "__main__":
