@@ -10,11 +10,11 @@ from benchmarks.benchmark_lexinf_natural_repeated_vars import DEFAULT_COMBINATIO
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WIDE_ROW_SPECS = [
     ("# strong bases", "strong", "belief_bases", 0),
-    ("strong avg query ms", "strong", "avg_query_time_ms", 1),
+    ("strong avg solved query ms", "strong", "avg_solved_query_time_ms", 1),
     ("strong solved %", "strong", "solved_query_percent", 1),
     ("strong timeout %", "strong", "timeout_query_percent", 1),
     ("# weak bases", "weak", "belief_bases", 0),
-    ("weak avg query ms", "weak", "avg_query_time_ms", 1),
+    ("weak avg solved query ms", "weak", "avg_solved_query_time_ms", 1),
     ("weak solved %", "weak", "solved_query_percent", 1),
     ("weak timeout %", "weak", "timeout_query_percent", 1),
 ]
@@ -47,6 +47,8 @@ def summarize(results_path: Path) -> pd.DataFrame:
     df["timed_out"] = df["preprocessing_timed_out"].astype(bool) | df[
         "inference_timed_out"
     ].astype(bool)
+    df["solved_query_time_ms"] = df["query_time_ms"].where(~df["timed_out"])
+    df["solved_inference_time_ms"] = df["inference_time"].where(~df["timed_out"])
     group_columns = [
         "signature_size",
         "number_conditionals",
@@ -57,10 +59,10 @@ def summarize(results_path: Path) -> pd.DataFrame:
     summary = grouped.agg(
         belief_bases=("belief_base", "nunique"),
         queries=("belief_base", "size"),
-        avg_query_time_ms=("query_time_ms", "mean"),
-        median_query_time_ms=("query_time_ms", "median"),
-        avg_inference_time_ms=("inference_time", "mean"),
-        median_inference_time_ms=("inference_time", "median"),
+        avg_solved_query_time_ms=("solved_query_time_ms", "mean"),
+        median_solved_query_time_ms=("solved_query_time_ms", "median"),
+        avg_solved_inference_time_ms=("solved_inference_time_ms", "mean"),
+        median_solved_inference_time_ms=("solved_inference_time_ms", "median"),
         timeout_queries=("timed_out", "sum"),
     ).reset_index()
 
