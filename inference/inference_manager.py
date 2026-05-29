@@ -390,6 +390,8 @@ class InferenceManager:
         0 disables preprocessing timeout.
     queries_name : str, default ""
         Optional label/name for this batch of queries.
+    result_metadata : dict, optional
+        Extra scalar metadata columns to add to every result row.
     multi_inference : bool, default False
         Whether to attempt parallel evaluation of queries.
         Not all inference systems support parallel execution.
@@ -443,6 +445,7 @@ class InferenceManager:
         inference_timeout: int = 0,
         preprocessing_timeout: int = 0,
         queries_name: str = "",
+        result_metadata: dict[str, Any] | None = None,
         multi_inference: bool = False,
         decimals: int = 1,
     ) -> pd.DataFrame:
@@ -461,6 +464,8 @@ class InferenceManager:
             Preprocessing timeout in seconds; 0 disables.
         queries_name : str, default ""
             Optional label for this batch.
+        result_metadata : dict, optional
+            Extra scalar metadata columns to add to every result row.
         multi_inference : bool, default False
             If True, attempt parallel evaluation.
         decimals : int, default 1
@@ -473,6 +478,7 @@ class InferenceManager:
         """
         if queries_name:
             queries.name = queries_name
+        result_metadata = result_metadata or {}
 
         # INFO-level logging for batch operation start
         logger.info(
@@ -511,6 +517,12 @@ class InferenceManager:
             "smt_solver",
             "pmaxsat_solver",
         ]
+        metadata_conflicts = set(result_metadata).intersection(columns)
+        if metadata_conflicts:
+            conflicts = ", ".join(sorted(metadata_conflicts))
+            raise ValueError(
+                f"result_metadata keys conflict with existing result columns: {conflicts}"
+            )
 
         # use object dtype so pandas 2.x doesn't infer float64 and reject boolean assignments
         df = pd.DataFrame({c: pd.Series([], dtype=object) for c in columns})
@@ -612,6 +624,8 @@ class InferenceManager:
             df.at[index, "number_conditionals"] = len(
                 self.epistemic_state["belief_base"].conditionals
             )
+            for key, value in result_metadata.items():
+                df.at[index, key] = value
 
         # INFO-level logging for batch operation completion with performance summary
         total_inference_time = sum(

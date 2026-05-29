@@ -295,7 +295,7 @@ class CInference(Inference):
             csp.append(GT(eta, mv - mf))
         return csp
 
-    def translate(self) -> list:
+    def translate(self, active_indices: set[int] | None = None) -> list:
         """
         Translate the belief base into a constraint satisfaction problem.
 
@@ -304,6 +304,18 @@ class CInference(Inference):
         2. Converting minimal correction subsets to sum expressions
         3. Encoding the relationships between etas and minima as constraints
         4. Adding non-negativity constraints for eta variables
+
+        Parameters
+        ----------
+        active_indices : set[int] or None, optional
+            When provided, only generate ``eta_i`` variables and the
+            corresponding constraints for ``i`` in this set.  This is the
+            hook used by the extended-c-representation pipeline to realise
+            ``CRS^ex_Σ(Δ)`` (KER 2024, Def. 45 / NMR 2023, Def. 11), where
+            the finite-impact variables live only on ``J_Δ``.  When
+            ``None`` (the default), the method reproduces the classical
+            ``CR_Σ(Δ)`` over all conditionals, preserving backwards
+            compatibility for strongly consistent belief bases.
 
         Returns
         -------
@@ -319,13 +331,26 @@ class CInference(Inference):
         The CSP encodes the relationship between verification and falsification
         minimal correction subsets, which determines entailment decisions.
         """
-        logger.debug("translate called")
-        eta = {
-            i: Symbol(f"eta_{i}", INT)
-            for i, _ in enumerate(
-                self.epistemic_state["belief_base"].conditionals, start=1
-            )
-        }
+        logger.debug("translate called (active_indices=%s)", active_indices)
+        bb_indices = list(self.epistemic_state["belief_base"].conditionals.keys())
+        if active_indices is None:
+            # Classical CR_Σ(Δ): η for every conditional.  The original
+            # 1-based enumeration is preserved so existing callers see the
+            # same variable names.
+            eta = {
+                i: Symbol(f"eta_{i}", INT)
+                for i, _ in enumerate(
+                    self.epistemic_state["belief_base"].conditionals, start=1
+                )
+            }
+        else:
+            # CRS^ex_Σ(Δ): η variables only on the "live" index set.
+            # We use the conditional's own key as the eta index so that
+            # callers (and solution readers) can match eta_{i} back to
+            # belief_base.conditionals[i] unambiguously.
+            eta = {
+                i: Symbol(f"eta_{i}", INT) for i in bb_indices if i in active_indices
+            }
         # defeat= = checkTautologies(self.epistemic_state['belief_base'].conditionals)
         # if not defeat: return False
         gteZeros = [GE(e, Int(0)) for e in eta.values()]
@@ -440,7 +465,13 @@ class CInference(Inference):
         # print(f'satcheck {satcheck}')
         return not satcheck
 
-    def compile_constraint(self, deadline: Deadline | None = None) -> float:
+    def compile_constraint(
+        self,
+        deadline: Deadline | None = None,
+        *,
+        active_indices: set[int] | None = None,
+        infinity_indices: set[int] | None = None,
+    ) -> float:
         """
         Compile the knowledge base by computing minimal correction subsets.
 
@@ -457,6 +488,23 @@ class CInference(Inference):
         deadline : Deadline or None, optional
             Timeout deadline for the compilation process. If None, no timeout
             is enforced.
+        active_indices : set[int] or None, optional
+            When provided, only compute ``vMin``/``fMin`` for leading
+            conditionals in this set *and* restrict the soft clauses in
+            each WCNF to indices in this set.  This matches the inner
+            ``j ∈ J_Δ`` range of ``CRS^ex_Σ(Δ)``'s min-sums
+            (KER 2024, Def. 45).  When ``None`` (default), all
+            conditionals contribute — preserving the classical
+            ``CR_Σ(Δ)`` behaviour used for strongly consistent
+            belief bases.
+        infinity_indices : set[int] or None, optional
+            When provided, assert the "not-falsified" CNF of every
+            index in this set as a **hard** clause in each WCNF.  This
+            encodes the extended-c-representation requirement that no
+            world ever falsifies a strict (``Δ^∞``) or triggered
+            conditional (both of which carry ``η = ∞`` and whose
+            falsification would raise world ranks to ``∞``).  When
+            ``None`` (default), no extra hard clauses are added.
 
         Returns
         -------
@@ -477,20 +525,46 @@ class CInference(Inference):
         """
         start_time = perf_counter_ns() / (1e6)
 
+        nf_cnf_dict = self.epistemic_state["nf_cnf_dict"]
+        # Pre-compute the hard clauses contributed by the Δ^∞ / triggered
+        # conditionals once, so we do not pay for it per leading
+        # conditional.  Empty when no infinity set is supplied.
+        infty_hard_clauses: list = []
+        if infinity_indices:
+            infty_hard_clauses = [
+                clause
+                for j in infinity_indices
+                if j in nf_cnf_dict
+                for clause in nf_cnf_dict[j]
+            ]
+
         for leading_conditional in [
             self.epistemic_state["v_cnf_dict"],
             self.epistemic_state["f_cnf_dict"],
         ]:
             for i, conditional in leading_conditional.items():
-                xMins = []
+                # Skip leading conditionals outside the active set:
+                # CRS^ex_Σ(Δ) has no constraint for them — they carry
+                # η = ∞ and are either in Δ^∞ (trivially satisfied) or
+                # "triggered" (every falsifying world already has rank ∞).
+                if active_indices is not None and i not in active_indices:
+                    continue
+
                 wcnf = WCNF()
+                # Hard: the leading conditional's CNF.
                 [wcnf.append(c) for c in conditional]
-                [
-                    wcnf.append(s, weight=1)
-                    for j, softc in self.epistemic_state["nf_cnf_dict"].items()
-                    if i != j
-                    for s in softc
-                ]
+                # Hard: "nothing in infinity_indices is falsified".
+                for clause in infty_hard_clauses:
+                    wcnf.append(clause)
+                # Soft: one unit-weight group per other conditional that
+                # participates in the min-sums of CRS^ex_Σ(Δ).
+                for j, softc in nf_cnf_dict.items():
+                    if j == i:
+                        continue
+                    if active_indices is not None and j not in active_indices:
+                        continue
+                    for s in softc:
+                        wcnf.append(s, weight=1)
 
                 optimizer = create_optimizer(self.epistemic_state)
                 xMins_lst = optimizer.minimal_correction_subsets(

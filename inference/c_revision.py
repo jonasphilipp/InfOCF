@@ -146,7 +146,11 @@ MinimaTriple = tuple[int, list[int], list[int]]
 
 
 def compile_alt_fast(
-    ranking_function: PreOCF, revision_conditionals: list[Conditional]
+    ranking_function: PreOCF,
+    revision_conditionals: list[Conditional],
+    *,
+    active_indices: set[int] | None = None,
+    infinity_indices: set[int] | None = None,
 ) -> tuple[dict[int, list[MinimaTriple]], dict[int, list[MinimaTriple]]]:
     """Optimised variant of *compile_alt*.
 
@@ -159,6 +163,23 @@ def compile_alt_fast(
 
     The number of expensive solver calls drops from O(|C|^2 * |W|) to
     O(|C| * |W|).
+
+    Parameters
+    ----------
+    active_indices : set[int] or None, optional
+        When provided, only emit vMin / fMin buckets for conditionals
+        whose index is in this set, and only include indices from this
+        set in the accepted/rejected lists of each triple.  This is the
+        c-revision analogue of the ``j ∈ J_Δ`` restriction in
+        ``CRS^ex_Σ(Δ)`` (KER 2024, Def. 45).  ``None`` (default)
+        reproduces the classical c-representation behaviour.
+    infinity_indices : set[int] or None, optional
+        When provided, worlds that falsify *any* conditional whose
+        index is in this set are skipped entirely — these are the
+        infeasible worlds of the extended c-representation semantics
+        (Prop. 4 / 26), for which ``κ(ω) = ∞`` irrespective of
+        finite impacts.  ``None`` (default) treats every world as
+        feasible.
     """
 
     # Signature lookup for mask extraction
@@ -173,12 +194,18 @@ def compile_alt_fast(
             )
         cond_masks[cond.index] = _extract_cond_masks(cond, sig_index)
 
-    vMin: dict[int, list[MinimaTriple]] = {
-        cast(int, c.index): [] for c in revision_conditionals
-    }
-    fMin: dict[int, list[MinimaTriple]] = {
-        cast(int, c.index): [] for c in revision_conditionals
-    }
+    # Only create vMin/fMin buckets for the live index set.  If caller
+    # supplies no active set, retain the classical behaviour of one
+    # bucket per revision conditional.
+    if active_indices is None:
+        active_set: set[int] = {cast(int, c.index) for c in revision_conditionals}
+    else:
+        active_set = set(active_indices)
+
+    vMin: dict[int, list[MinimaTriple]] = {idx: [] for idx in active_set}
+    fMin: dict[int, list[MinimaTriple]] = {idx: [] for idx in active_set}
+
+    infty_set: set[int] = set(infinity_indices) if infinity_indices else set()
 
     # Evaluate each world once.
     for world in ranking_function.ranks.keys():
@@ -187,26 +214,43 @@ def compile_alt_fast(
 
         accepted_list: list[int] = []
         rejected_list: list[int] = []
+        # Flag: does this world falsify any conditional in Δ^∞ ∪ triggered?
+        # If yes, κ(ω) = ∞ and it contributes no finite constraints.
+        world_infeasible = False
 
         for cond in revision_conditionals:
-            mask = cond_masks[int(cast(int, cond.index))]
+            cond_idx = cast(int, cond.index)
+            mask = cond_masks[cond_idx]
             if mask is None:
                 # Fallback to solver evaluation for complex formula
                 if ranking_function.world_satisfies_conditionalization(
                     world, cond.make_A_then_B()
                 ):
-                    accepted_list.append(cast(int, cond.index))
+                    if cond_idx in active_set:
+                        accepted_list.append(cond_idx)
                 elif ranking_function.world_satisfies_conditionalization(
                     world, cond.make_A_then_not_B()
                 ):
-                    rejected_list.append(cast(int, cond.index))
+                    if cond_idx in infty_set:
+                        world_infeasible = True
+                        break
+                    if cond_idx in active_set:
+                        rejected_list.append(cond_idx)
             else:
                 a_idx, a_val, c_idx, c_val = mask
                 if bits[a_idx] == a_val:
                     if bits[c_idx] == c_val:
-                        accepted_list.append(cast(int, cond.index))
+                        if cond_idx in active_set:
+                            accepted_list.append(cond_idx)
                     else:
-                        rejected_list.append(cast(int, cond.index))
+                        if cond_idx in infty_set:
+                            world_infeasible = True
+                            break
+                        if cond_idx in active_set:
+                            rejected_list.append(cond_idx)
+
+        if world_infeasible:
+            continue
 
         # Skip rank computation entirely if this world contributes to no branch
         if not accepted_list and not rejected_list:
@@ -218,8 +262,7 @@ def compile_alt_fast(
         acc_set = set(accepted_list)
         rej_set = set(rejected_list)
 
-        for cond in revision_conditionals:
-            idx = cast(int, cond.index)
+        for idx in active_set:
             if idx in acc_set or idx in rej_set:
                 acc_filtered = [i for i in accepted_list if i != idx]
                 rej_filtered = [i for i in rejected_list if i != idx]
@@ -322,9 +365,28 @@ def translate_to_csp(
     gamma_plus_zero: bool = False,
     fixed_gamma_plus: dict[int, int] | None = None,
     fixed_gamma_minus: dict[int, int] | None = None,
+    *,
+    active_indices: set[int] | None = None,
 ) -> list[FNode]:
+    """Build the c-revision CSP in pysmt form.
+
+    Parameters
+    ----------
+    active_indices : set[int] or None, optional
+        When provided, only emit gamma variables/constraints for
+        indices in this set.  Intended for the extended c-rep pipeline
+        (``CRS^ex_Σ(Δ)``) where ``γ`` lives only on ``J_Δ``.  The
+        compilation is expected to already be restricted to these
+        indices (see :func:`compile_alt_fast`'s ``active_indices`` /
+        ``infinity_indices`` parameters).  ``None`` (default) uses
+        ``compilation[0].keys()`` and reproduces the classical
+        behaviour.
+    """
+    vMin_dict, _ = compilation
+    gamma_index_iter = vMin_dict.keys() if active_indices is None else active_indices
+
     gammas = {}
-    for i in compilation[0].keys():
+    for i in gamma_index_iter:
         # Determine gamma_plus variable/constant
         if fixed_gamma_plus and i in fixed_gamma_plus:
             plus_var = Int(int(fixed_gamma_plus[i]))
@@ -447,9 +509,22 @@ def solve_pareto_front(
         opt.minimize(z3.Int(vname))
 
     results: list[dict[str, int]] = []
+    # Defensive guard: z3's Pareto mode can re-emit the same optimal
+    # model on successive check() calls when the front has only one
+    # element (or a single free objective variable).  Track the
+    # variable-projection we care about and break on a duplicate so
+    # we never spin.  We only deduplicate on ``minimize_vars`` because
+    # models may also assign arbitrary values to irrelevant helper
+    # variables whose values are not stable across iterations.
+    seen: set[tuple[tuple[str, int], ...]] = set()
     while opt.check() == z3.sat:
         m = opt.model()
-        results.append({d.name(): cast(Any, m[d]).as_long() for d in m.decls()})
+        solution = {d.name(): cast(Any, m[d]).as_long() for d in m.decls()}
+        key = tuple((v, solution.get(v, 0)) for v in minimize_vars)
+        if key in seen:
+            break
+        seen.add(key)
+        results.append(solution)
         if max_solutions is not None and len(results) >= max_solutions:
             break
 
@@ -636,6 +711,165 @@ def c_inference_pareto_front(
 
     indices = sorted(belief_base.conditionals.keys())
     return [tuple(sol.get(f"eta_{i}", 0) for i in indices) for sol in solutions]
+
+
+def c_revision_pareto_front_vectors(
+    belief_base: "BeliefBase",
+    *,
+    max_solutions: int | None = None,
+) -> list[tuple[int, ...]]:
+    """Enumerate Pareto-optimal eta vectors via the c-revision CSP."""
+
+    from inference.preocf import CustomPreOCF  # noqa: E402
+
+    sig = belief_base.signature
+    n = len(sig)
+    ranks = {format(i, f"0{n}b"): 0 for i in range(2**n)}
+    preocf = CustomPreOCF(ranks, belief_base, sig)
+
+    revision_conditionals: list[Conditional] = []
+    for idx, cond in belief_base.conditionals.items():
+        rc = Conditional(cond.consequence, cond.antecedence, cond.textRepresentation)
+        rc.index = idx
+        revision_conditionals.append(rc)
+
+    solutions = c_revision_pareto_front(
+        preocf,
+        revision_conditionals,
+        gamma_plus_zero=True,
+        max_solutions=max_solutions,
+    )
+    indices = sorted(
+        cond.index for cond in revision_conditionals if cond.index is not None
+    )
+    return [tuple(sol.get(f"gamma-_{i}", 0) for i in indices) for sol in solutions]
+
+
+def c_inference_pareto_front_details(
+    belief_base: "BeliefBase",
+    *,
+    backend: str = "c_revision",
+    max_solutions: int | None = None,
+) -> dict[str, object]:
+    """Return a JSON-friendly Pareto front description for c-representations.
+
+    The payload is designed for web/API consumers that need a stable ordering,
+    human-readable conditional metadata, and easy access to per-solution impact
+    vectors without having to know the solver variable naming scheme.
+
+    For weakly consistent belief bases the returned vectors follow the
+    extended c-representation semantics of KER 2024 / NMR 2023:
+    entries corresponding to conditionals in ``Δ^∞`` ("strict") or whose
+    falsification necessarily triggers a ``Δ^∞``-conditional
+    ("triggered") carry :data:`inference.extended_c_rep.INFINITY`
+    (``math.inf``) as their value.  The per-conditional entry block in
+    the ``conditional_order`` and ``solutions[i].impacts`` lists is
+    extended with an ``infinity_reason`` field (``"strict"``,
+    ``"triggered"``, or ``None``) so consumers can render the reason
+    without re-running any SAT checks.  A ``consistency`` field on the
+    top-level payload reports ``"strongly_consistent"`` vs
+    ``"weakly_consistent"``.
+
+    JSON encoding of ``math.inf`` is left to the caller — typically
+    the web application boundary — so that downstream consumers of
+    this function (``RandomMinCRepPreOCF.init_with_impacts_list``,
+    CSV exporters) can still work with the numeric impact vector
+    directly.
+    """
+    from inference.consistency_sat import consistency  # noqa: E402, PLC0415
+    from inference.extended_c_rep import (  # noqa: E402, PLC0415
+        compute_j_delta,
+        extended_c_inference_pareto_front,
+        extended_c_revision_pareto_front,
+    )
+
+    indices = sorted(belief_base.conditionals.keys())
+
+    z_partition, _ = consistency(belief_base, solver="z3", weakly=True)
+    if z_partition is False:
+        raise ValueError(
+            "belief_base is not weakly consistent: no c-representations exist"
+        )
+    j_delta, infinity_set, infinity_reasons = compute_j_delta(belief_base, z_partition)
+    is_weakly_consistent = bool(infinity_set)
+
+    if backend == "c_revision":
+        backend_label = "c-revision"
+        if is_weakly_consistent:
+            vectors_raw = extended_c_revision_pareto_front(
+                belief_base,
+                z_partition=z_partition,
+                max_solutions=max_solutions,
+            )
+        else:
+            vectors_raw = c_revision_pareto_front_vectors(
+                belief_base, max_solutions=max_solutions
+            )
+    elif backend == "c_inference":
+        backend_label = "c-inference"
+        if is_weakly_consistent:
+            vectors_raw = extended_c_inference_pareto_front(
+                belief_base,
+                z_partition=z_partition,
+                max_solutions=max_solutions,
+            )
+        else:
+            vectors_raw = c_inference_pareto_front(
+                belief_base, max_solutions=max_solutions
+            )
+    else:
+        raise ValueError(f"unknown Pareto backend: {backend}")
+
+    # ``sorted`` on mixed int/inf tuples works because ``math.inf`` is
+    # greater than every int in standard comparisons, so classical
+    # (all-finite) vectors keep the same ordering as before.
+    vectors = sorted(vectors_raw)
+
+    conditional_order = [
+        {
+            "index": idx,
+            "conditional": belief_base.conditionals[idx].textRepresentation,
+            "eta_symbol": f"eta_{idx}",
+            "infinity_reason": infinity_reasons.get(idx),
+        }
+        for idx in indices
+    ]
+
+    solutions = []
+    for position, vector in enumerate(vectors, start=1):
+        impact_entries = [
+            {
+                "index": idx,
+                "conditional": belief_base.conditionals[idx].textRepresentation,
+                "eta_symbol": f"eta_{idx}",
+                "value": value,
+                "infinity_reason": infinity_reasons.get(idx),
+            }
+            for idx, value in zip(indices, vector, strict=False)
+        ]
+        solutions.append(
+            {
+                "id": f"solution_{position}",
+                "solution_number": position,
+                "label": f"Impact Vector {position}",
+                "impact_vector": list(vector),
+                "impacts": impact_entries,
+            }
+        )
+
+    return {
+        "backend": backend,
+        "backend_label": backend_label,
+        "consistency": (
+            "weakly_consistent" if is_weakly_consistent else "strongly_consistent"
+        ),
+        "j_delta": sorted(j_delta),
+        "infinity_indices": sorted(infinity_set),
+        "infinity_reasons": {str(i): r for i, r in infinity_reasons.items()},
+        "conditional_order": conditional_order,
+        "solution_count": len(solutions),
+        "solutions": solutions,
+    }
 
 
 # ----------------------------------------------------------------------------
