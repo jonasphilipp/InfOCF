@@ -49,8 +49,8 @@ def sampleVars(variables:List[str], u, l=2)->Tuple[List[str],List[str]]:
     """
     #print(variables)
 
-    V1 = random.choice(range(l,(u+1)//2))
-    V2 = random.choice(range(l,(u+1)//2))
+    V1 = random.choice(list(range(l,(u+1)//2)))
+    V2 = random.choice(list(range(l,(u+1)//2)))
     tvars = variables
     random.shuffle(tvars)
     v1 = tvars[:V1]
@@ -126,7 +126,7 @@ def samplingWeaklyCKB(S:int,R:int,l:int, u:int) -> Tuple[str,Conditional,T]:
     return VAR, COND, dummyCKB, weakbb
 
 
-def sampleCKB(S,R,l,u, depth):
+def sampleCKB(S,R,u,l, depth):
     while True:
         VAR = createVariables(S)
         conditionals = [(sampleConditional(VAR,u,l)) for _ in range(R)]
@@ -247,7 +247,7 @@ def sampleCKBandQueries(S,R,l,u,Q,seed) -> T:
 
 
 def sampleForLEXbenchmarks():
-    S,R,u,l,d = 150,150,9,2,15
+    S,R,u,l,d = 150,150,11,3,15
     for i in range(20):
         random.seed(i)
         VAR,COND, CKB = sampleCKB(S,R,u,l,d)
@@ -263,13 +263,14 @@ def turnToFact(cond):
     return f'(Bottom | ({ant}),!({con}))' 
 
 def sampleForWeakCinfBenchmarkI():
-    u,l = 9,2
+    u,l = 11,3
     S = [50,80,110,140]
     for s in S:
         d = int(s * 0.1)
+        R = int(s * 1.30)
         for i in range(10):
             random.seed(i)
-            VAR,COND, CKB = sampleCKB(S,R,u,l,d)
+            VAR,COND, CKB = sampleCKB(s,R,u,l,d)
             while True:
                 facts = [sampleFact(VAR, u,l) for _ in range(int(s * 0.3))]
                 cond= [parseQuery(c)[1] for c in COND+facts]
@@ -294,7 +295,7 @@ def sampleForWeakCinfBenchmarkI():
 
 
 def sampleForWeakCinfBenchmarkII():
-    u,l = 9,2
+    u,l = 11,3
     S = [50,80,110,140]
     for s in S:
         d = int(s * 0.1)
@@ -302,7 +303,8 @@ def sampleForWeakCinfBenchmarkII():
         t = int(s* 0.07)
         for i in range(10):
             random.seed(i)
-            VAR,COND, CKB = sampleCKB(S,R,u,l,d)
+            R = s
+            VAR,COND, CKB = sampleCKB(s,R,u,l,d)
             while True:
                 random.shuffle(COND)
                 facts = [turnToFact(c) for c in COND[:f]]
