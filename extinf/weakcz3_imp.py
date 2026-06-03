@@ -57,9 +57,9 @@ class WeakCz3IMP():
         vSum = self.makeSummation({0:vMin})
         fSum = self.makeSummation({0:fMin})
         v, f = self.freshVars(0)
-        ands = [(f <= i) for i in fSum[0]]
-        ors = z3.Not(z3.And([(f<i) for i in fSum[0]]))
-        ands.append(ors)
+        ands = z3.Or([(f == i) for i in fSum[0]])
+        #ors = z3.Not(z3.And([(f<i) for i in fSum[0]]))
+        #ands.append(ors)
         implicit = [(i >=f) for i in vSum[0]]
         ands.extend(implicit)
         return ands
@@ -94,19 +94,19 @@ class WeakCz3IMP():
         return z3.Int(f'mv_{i}'), z3.Int(f'mf_{i}')
 
     def minima_encoding(self, mv: int, eta:int, vsums: list, fsums: list) -> list:
-        ands = [(mv <= i) for i in vsums]
-        ors = z3.Not(z3.And([(mv<i) for i in vsums]))
-        ands.append(ors)
+        #ands = [(mv <= i) for i in vsums]
+        #ors = z3.Not(z3.And([(mv<i) for i in vsums]))
+        #ands.append(ors)
+        ands = z3.Or([(mv == i) for i in vsums])
         implicit = [(eta +i >mv) for i in fsums]
         ands.extend(implicit)
         
+        """
         if len(fsums)==len(vsums):
             if all([i in vsums for i in fsums]):
                 print('lhs is rhs', fsums)
                 return [eta > 0]
-        #b1=[j>0 for j in vsums if str(vsums)!='[0]']
-        #b2=[j>0 for j in fsums if str(fsums)!='[0]']
-        #return [(eta > 0+i - j) for i in vsums for j in fsums]+b1+b2
+        """
         return ands
 
     def encoding(self, etas: dict, vSums: dict, fSums: dict) -> list:

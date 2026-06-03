@@ -36,6 +36,8 @@ def get_J_delta(ezp):
 
 def getEZP(ckb):
     conditionals = [Conditional_z3.translate_from_existing(i) for i in ckb.conditionals.values()]
+    if test_weakly(ckb) == False: return ([],conditionals)
+    if len(conditionals) == 0: return ([],[])
     #partition is a list of lists
     partition = []
     while True:

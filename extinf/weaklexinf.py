@@ -55,17 +55,17 @@ class LexInf():
     def rank_query(self, query):
         vf = query.verify()
         ff = query.falsify()
-        v,f,a = self.rank(vf), self.rank(ff), self.rank(query.A)
-        return v,f,a
+        v,f = self.rank(vf), self.rank(ff)
+        return v,f
 
     def inference(self, query):
         query = Conditional_z3.translate_from_existing(query)
-        v,f,a = self.rank_query(query)
+        v,f = self.rank_query(query)
         #print(v,f,a)
        
         inf = float('inf')
         #if inf in a: return True
-        if a[0] > 0 : return True
+        if v[0] > 0 and f[0] > 0: return True
         #if (inf in v and inf in f) or : return True
         return lex_less(v,f)
 
