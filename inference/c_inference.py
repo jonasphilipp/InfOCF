@@ -34,21 +34,24 @@ class CInference(Inference):
     def freshVars(self, i: int) -> tuple:
         return Symbol(f'mv_{i}', INT), Symbol(f'mf_{i}', INT)
 
-    def minima_encoding(self, mv: int, eta:int, vsums: list, fsums: list) -> list:
+    def minima_encoding(self, mv: int,  ssums: list) -> list:
         ###TODO explore 
         ands = [LE(mv, i) for i in ssums]
         ors = Not(And([LT(mv, i) for i in ssums]))
         ands.append(ors)
-        implicit = [(eta +i >mv) for i in fsums]
-        ands.extend(implicit)
+        #implicit = [(eta +i >mv) for i in fsums]
+        #ands.extend(implicit)
         return ands
 
     def encoding(self, etas: dict, vSums: dict, fSums: dict) -> list:
         csp = []
         for index, eta in etas.items():
             mv, mf = self.freshVars(index)
-            vMin = self.minima_encoding(mv, eta, vSums[index], fSums[index])
+            vMin = self.minima_encoding(mv, vSums[index])
+            fMin = self.minima_encoding(mf, fSums[index])
             csp.extend(vMin)
+            csp.extend(fMin)
+            csp.append(eta > mv - mf)
         return csp
 
     def translate(self) -> list:
@@ -59,10 +62,6 @@ class CInference(Inference):
         csp = self.encoding(eta, vSums, fSums)
         csp.extend(gteZeros)
         return csp
-
-
-    
-
 
 
     def _preprocess_belief_base(self) -> None:

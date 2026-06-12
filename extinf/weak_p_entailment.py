@@ -1,4 +1,5 @@
 from inference.conditional import Conditional
+from inference.conditional_z3 import Conditional_z3
 from inference.inference import Inference
 from inference.consistency_sat import consistency
 from warnings import warn
@@ -28,6 +29,10 @@ class ExtendedPEntailment():
         kappaz = SystemZRank(BeliefBase("",tmp,""))
         query = transform_conditional_to_z3(query)
         return kappaz.rank(query.A) == float('inf')
+
+
+    def inference(self, query):
+        return self.rank_query(query)
 
 
 

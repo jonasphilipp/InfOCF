@@ -11,6 +11,7 @@ from collections import Counter
 import sys
 from inference.consistency_sat import consistency, test_weakly, get_J_delta
 from inference.belief_base import BeliefBase
+from inference.conditional_z3 import Conditional_z3
 from parser.Wrappers import parseQuery,parseCKB
 from inference.conditional import Conditional
 from time import time_ns 
@@ -19,6 +20,8 @@ from inference.weakly_system_z_rank import SystemZRankZ3
 from inference.weak_c_z3 import WeakCz3
 from extinf.weaklexinf import LexInf
 from extinf.weak_p_entailment import ExtendedPEntailment
+from extinf.ezp import test_weakly, getEZP, get_J_delta, EZP
+import z3
 
 
 
@@ -49,8 +52,8 @@ def sampleVars(variables:List[str], u, l=2)->Tuple[List[str],List[str]]:
     """
     #print(variables)
 
-    V1 = random.choice(list(range(l,(u+1)//2)))
-    V2 = random.choice(list(range(l,(u+1)//2)))
+    V1 = random.choice((range(l,(u+1)//2)))
+    V2 = random.choice((range(l,(u+1)//2)))
     tvars = variables
     random.shuffle(tvars)
     v1 = tvars[:V1]
@@ -132,9 +135,13 @@ def sampleCKB(S,R,u,l, depth):
         conditionals = [(sampleConditional(VAR,u,l)) for _ in range(R)]
         COND= [parseQuery(c)[1] for c in conditionals]
         dummyCKB = BeliefBase([(v) for v in VAR], {i:c for i,c in enumerate(COND,start=1)}, "")
-        part,_ = consistency(dummyCKB)
+        if test_weakly(dummyCKB) == False : continue
+        part = getEZP(dummyCKB)
         if (part != False):
-            if part[-1] != []: continue
+            print('part',len(part))
+            if part[-1] != []: 
+                print("not strong consistent ")
+                continue
             if len(part) >= depth:
                 print('CKB found')
                 break
@@ -241,16 +248,17 @@ def sampleCKBandQueries(S,R,l,u,Q,seed) -> T:
     seed: used for reproducability in pseudorandom generation
     """
     random.seed(seed)
-    VAR, COND, baseckb, weakckb, ct, cs = samplingWeaklyCKB(S,R,l,u)
-    queries = sampleQueries(weakckb, VAR, Q, l, u)
-    return VAR, COND, baseckb, weakckb, queries, ct, cs
+    VAR, COND, baseckb, weakckb = samplingWeaklyCKB(S,R,l,u)
+    #queries = sampleQueries(weakckb, VAR, Q, l, u)
+    return VAR, COND, baseckb, weakckb, None, 0,0
 
 
 def sampleForLEXbenchmarks():
-    S,R,u,l,d = 150,150,11,3,15
+    S,R,u,l,d = 150,150,9,3,5
     for i in range(20):
         random.seed(i)
         VAR,COND, CKB = sampleCKB(S,R,u,l,d)
+        print('found ckb ')
         queries = sampleQueriesSimple(S,20,l,u)
         print(f'found {i}th bench set')
         makeQueryfile(queries,  f'lex_benchmark/randomqq_{i}.cl')
@@ -263,10 +271,11 @@ def turnToFact(cond):
     return f'(Bottom | ({ant}),!({con}))' 
 
 def sampleForWeakCinfBenchmarkI():
-    u,l = 11,3
+    u,l = 9,3
     S = [50,80,110,140]
     for s in S:
-        d = int(s * 0.1)
+        #d = int(s * 0.1)
+        d = 5
         R = int(s * 1.30)
         for i in range(10):
             random.seed(i)
@@ -275,62 +284,100 @@ def sampleForWeakCinfBenchmarkI():
                 facts = [sampleFact(VAR, u,l) for _ in range(int(s * 0.3))]
                 cond= [parseQuery(c)[1] for c in COND+facts]
                 dummyCKB = BeliefBase([(v) for v in VAR], {i:c for i,c in enumerate(cond,start=1)}, "")
-                part,_ = consistency(dummyCKB)
+                part  = test_weakly(dummyCKB)
                 if (part != False):
-                    if len(part) >= d:
-                        print('CKB found')
-                        break
+                    #if len(part) >= d:
+                    print('I CKB found')
+                    break
             QUERIES = []
             for j in range(10):
                 while True:
                     Q = sampleConditional(VAR, u,l)
                     q = parseQuery(Q)[1]
-                    if checkQuery(CKB,q) and checkQuery(dummyCKB,q):
-                        QUERIES.append(q)
-                        break
-            makeQueryfile(queries,  f'weakcinf1_benchmark/randomqq_{s}_{i}.cl')
-            makeCKB(VAR, COND, f'weakcinf1_benchmark/randomsbb__{s}_{i}.cl')
+                    #if checkQuery(CKB,q) and checkQuery(dummyCKB,q):
+                    QUERIES.append(q)
+                    break
+            makeQueryfile(QUERIES,  f'weakcinf1_benchmark/randomqq_{s}_{i}.cl')
+            makeCKB(VAR, COND, f'weakcinf1_benchmark/randomsbb_{s}_{i}.cl')
             makeCKB(VAR, COND+facts, f'weakcinf1_benchmark/randomwbb_{s}_{i}.cl')
 
 
+def sampleQ2(sckb, wckb, VAR, u,l, Q):
+    ezp = EZP(wckb)
+    wpart =  ezp.partition
+    Jdelta = get_J_delta(ezp)
+    OUT = [Conditional_z3.translate_from_existing(c) for i,c in wckb.conditionals.items() if i not in Jdelta.keys()]
+    conditionals = [Conditional_z3.translate_from_existing(i) for i in sckb.conditionals.values()]
+    s1 = z3.Solver()
+    [s1.add(z3.Implies(j.antecedence,j.consequence)) for j in conditionals]
+    s2 = z3.Solver()
+    [s2.add(z3.Implies(j.antecedence,j.consequence)) for j in OUT]
+    s3 = z3.Solver()
+    [[s3.add(z3.Implies(j.antecedence,j.consequence)) for j in J] for J in wpart]
+    q = []
+    count = 0
+    slexinf =LexInf(sckb)
+    spent = ExtendedPEntailment(sckb)
+    wlexinf =LexInf(wckb)
+    wpent = ExtendedPEntailment(wckb)
 
-def sampleForWeakCinfBenchmarkII():
-    u,l = 11,3
-    S = [50,80,110,140]
+    while len(q) < Q:
+        count+=1
+        print(f'rejected {count} query')
+        query = sampleConditional(VAR, u,l)
+        q2 = parseQuery(query)[1]
+        q1 = Conditional_z3.translate_from_existing(q2)
+        if s1.check(q1.make_A_then_B()) == z3.sat:
+            continue
+        if s1.check(q1.make_A_then_not_B()) == z3.sat:
+            continue
+        if s2.check(q1.make_A_then_not_B()) != z3.sat:
+            continue
+        if s2.check(q1.make_A_then_B()) != z3.sat:
+            continue
+        if s3.check(q1.make_A_then_B()) == z3.sat:
+            continue
+        if s3.check(q1.make_A_then_not_B()) == z3.sat:
+            continue
+        if spent.inference(q2) == True:
+            continue
+        if wpent.inference(q2) == True:
+            continue
+        if slexinf.inference(q2) == False:
+            continue
+        if wlexinf.inference(q2) == False:
+            continue
+        q.append(query)
+    return q
+
+    
+
+
+def sampleForWeakCinfBenchmarkII(s):
+    u,l = 9,3
+    #S = [50,80,110,140]
+    S=[s]
     for s in S:
-        d = int(s * 0.1)
-        f = int(s * 0.3)
-        t = int(s* 0.07)
+        #d = int(s * 0.1)
+        d = 5
+        f = int(s * 0.25)
         for i in range(10):
             random.seed(i)
             R = s
             VAR,COND, CKB = sampleCKB(s,R,u,l,d)
             while True:
                 random.shuffle(COND)
-                facts = [turnToFact(c) for c in COND[:f]]
-                cond= [parseQuery(c)[1] for c in COND[f:]+facts]
+                facts = [turnToFact(c.textRepresentation) for c in COND[:f]]
+                cond= [parseQuery(c)[1] for c in (COND[f:]+facts)]
                 dummyCKB = BeliefBase([(v) for v in VAR], {i:c for i,c in enumerate(cond,start=1)}, "")
-                part,_ = consistency(dummyCKB)
-                if (part != False):
-                    if len(part) >= t:
-                        print('CKB found')
-                        break
-            QUERIES = []
-            for j in range(10):
-                while True:
-                    Q = sampleConditional(VAR, u,l)
-                    q = parseQuery(Q)[1]
-                    if checkQuery(CKB,q) and checkQuery(dummyCKB,q):
-                        QUERIES.append(q)
-                        break
-            makeQueryfile(queries,  f'weakcinf2_benchmark/randomqq_{s}_{i}.cl')
-            makeCKB(VAR, COND, f'weakcinf2_benchmark/randomsbb__{s}_{i}.cl')
-            makeCKB(VAR, COND[f:]+facts, f'weakcinf2_benchmark/randomwbb_{s}_{i}.cl')
-
-
-
-
-
+                part = getEZP(dummyCKB)
+                if len(part) >= d-1:
+                    print(f'{s}, {i} II CKB found')
+                    break
+            QUERIES = sampleQ2(CKB, dummyCKB, VAR, u, l ,10)
+            makeQueryfile(QUERIES,  f'weakcinf1_benchmark/randomqq_{s}_{i}.cl')
+            makeCKB(VAR, COND, f'weakcinf1_benchmark/randomsbb_{s}_{i}.cl')
+            makeCKB(VAR, COND[f:]+facts, f'weakcinf1_benchmark/randomwbb_{s}_{i}.cl')
 
 
 
@@ -340,6 +387,7 @@ if __name__ == "__main__":
     if arg == '1':
         sampleForLEXbenchmarks()
     if arg == '2':
-        sampleForWeakCinfBenchmarkII()
+        s = sys.argv[2]
+        sampleForWeakCinfBenchmarkII(int(s))
     if arg == '3':
         sampleForWeakCinfBenchmarkI()

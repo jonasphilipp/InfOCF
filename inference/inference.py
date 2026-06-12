@@ -30,7 +30,7 @@ class Inference(ABC):
     Side Effects:
         kill_time, preprocessing_time and preprocessing_timed_out in epistemic_state
     """
-    def preprocess_belief_base(self, preprocessing_timeout: int) -> None: 
+    def preprocess_belief_base(self, preprocessing_timeout = 100000000) -> None: 
         #self._epistemic_state._preprocessing_timeout = preprocessing_timeout
         empty = len(self.epistemic_state['belief_base'].conditionals) == 0
         assert not empty, "belief base empty"
@@ -64,7 +64,7 @@ class Inference(ABC):
     Side Effects:
         result_dict in epistemic_state
     """
-    def inference(self, queries: dict, timeout: int, multi_inference: bool) -> None:
+    def inference(self, queries: dict, timeout=10000000, multi_inference=False) -> None:
         if not self.epistemic_state['preprocessing_done'] and not self.epistemic_state['preprocessing_timed_out']:
             Exception("preprocess belief_base before running inference")
         if self.epistemic_state['preprocessing_timed_out']:

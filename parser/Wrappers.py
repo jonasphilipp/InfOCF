@@ -45,9 +45,9 @@ def parse_belief_base(string: str) -> BeliefBase:
 def parse_queries(string: str) :
     if os.path.isfile(string):
         with open(string) as f: file = f.read() 
-        queries = parse_queries_from_str(file)
+        queries = parseQuery(file)
     else:
-        queries = parse_queries_from_str(string)
+        queries = parseQuery(string)
     return queries
 
 

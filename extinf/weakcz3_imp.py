@@ -10,6 +10,8 @@ from inference.z3tools import *
 from inference.consistency_sat import checkTautologies, test_weakly, consistency
 from pysmt.shortcuts import Solver,Implies
 from extinf.ezp import EZP, get_J_delta
+from extinf.weak_z_rank import SystemZRank
+from time import perf_counter
 
 def simplyfy(d):
     ## only simplifies view onto the dict, does not do any rewriting
@@ -23,21 +25,28 @@ def getOptimizer():
     opt.add_soft(z3.BoolVal(True), weight=1,id='dummy2')
     opt.add_soft(z3.BoolVal(True), weight=1,id='dummy3')
     return opt
+
+class TimeoutException(Exception):
+    pass
     
 
 class WeakCz3IMP():
 
-    def __init__(self,bb) -> None:
+    def __init__(self,bb, timeout = 600) -> None:
+            self.sysZ = SystemZRank(bb)
             self.bb = bb.transform_to_z3_objects()
             ezp = EZP(bb)
             self.J_delta = get_J_delta(ezp)
             self.compile_constraints()
             self.base_csp = self.translate()
+            self.t1 = None
+            self.timeout = timeout
 
 
     def compile_constraints(self):
 
         V,F = dict(), dict()
+        self.t1 = perf_counter()
 
         for i,c in self.bb.conditionals.items():
             #t1 = time()
@@ -53,13 +62,14 @@ class WeakCz3IMP():
         """
         uses inequality encoding to encode the query. 
         """
+        self.t1 = perf_counter()
         vMin,fMin = self.compile_query_into_psr(query, -1)
         vSum = self.makeSummation({0:vMin})
         fSum = self.makeSummation({0:fMin})
         v, f = self.freshVars(0)
-        ands = z3.Or([(f == i) for i in fSum[0]])
-        #ors = z3.Not(z3.And([(f<i) for i in fSum[0]]))
-        #ands.append(ors)
+        ands = [(f <= i) for i in fSum[0]]
+        ors = z3.Not(z3.And([(f<i) for i in fSum[0]]))
+        ands.append(ors)
         implicit = [(i >=f) for i in vSum[0]]
         ands.extend(implicit)
         return ands
@@ -67,6 +77,10 @@ class WeakCz3IMP():
 
 
     def inference(self, query):
+        if len(self.J_delta) != len(self.bb.conditionals):
+            zvf, zff = self.sysZ.rank_query(query)
+            if zff == float('inf'): return True
+            if zvf == float('inf'): return False
         query = transform_conditional_to_z3(query)
         base_csp = self.base_csp
         query_csp = self.compile_and_encode_query(query)
@@ -94,10 +108,9 @@ class WeakCz3IMP():
         return z3.Int(f'mv_{i}'), z3.Int(f'mf_{i}')
 
     def minima_encoding(self, mv: int, eta:int, vsums: list, fsums: list) -> list:
-        #ands = [(mv <= i) for i in vsums]
-        #ors = z3.Not(z3.And([(mv<i) for i in vsums]))
-        #ands.append(ors)
-        ands = z3.Or([(mv == i) for i in vsums])
+        ands = [(mv <= i) for i in vsums]
+        ors = z3.Not(z3.And([(mv<i) for i in vsums]))
+        ands.append(ors)
         implicit = [(eta +i >mv) for i in fsums]
         ands.extend(implicit)
         
@@ -137,10 +150,12 @@ class WeakCz3IMP():
         while opt.check() != z3.unsat:
             ss =simplyfy({j:k.value().py_value() for j,k in objectives.items() if j!=index})
             vMin.append(ss)
+            if perf_counter() - self.t1 > 600: raise TimeoutException()
         opt.pop()
         opt.add(query.falsify())
         while opt.check() != z3.unsat:
             ss =simplyfy({j:k.value().py_value() for j,k in objectives.items() if j!=index})
             fMin.append(ss)
+            if perf_counter() - self.t1 > 600: raise TimeoutException()
         return vMin, fMin
 
