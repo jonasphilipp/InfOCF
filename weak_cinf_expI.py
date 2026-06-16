@@ -1,47 +1,80 @@
-from extinf.weakcz3_imp import WeakCz3IMP
-from func_timeout import func_timeout, FunctionTimedOut
+import sys
+from extinf.weakcz3_imp import WeakCz3IMP, TimeoutException
 import pandas as pd
-from parser.Wrappers import parseCKB, parseQuery
+from parser.Wrappers import parseCKB, parseQuery, parse_queries, parse_belief_base
 from time import perf_counter
+from multiprocessing import Process, Queue
+from inference.z3tools import *
+import z3
 
-def run_exp(folder, outfile):
-    df = pd.DataFrame(columns=['setting', 'signature', 'bb', 'query', 'time_compile', 'time_solve','result'])
+
+
+
+def run_exp(folder, outfile, S):
+    #df = pd.DataFrame(columns=['setting', 'signature', 'bb', 'query', 'time_compile', 'time_solve','result'])
     results = []
-    for s in [50,80,110,140]:
+    for s in [S]:
         for i in range(10):
-            ckb = f'weakcinf1_benchmark/randomqq_{s}_{i}.cl')
-            query = f'weakcinf1_benchmark/random{folder}bb_{s}_{i}.cl')
+            print(f'running {s,i,folder}') 
+            query = f'weakcinf2_benchmark/randomqq_{s}_{i}.cl'
+            ckb = f'weakcinf2_benchmark/random{folder}bb_{s}_{i}.cl'
+            with open(query) as f: query = f.read() 
+            with open(ckb) as f: ckb = f.read() 
+            
             QUERY = parseQuery(query)
             CKB = parseCKB(ckb)
-            inf = WeakCz3IMP(CKB)
             tc1=perf_counter()
-            inf.compile_constraint()
+            try:
+                inf = WeakCz3IMP(CKB)
+            except TimeoutException:
+                r= {'setting':folder,'signature':s, 'bb':i, 'query':-1, 'time_compile':'Timeout', 'query_compile': 'Timeout', 'time_solve':'Timeout', 'result':'Timeout'}
+                print(r)
+                continue
+
             tc2 = perf_counter()
-            for j,q in enumerate(QUERY):
+            ss=z3.Solver()
+            ss.set(timeout=600000)
+            ss.add(inf.base_csp)
+            for j,q in QUERY.items():
+                q = transform_conditional_to_z3(q)
+                qt1=perf_counter()
                 try:
-                    t1 = perf_counter()
-                    res = func_timeout(600, inf.inference, args=q)
-                    t2 = perf_counter()
-                except FunctionTimedOut:
-                    r= {'setting':folder,'signature':s, 'bb':i, 'query':j, 'time_compile':tc2-tc1, 'time_solve':'Timeout', 'result':'Timeout'}
-                    results.append(r)
+                    q_csp = inf.compile_and_encode_query(q)
+                except TimeoutException:
+                    r= {'setting':folder,'signature':s, 'bb':i, 'query':j, 'time_compile':tc2-tc1, 'query_compile': 'Timeout', 'time_solve':'Timeout', 'result':'Timeout'}
+                    print(r)
                     continue
-                r= {'setting':folder,'signature':s, 'bb':i, 'query':j, 'time_compile':tc2-tc1, 'time_solve':t2-t1, 'result':res}
+                qt2=perf_counter()
+                ss.push()
+                ss.add(q_csp)
+                t1 = perf_counter()
+                res = ss.check()
+                t2 = perf_counter()
+                if res == z3.unknown:
+                    r= {'setting':folder,'signature':s, 'bb':i, 'query':j, 'time_compile':tc2-tc1, 'query_compile': qt2-qt1, 'time_solve':'Timeout', 'result':'Timeout'}
+                    print(r)
+                    results.append(r)
+                    ss.pop()
+                    continue
+                r= {'setting':folder,'signature':s, 'bb':i, 'query':j, 'time_compile':tc2-tc1, 'query_compile': qt2-qt1,'time_solve':t2-t1, 'result':res}
+                print(r)
                 results.append(r)
-    df = pd.concat([df,results])
+                ss.pop()
+    df = pd.DataFrame(results)
     df.to_csv(outfile)
 
 
 if __name__ == "__main__":
     arg = sys.argv[1]
+    s = int(sys.argv[2])
     if arg == '1':
         folder = 'w'
-        outfile = 'weakcinf1_benchmark/weak_results.csv'
-        run_exp(folder, outfile)
+        outfile = f'weakcinf2_benchmark/weak_results_{s}.csv'
+        run_exp(folder, outfile,s)
     if arg == '2':
         folder = 's'
-        outfile = 'weakcinf1_benchmark/strong_results.csv'
-        run_exp(folder, outfile)
+        outfile = f'weakcinf2_benchmark/strong_results_{s}.csv'
+        run_exp(folder, outfile,s)
         
 
 

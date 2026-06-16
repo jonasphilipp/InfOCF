@@ -59,6 +59,6 @@ def myeval(s):
 
 if __name__ == "__main__":
     myeval(50)
-    myeval(80)
-    myeval(110)
+    myeval(75)
+    myeval(100)
 

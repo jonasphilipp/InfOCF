@@ -270,36 +270,32 @@ def turnToFact(cond):
     con, ant = c.split('|')
     return f'(Bottom | ({ant}),!({con}))' 
 
-def sampleForWeakCinfBenchmarkI():
+def sampleForWeakCinfBenchmarkI(s):
     u,l = 9,3
-    S = [50,80,110,140]
+    #S = [50,80,110,140]
+    S=[s]
     for s in S:
         #d = int(s * 0.1)
         d = 5
-        R = int(s * 1.30)
+        f = int(s * 0.15)
         for i in range(10):
             random.seed(i)
+            R = s
             VAR,COND, CKB = sampleCKB(s,R,u,l,d)
+            print('strong ckb sampled')
             while True:
-                facts = [sampleFact(VAR, u,l) for _ in range(int(s * 0.3))]
-                cond= [parseQuery(c)[1] for c in COND+facts]
+                facts = [sampleFact(VAR, u,l) for _ in range(f)]
+                cond= [parseQuery(c)[1] for c in (COND+facts)]
                 dummyCKB = BeliefBase([(v) for v in VAR], {i:c for i,c in enumerate(cond,start=1)}, "")
-                part  = test_weakly(dummyCKB)
-                if (part != False):
-                    #if len(part) >= d:
-                    print('I CKB found')
+                part = getEZP(dummyCKB)
+                if len(part) >= 3:
+                    print(f'{s}, {i} II CKB found')
                     break
-            QUERIES = []
-            for j in range(10):
-                while True:
-                    Q = sampleConditional(VAR, u,l)
-                    q = parseQuery(Q)[1]
-                    #if checkQuery(CKB,q) and checkQuery(dummyCKB,q):
-                    QUERIES.append(q)
-                    break
-            makeQueryfile(QUERIES,  f'weakcinf1_benchmark/randomqq_{s}_{i}.cl')
-            makeCKB(VAR, COND, f'weakcinf1_benchmark/randomsbb_{s}_{i}.cl')
-            makeCKB(VAR, COND+facts, f'weakcinf1_benchmark/randomwbb_{s}_{i}.cl')
+                print('weak ckb rejected')
+            QUERIES = sampleQ2(CKB, dummyCKB, VAR, u, l ,10)
+            makeQueryfile(QUERIES,  f'weakcinf2_benchmark/randomqq_{s}_{i}.cl')
+            makeCKB(VAR, COND, f'weakcinf2_benchmark/randomsbb_{s}_{i}.cl')
+            makeCKB(VAR, COND+facts, f'weakcinf2_benchmark/randomwbb_{s}_{i}.cl')
 
 
 def sampleQ2(sckb, wckb, VAR, u,l, Q):
@@ -390,4 +386,5 @@ if __name__ == "__main__":
         s = sys.argv[2]
         sampleForWeakCinfBenchmarkII(int(s))
     if arg == '3':
-        sampleForWeakCinfBenchmarkI()
+        s = sys.argv[2]
+        sampleForWeakCinfBenchmarkI(int(s))
