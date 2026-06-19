@@ -94,23 +94,42 @@ if __name__ == "__main__":
         outfile = 'cinf_encoding_benchmark/new_results_3.csv'
         run_exp(algo,outfile, func,R)
 
+    """
+
+    """
     if arg == '7':
-        R = range(1,11)
+        R = range(1,6)
         algo = 'brand'
         func = WeakCz3BRAND
         outfile = 'cinf_encoding_benchmark/brand_results_1.csv'
         run_exp(algo,outfile, func,R)
-
     if arg == '8':
-        R = range(11,21)
+        R = range(6,11)
         algo = 'brand'
         func = WeakCz3BRAND
         outfile = 'cinf_encoding_benchmark/brand_results_2.csv'
         run_exp(algo,outfile, func,R)
-
     if arg == '9':
-        R = range(21,31)
+        R = range(11,16)
         algo = 'brand'
         func = WeakCz3BRAND
         outfile = 'cinf_encoding_benchmark/brand_results_3.csv'
+        run_exp(algo,outfile, func,R)
+    if arg == '10':
+        R = range(16,21)
+        algo = 'brand'
+        func = WeakCz3BRAND
+        outfile = 'cinf_encoding_benchmark/brand_results_4.csv'
+        run_exp(algo,outfile, func,R)
+    if arg == '11':
+        R = range(21,26)
+        algo = 'brand'
+        func = WeakCz3BRAND
+        outfile = 'cinf_encoding_benchmark/brand_results_5.csv'
+        run_exp(algo,outfile, func,R)
+    if arg == '12':
+        R = range(26,31)
+        algo = 'brand'
+        func = WeakCz3BRAND
+        outfile = 'cinf_encoding_benchmark/brand_results_6.csv'
         run_exp(algo,outfile, func,R)
