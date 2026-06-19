@@ -1,6 +1,7 @@
 import sys
 from extinf.weakcz3_imp import WeakCz3IMP
 from extinf.weakcz3_OLDENC import WeakCz3OLD
+from extinf.weakcz3_BRAND import WeakCz3BRAND
 import pandas as pd
 from parser.Wrappers import parseCKB, parseQuery, parse_queries, parse_belief_base
 from time import perf_counter
@@ -93,4 +94,23 @@ if __name__ == "__main__":
         outfile = 'cinf_encoding_benchmark/new_results_3.csv'
         run_exp(algo,outfile, func,R)
 
+    if arg == '7':
+        R = range(1,11)
+        algo = 'brand'
+        func = WeakCz3BRAND
+        outfile = 'cinf_encoding_benchmark/brand_results_1.csv'
+        run_exp(algo,outfile, func,R)
 
+    if arg == '8':
+        R = range(11,21)
+        algo = 'brand'
+        func = WeakCz3BRAND
+        outfile = 'cinf_encoding_benchmark/brand_results_2.csv'
+        run_exp(algo,outfile, func,R)
+
+    if arg == '9':
+        R = range(21,31)
+        algo = 'brand'
+        func = WeakCz3BRAND
+        outfile = 'cinf_encoding_benchmark/brand_results_3.csv'
+        run_exp(algo,outfile, func,R)
