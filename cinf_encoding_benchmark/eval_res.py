@@ -8,6 +8,12 @@ import numpy as np
 def merge(old, new):
     old['time_solve'] = old['time_solve'].replace('Timeout', '600').astype(float)
     new['time_solve'] = new['time_solve'].replace('Timeout', '600').astype(float)
+    #print(len(new['time_solve']))
+    print(sum((new['time_solve'] < 599.9).values))
+    print(sum((old['time_solve'] < 599.9).values))
+    #print(len(sum(old['time_solve'] < 599.9)))
+
+
     wst = []
     sst = []
     for idx1, row1 in old.iterrows():
@@ -21,6 +27,7 @@ def merge(old, new):
                 wst.append(row2['time_solve'])
     wst = np.array(wst)
     sst = np.array(sst)
+    print(len(wst))
     return sst, wst
 
 
@@ -36,12 +43,34 @@ def myStats(old, new, fname):
     new = new
     nn = new[targ]
     #print(tt)
+    plt.xlabel('query',fontsize=18)
+    plt.ylabel('cumulated time (sec)',fontsize=18)
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=18)
     plt.plot(np.cumsum(tt) , label='old encoding')
     plt.plot(np.cumsum(nn) , label='new encoding')
-    plt.legend()
-    plt.savefig(fname)
+    plt.legend(fontsize=18)
+    plt.savefig(fname, dpi=300,bbox_inches='tight')
     plt.clf()
 
+def mylogStats(old, new, fname):
+    #print(old.values)
+    tt = np.sort(old)
+    #print(tt)
+    targ = np.argsort(old)
+    new = new
+    nn = new[targ]
+    #print(tt)
+    plt.xlabel('query', fontsize=18)
+    plt.ylabel('cumulated time (sec)',fontsize=18)
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=18)
+    plt.plot(np.cumsum(tt) , label='old encoding')
+    plt.plot(np.cumsum(nn) , label='new encoding')
+    plt.legend(fontsize=18)
+    plt.yscale('log')
+    plt.savefig(fname,dpi=300, bbox_inches='tight')
+    plt.clf()
 
 def myeval():
     old1 = pd.read_csv(f'old_results_1.csv')
@@ -54,6 +83,7 @@ def myeval():
     new = pd.concat([new1,new2,new3], ignore_index=True)
     sst, wst = merge(old, new)
     myStats(sst,wst, f'res_solve.png')
+    mylogStats(sst,wst, f'res_log_solve.png')
 
 if __name__ == "__main__":
     myeval()

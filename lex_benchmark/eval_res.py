@@ -13,10 +13,16 @@ def myeval():
     tnew = new['time_solve']
     tt = np.sort(told)
     targ = np.argsort(told)
-    nn = tnew[targ]
-    plt.plot(tt)
-    plt.plot(nn)
+    nn = tnew.values[targ]
+    print(tt)
+    print(nn)
+    plt.xlabel('query')
+    plt.ylabel('time (sec)')
+    plt.plot(tt, label='old algorithm')
+    plt.plot(nn, label='new algorithm')
     #plt.show()
+    plt.legend()
+    plt.yscale('log')
     plt.savefig('told.png')
     print(type(told))
 
