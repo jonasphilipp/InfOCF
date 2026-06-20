@@ -67,7 +67,7 @@ class WeakCz3BRAND():
         vSum = self.makeSummation({0:vMin})
         fSum = self.makeSummation({0:fMin})
         v, f = self.freshVars(0)
-        ands = [z3.Or[(f == i) for i in fSum[0]]]
+        ands = [z3.Or([(f == i) for i in fSum[0]])]
         #ors = z3.Not(z3.And([(f<i) for i in fSum[0]]))
         #ands.append(ors)
         implicit = [(i >=f) for i in vSum[0]]
@@ -109,7 +109,7 @@ class WeakCz3BRAND():
 
     def minima_encoding(self, mv: int, eta:int, vsums: list, fsums: list) -> list:
         ands = [z3.Or([(mv == i) for i in vsums])]
-        ands.append(ors)
+        #ands.append(ors)
         implicit = [(eta +i >mv) for i in fsums]
         ands.extend(implicit)
         
@@ -149,12 +149,12 @@ class WeakCz3BRAND():
         while opt.check() != z3.unsat:
             ss =simplyfy({j:k.value().py_value() for j,k in objectives.items() if j!=index})
             vMin.append(ss)
-            if perf_counter() - self.t1 > 600: raise TimeoutException()
+            #if perf_counter() - self.t1 > 600: raise TimeoutException()
         opt.pop()
         opt.add(query.falsify())
         while opt.check() != z3.unsat:
             ss =simplyfy({j:k.value().py_value() for j,k in objectives.items() if j!=index})
             fMin.append(ss)
-            if perf_counter() - self.t1 > 600: raise TimeoutException()
+            #if perf_counter() - self.t1 > 600: raise TimeoutException()
         return vMin, fMin
 
