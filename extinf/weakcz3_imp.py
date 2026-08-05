@@ -41,7 +41,7 @@ class WeakCz3IMP():
             self.base_csp = self.translate()
             self.t1 = None
             self.timeout = timeout
-	    self.compile_constraints()
+            self.compile_constraints()
 
 
     def compile_constraints(self):
