@@ -18,6 +18,7 @@ from time import time_ns
 from pysmt.shortcuts import Solver,Implies
 from inference.weakly_system_z_rank import SystemZRankZ3
 from inference.weak_c_z3 import WeakCz3
+from inference.inference_operator import InferenceOperator
 from extinf.weaklexinf import LexInf
 from extinf.weak_p_entailment import ExtendedPEntailment
 from extinf.ezp import test_weakly, getEZP, get_J_delta, EZP
@@ -151,6 +152,35 @@ def sampleQueriesSimple(S,R,l,u):
     VAR = createVariables(S)
     conditionals = [(sampleConditional(VAR,u,l)) for _ in range(R)]
     return conditionals
+
+
+
+def counterExample():
+    while True:
+        VAR,COND, dummyckb = sampleCKB(10,10,10,3,1)
+        lexinf =LexInf(dummyckb)
+        cinf =WeakCz3(dummyckb)
+        sysw = InferenceOperator(dummyckb, 'system-w')
+        i = 1
+        while True:
+            q = sampleQueriesSimple(10,10,3,10)
+            Q = parseQuery(q[0])[1]
+            Q1 = BeliefBase('', {1:Q},'')
+            w_res = (sysw.inference(Q1)['result'][0])
+            print(i)
+            i=i+1
+            print(Q1.conditionals)
+            print(Q)
+            if w_res == False and lexinf.inference(Q)==True:
+                print(Q1.conditionals)
+                print(Q)
+                makeQueryfile(q,  f'counter.clq')
+                makeCKB(VAR, COND, f'counter.cl')
+                return
+            if i >100:
+                break
+
+
 
 
 
@@ -379,6 +409,7 @@ def sampleForWeakCinfBenchmarkII(s):
 
 
 if __name__ == "__main__":
+    """
     arg = sys.argv[1]
     if arg == '1':
         sampleForLEXbenchmarks()
@@ -388,3 +419,5 @@ if __name__ == "__main__":
     if arg == '3':
         s = sys.argv[2]
         sampleForWeakCinfBenchmarkI(int(s))
+    """
+    counterExample()

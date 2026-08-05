@@ -17,20 +17,27 @@ queries = parse_queries(queries_string)
 
 # select the inference system according to which the inferences are to be performed
 # possible options at this time are 'p-entailment', 'system-z', 'system-w', 'c-inference' and 'lex_inf'
-inference_system = 'lex_inf'
+inference_system = 'c-inference'
 
+class Dummy:
+	def __init__(self, conditionals):
+		self.conditionals=conditionals
+		self.name = ''
+	
 # instanciate inference operator parameterized by belief_base and inference_system
 inference_operator = InferenceOperator(belief_base, inference_system)
-
+queries = Dummy(queries)
 # perform inference on collection of queries
 results = inference_operator.inference(queries)
+T = results['index']==1
+print((results[T]['result'][0]))
 
 
 
 
 
 # results are provided as pandas dataframe
-print(results)
+#print(results)
 
 
 # results can be saved as csv

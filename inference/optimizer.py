@@ -148,7 +148,7 @@ class OptimizerRC2(Optimizer):
     def minimal_correction_subsets(self, wcnf: WCNF, ignore: list[int] = []):
         xMins = []
         sat_solver = self.epistemic_state['pmaxsat_solver'][4:]
-        if not sat_solver: sat_solver = 'g3'
+        if not sat_solver: sat_solver = 'cadical300'
         int = 0
         with RC2(wcnf, solver=sat_solver) as rc2:
             while True:
@@ -175,6 +175,7 @@ class OptimizerRC2(Optimizer):
                 [rc2.add_clause(clause) for clause in clauses_to_add]
         
         xMins_lst = remove_supersets(xMins)
+	#print(xMins_lst)
         return xMins_lst
 
 

@@ -59,6 +59,7 @@ class WeakCInference():
                 J_delta[i] = c
         ### hold them in epistemic state? 
         self.epistemic_state['J_delta'] = J_delta
+        self.preprocess_belief_base()
 
     #replaces every items in the argument by it's sum representation
     def makeSummation(self, minima: dict) -> dict[int, list]:
@@ -94,6 +95,7 @@ class WeakCInference():
         return csp
 
     def translate(self) -> list:
+        J_delta = set(self.epistemic_state['J_delta'].keys())
         eta = {i: Symbol(f'eta_{i}', INT) for i, _ in self.epistemic_state['J_delta'].items()}
         gteZeros = [GE(e, Int(0)) for e in eta.values()]
         vSums = self.makeSummation(self.epistemic_state['vMin'])
@@ -162,12 +164,13 @@ class WeakCInference():
         Execution time in ms
     """
     def compile_constraint(self) -> float:
+        tseitin_transformation = TseitinTransformation(self.epistemic_state)
         start_time = time_ns() / (1e+6)
         J_delta = set(self.epistemic_state['J_delta'].keys())
 
         V = {i:v for i, v in self.epistemic_state['v_cnf_dict'].items() if i in J_delta}
         F = {i:f for i, f in self.epistemic_state['f_cnf_dict'].items() if i in J_delta}
-        NF = {i:f for i, f in self.epistemic_state['nf_cnf_dict'].items()}
+        NF = {i:f for i, f in self.epistemic_state['nf_cnf_dict'].items() if i in J_delta}
 
         self.epistemic_state['wv_cnf_dict'] = V
         self.epistemic_state['wf_cnf_dict'] = F
@@ -175,18 +178,24 @@ class WeakCInference():
 
         for leading_conditional in [V,F]:
             for i, conditional in leading_conditional.items():
+                if i not in J_delta: continue
                 xMins = []
                 wcnf = WCNF()
                 [wcnf.append(c) for c in conditional]
+                for t,c in self.epistemic_state['belief_base'].conditionals.items():
+                    if t in J_delta:
+                        continue
+                    AB = tseitin_transformation.query_to_implication(c)
+                    [wcnf.append(c) for c in AB]
                 [wcnf.append(s, weight=1) for j, softc in NF.items() if i != j for s in softc] ### amazing python construction fr fr 
                 
                 optimizer = create_optimizer(self.epistemic_state)
                 xMins_lst = optimizer.minimal_correction_subsets(wcnf, ignore=[i])
 
                 if leading_conditional is V:
-                    self.epistemic_state['vMin'][i] = filtersubsets(xMins_lst,J_delta)
+                    self.epistemic_state['vMin'][i] = xMins_lst
                 else: 
-                    self.epistemic_state['fMin'][i] = filtersubsets(xMins_lst,J_delta)
+                    self.epistemic_state['fMin'][i] = xMins_lst
 
         return (time_ns()/(1e+6))-start_time
     
@@ -217,7 +226,7 @@ class WeakCInference():
 
         V = {i:v for i, v in self.epistemic_state['v_cnf_dict'].items() if i in J_delta}
         F = {i:f for i, f in self.epistemic_state['f_cnf_dict'].items() if i in J_delta}
-        NF = {i:f for i, f in self.epistemic_state['wnf_cnf_dict'].items()}
+        NF = {i:f for i, f in self.epistemic_state['wnf_cnf_dict'].items() if i in J_delta}
         #print(NF)
         #print(transformed_conditionals)
 
@@ -227,6 +236,11 @@ class WeakCInference():
             xMins = []
             wcnf = WCNF()
             [wcnf.append(c) for c in conditional]
+            for i,c in self.epistemic_state['belief_base'].conditionals.items():
+                if i in J_delta:
+                    continue
+                AB = tseitin_transformation.query_to_implication(c)
+                [wcnf.append(c) for c in AB]
             [wcnf.append(s, weight=1) for j, softc in NF.items() for s in softc]
             
             optimizer = create_optimizer(self.epistemic_state)
@@ -278,7 +292,7 @@ class WeakCInference():
 
         V = {i:v for i, v in self.epistemic_state['v_cnf_dict'].items() if i in J_delta}
         F = {i:f for i, f in self.epistemic_state['f_cnf_dict'].items() if i in J_delta}
-        NF = {i:f for i, f in self.epistemic_state['wnf_cnf_dict'].items()}
+        NF = {i:f for i, f in self.epistemic_state['wnf_cnf_dict'].items() if i in J_delta}
         #print(NF)
         #print(transformed_conditionals)
 
@@ -288,6 +302,13 @@ class WeakCInference():
             xMins = []
             wcnf = WCNF()
             [wcnf.append(c) for c in conditional]
+            for i,c in self.epistemic_state['belief_base'].conditionals.items():
+                if i in J_delta:
+                    continue
+                AB = tseitin_transformation.query_to_implication(c)
+                [wcnf.append(c) for c in AB]
+
+
             [wcnf.append(s, weight=1) for j, softc in NF.items() for s in softc]
             
             optimizer = create_optimizer(self.epistemic_state)
@@ -295,10 +316,10 @@ class WeakCInference():
             
             if conditional is transformed_conditionals[0]:
                 countv+=1
-                vMin = filtersubsets(xMins_lst,J_delta)
+                vMin = xMins_lst
             else: 
                 countf+=1
-                fMin = filtersubsets(xMins_lst, J_delta)
+                fMin = xMins_lst
 
         return vMin, fMin
 

@@ -115,12 +115,12 @@ class TseitinTransformation:
         return [AB, AnotB]
 
 
-    def query_to_implication(self, query: Conditional) -> list[list[list[int]]]:
+    def query_to_implication(self, query: Conditional) -> list[list[int]]:
         t = z3.Tactic('tseitin-cnf')
         with Solver(name="z3") as solver:
             antecedence = solver.converter.convert(query.antecedence)
             consequence = solver.converter.convert(query.consequence)
-        AB = self.goal2intcnf(t(z3.Implies(antecedence, consequence))[0])
+        AB = self.goal2intcnf(t(z3.Not(z3.And(antecedence, z3.Not(consequence))))[0])
         return AB
 
     """

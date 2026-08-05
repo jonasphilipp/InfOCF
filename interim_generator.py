@@ -64,7 +64,7 @@ def sampleFormula(variables:List[str]):
 
 
 def sampleConditional(variables:List[str], l, u)->List[str]:
-    a,b = sampleVars(variables, l, u)
+    a,b = sampleVars(variables+['Top','Bottom'], l, u)
     #print(a, b)
     if len(a) == 0:  
         inv = random.choice(['Top', 'Bottom'])
@@ -109,7 +109,7 @@ def createVariables(amount:int) ->List[str]:
 
 
 
-def samplingStrongCKB(S:int,R:int,l:int, u:int) -> Tuple[str,Conditional,T]:
+def samplingCKB(S:int,R:int,l:int, u:int) -> Tuple[str,Conditional,T]:
     """
     Will output a consistent CKB with S elements in the signature
     and R conditionals. 
@@ -124,7 +124,7 @@ def samplingStrongCKB(S:int,R:int,l:int, u:int) -> Tuple[str,Conditional,T]:
         dummyCKB = BeliefBase([(v) for v in VAR], {i:c for i,c in enumerate(COND,start=1)}, "")
         part,_ = consistency(dummyCKB)
         weak = test_weakly(dummyCKB)
-        if (part != False) and (weak==True):
+        if  (part == False) and (weak==True):
             break
     return VAR, COND, dummyCKB
 
@@ -217,7 +217,7 @@ def sampleCKBandQueries(S,R,l,u,Q,seed) -> T:
 
 
 
-def sampleSeededCKB(S,R,l,u,seed) -> T:
+def sampleSeededWeakCKB(S,R,l,u,seed) -> T:
     """
     S : amount of variables in the signature
     R : amount of conditionals
@@ -229,9 +229,6 @@ def sampleSeededCKB(S,R,l,u,seed) -> T:
     random.seed(seed)
     VAR, COND, ckb = samplingStrongCKB(S,R,l,u)
     return ckb
-
-
-
 
 
 
