@@ -50,11 +50,18 @@ def runTests(S,R,l,u,seed):
         lex_result = lexinf.inference(q)
         if not lex_result:
             assert not c_result, "lex does not hold but c does"
+            assert not p_result, "lex does not hold but p does"
         if p_result:
             assert c_result, "p holds but c does not"
+            assert lex_result, "p holds but lex does not"
+        if not c_result:
+            assert not p_result, "c does not hold but p does"
+        if  c_result:
+            assert lex_result, "c does hold but lex does not"
+        print(p_result,c_result,lex_result)
 
 
-for S in [10,20,30,40]:
+for S in [10,15,20,25,30]:
     R = S
     l=1
     u=8
