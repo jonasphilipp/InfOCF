@@ -16,7 +16,7 @@ from z3 import And, BoolRef, Not, Or, Implies
 # Project modules
 # ---------------------------------------------------------------------------
 from inference.conditional import Conditional
-from infocf.log_setup import get_logger
+#from infocf.log_setup import get_logger
 
 logger = get_logger(__name__)
 

@@ -3,8 +3,22 @@ from parser.Wrappers import parse_belief_base, parse_queries
 
 # belief base and queries provided dircetly as string. providing a filepath of belief base and
 # queries is also viable. see show.py for demonstration
-belief_base_string = "signature\nb,p,f,w\n\nconditionals\nbirds_ecsqaru_23_paper_45{\n(f|b),\n(!f|p),\n(b|p),\n(w|b)\n}"
-queries_string = "(f|p),(!f|p)"
+belief_base_string = """
+signature
+b,p,f,w
+
+conditionals
+birds_ecsqaru_23_paper_45
+{
+(f|b),
+(!f|p),
+(b|p),
+(w|b),
+(Bottom|!b)
+}"""
+#belief_base_string = "signature\nb,p,f,w\n\nconditionals\nbirds_ecsqaru_23_paper_45{\n(f|b),\n(!f|p),\n(b|p),\n(w|b)\n}"
+belief_base_string = "signature\nb,p,f,w\n\nconditionals\nbirds_ecsqaru_23_paper_45{\n(f|b),\n(!f|p),\n(b|p),\n(w|b),\n(Bottom|!b)}"
+queries_string = "(w|p),(!w|p)"
 
 
 # parse the belief base and the queries
@@ -17,7 +31,7 @@ queries = parse_queries(queries_string)
 inference_system = "c-inference"
 
 # instanciate inference operator parameterized by belief_base and inference_system
-inference_manager = InferenceManager(belief_base, inference_system)
+inference_manager = InferenceManager(belief_base, inference_system, weakly=True)
 
 # perform inference on collection of queries
 results = inference_manager.inference(queries)
