@@ -46,9 +46,12 @@ def sampleVars(variables:List[str], l, u)->Tuple[List[str],List[str]]:
     """
     #print(variables)
     V1 = random.choice(range(1,u+1))
+    V2 = random.choice(range(1,u+1))
     v = variables
+    random.shuffle(v)
     v1=v[:V1]
-    v2=v[V1:]
+    random.shuffle(v)
+    v2=v[:V2]
 
     return v1,v2
 
@@ -109,11 +112,12 @@ def createVariables(amount:int) ->List[str]:
 
 
 
-def samplingCKB(S:int,R:int,l:int, u:int) -> Tuple[str,Conditional,T]:
+def samplingCKB(S:int,R:int,l:int, u:int, seed) -> Tuple[str,Conditional,T]:
     """
     Will output a consistent CKB with S elements in the signature
     and R conditionals. 
     """
+    random.seed(seed)
     c=0
     while True:
         c+=1

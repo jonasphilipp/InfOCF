@@ -129,6 +129,10 @@ class CInference(Inference):
                 wcnf = WCNF()
                 [wcnf.append(c) for c in conditional]
                 [wcnf.append(s, weight=1) for j, softc in self.epistemic_state['nf_cnf_dict'].items() if i != j for s in softc]
+                soft=(sum([len(t) for t in (wcnf.soft)]))
+                hard=(sum([len(t) for t in (wcnf.hard)]))
+                #print(soft+hard)
+                #print(len(wcnf.soft+wcnf.hard))
                 
                 optimizer = create_optimizer(self.epistemic_state)
                 xMins_lst = optimizer.minimal_correction_subsets(wcnf, ignore=[i])

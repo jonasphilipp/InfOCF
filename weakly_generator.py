@@ -53,12 +53,13 @@ def sampleVars(variables:List[str], u, l=2)->Tuple[List[str],List[str]]:
     """
     #print(variables)
 
-    V1 = random.choice((range(l,(u+1)//2)))
-    V2 = random.choice((range(l,(u+1)//2)))
+    V1 = random.choice(range(l,u+1))
+    V2 = random.choice(range(l,u+1))
     tvars = variables
     random.shuffle(tvars)
     v1 = tvars[:V1]
-    v2 = tvars[V1:V1+V2]
+    random.shuffle(tvars)
+    v2 = tvars[:V2]
     return v1,v2
 
 
@@ -130,7 +131,8 @@ def samplingWeaklyCKB(S:int,R:int,l:int, u:int) -> Tuple[str,Conditional,T]:
     return VAR, COND, dummyCKB, weakbb
 
 
-def sampleCKB(S,R,u,l, depth):
+def sampleCKB(S,R,u,l, depth,seed):
+    random.seed(seed)
     while True:
         VAR = createVariables(S)
         conditionals = [(sampleConditional(VAR,u,l)) for _ in range(R)]

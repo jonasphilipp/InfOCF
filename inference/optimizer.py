@@ -149,7 +149,8 @@ class OptimizerRC2(Optimizer):
         xMins = []
         sat_solver = self.epistemic_state['pmaxsat_solver'][4:]
         if not sat_solver: sat_solver = 'cadical300'
-        int = 0
+        cint = 0
+        #print('soft',len(wcnf.soft))
         with RC2(wcnf, solver=sat_solver) as rc2:
             while True:
                 if self.epistemic_state['kill_time'] and process_time() > self.epistemic_state['kill_time']:
@@ -160,10 +161,12 @@ class OptimizerRC2(Optimizer):
                 if model == None:
                     #print(f"models found: {int}")
                     break
-                int += 1 
+                cint += 1 
                 cost = rc2.cost
+                #print(cost)
                 
                 violated = self.get_violated_conditional(model, cost, ignore)
+                #print(violated)
                 
                 if not violated:
                     xMins.append(violated)
@@ -171,11 +174,15 @@ class OptimizerRC2(Optimizer):
                 
                 xMins.append(violated)
                 clauses_to_add = self.exclude_violated(violated)
+                #print(clauses_to_add)
 
                 [rc2.add_clause(clause) for clause in clauses_to_add]
-        
         xMins_lst = remove_supersets(xMins)
-	#print(xMins_lst)
+        """
+        if cint > len(xMins_lst):
+            print('calls',cint, 'mcs',len(xMins_lst))
+            print('last cost', cost)
+        """
         return xMins_lst
 
 

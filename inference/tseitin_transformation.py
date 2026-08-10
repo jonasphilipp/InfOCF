@@ -120,7 +120,8 @@ class TseitinTransformation:
         with Solver(name="z3") as solver:
             antecedence = solver.converter.convert(query.antecedence)
             consequence = solver.converter.convert(query.consequence)
-        AB = self.goal2intcnf(t(z3.Not(z3.And(antecedence, z3.Not(consequence))))[0])
+        #AB = self.goal2intcnf(t(z3.Not(z3.And(antecedence, z3.Not(consequence))))[0])
+        AB = self.goal2intcnf(t(z3.Implies(antecedence,consequence))[0])
         return AB
 
     """
