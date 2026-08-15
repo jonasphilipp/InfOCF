@@ -8,6 +8,7 @@ from warnings import warn
 # Third-party
 # ---------------------------------------------------------------------------
 from pysat.formula import WCNF
+from pysmt.shortcuts import Solver
 
 from inference.conditional import Conditional
 from inference.consistency_sat import consistency_indices
@@ -80,6 +81,32 @@ class SystemW(Inference):
             # all indices in the last partition
             for index in self.epistemic_state["partition"][-1]:
                 [wcnf.append(c) for c in self.epistemic_state["nf_cnf_dict"][index]]
+            # check weak-layer vacuity before mcs enumeration.
+            taut_solver = Solver(name=self.epistemic_state["smt_solver"])
+            taut_solver.add_assertion(query.antecedence)
+            contra_solver = Solver(name=self.epistemic_state["smt_solver"])
+            contra_solver.add_assertion(query.make_A_then_not_B())
+            for index in self.epistemic_state["partition"][-1]:
+                constraint = (
+                    self.epistemic_state["belief_base"]
+                    .conditionals[index]
+                    .make_not_A_or_B()
+                )
+                taut_solver.add_assertion(constraint)
+                contra_solver.add_assertion(constraint)
+            if not taut_solver.solve() or not contra_solver.solve():
+                return True
+            if len(self.epistemic_state["partition"]) == 1:
+                # no ranked layer remains.
+                solver = Solver(name=self.epistemic_state["smt_solver"])
+                solver.add_assertion(query.make_A_then_not_B())
+                for index in self.epistemic_state["partition"][-1]:
+                    solver.add_assertion(
+                        self.epistemic_state["belief_base"]
+                        .conditionals[index]
+                        .make_not_A_or_B()
+                    )
+                return not solver.solve()
             result = self._rec_inference(
                 wcnf, len(self.epistemic_state["partition"]) - 2, deadline
             )
@@ -126,6 +153,18 @@ class SystemW(Inference):
         )
         xi_i_set = frozenset([frozenset(l) for l in xi_i_list])
         xi_i_prime_set = frozenset([frozenset(l) for l in xi_i_prime_list])
+        trace = self.epistemic_state.get("diagnostic_trace")
+        if isinstance(trace, list):
+            trace.append(
+                {
+                    "backend": "rc2",
+                    "operator": "system-w",
+                    "query": self.epistemic_state.get("diagnostic_query"),
+                    "level": partition_index,
+                    "verification_mcs": [sorted(item) for item in xi_i_set],
+                    "falsification_mcs": [sorted(item) for item in xi_i_prime_set],
+                }
+            )
         if not any_subset_of_all(xi_i_set, xi_i_prime_set):
             return False
         for xi_i in xi_i_set & xi_i_prime_set:
