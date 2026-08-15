@@ -117,10 +117,29 @@ class TseitinTransformation:
     """
 
     def goal2intcnf(self, goal: z3.Goal) -> list[list[int]]:
-        cnf = []
+        """convert a z3 cnf goal to dimacs clauses.
+
+        keep boolean constants out of idpool: omit true clauses and use an
+        empty clause for false.
+        """
+        cnf: list[list[int]] = []
         for expr in goal:
+            expr = z3.simplify(expr)
+            if z3.is_true(expr):
+                continue
+            if z3.is_false(expr):
+                cnf.append([])
+                continue
             if z3.is_or(expr):
-                cnf.append([self.expr_to_signed_id(x) for x in expr.children()])
+                children = [z3.simplify(child) for child in expr.children()]
+                if any(z3.is_true(child) for child in children):
+                    continue
+                clause = [
+                    self.expr_to_signed_id(child)
+                    for child in children
+                    if not z3.is_false(child)
+                ]
+                cnf.append(clause)
             else:
                 cnf.append([self.expr_to_signed_id(expr)])
         return cnf

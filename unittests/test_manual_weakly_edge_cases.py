@@ -59,6 +59,24 @@ def run_case(bb: str, qs: str, expected: list[bool], systems=None):
 
 
 class TestWeaklyEdgeCases(unittest.TestCase):
+    def test_direct_belief_base_conditionals_are_entailed(self):
+        """direct belief-base queries are entailed."""
+        bb = """signature
+a,b,c,d
+
+conditionals
+kb{
+(b|a),
+(!b|a),
+(d|c)
+}"""
+        run_case(
+            bb,
+            "(b|a),(!b|a),(d|c)",
+            [True, True, True],
+            systems=["system-z", "system-w", "lex_inf"],
+        )
+
     def test_vacuity_impossible_antecedent(self):
         # a is forbidden by last layer → (b|a) must be True
         bb = "signature\na,b\n\nconditionals\nkb{\n(Bottom|a)\n}"

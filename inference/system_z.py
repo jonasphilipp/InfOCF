@@ -76,6 +76,8 @@ class SystemZ(Inference):
             for c in self.epistemic_state["partition"][-1]:
                 solver.add_assertion(c.make_not_A_or_B())
                 solver.push()
+            if len(self.epistemic_state["partition"]) == 1:
+                return False
             result = self._rec_inference(
                 solver, len(self.epistemic_state["partition"]) - 2, query
             )  # type: ignore

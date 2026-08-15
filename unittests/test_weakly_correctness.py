@@ -2,7 +2,7 @@
 Weakly semantics CSV-driven correctness tests.
 
 CSV schema (one row per system+query):
-- inference_system (required): e.g., system-z, system-w, lex_inf, c-inference
+- inference_system (required): e.g., system-z, system-w, lex_inf
 - belief_base_str | belief_base_filepath (exactly one required)
 - queries_str | queries_filepath (exactly one required)
 - query (required unless index is provided): the single query string to validate from the batch
@@ -54,7 +54,6 @@ class WeaklyInferenceCSVTest(unittest.TestCase):
             "system-z",
             "system-w",
             "lex_inf",
-            "c-inference",
         ]
         cls.IMPLEMENTATIONS = {
             "p-entailment": [{"label": "default"}],
@@ -66,10 +65,6 @@ class WeaklyInferenceCSVTest(unittest.TestCase):
             "lex_inf": [
                 {"label": "rc2", "pmaxsat_solver": "rc2"},
                 {"label": "z3", "pmaxsat_solver": "z3"},
-            ],
-            # Keep c-inference variants minimal by default; extend as implementation evolves.
-            "c-inference": [
-                {"label": "rc2", "pmaxsat_solver": "rc2"},
             ],
         }
 

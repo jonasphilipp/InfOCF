@@ -115,6 +115,9 @@ class LexInf(Inference):
             if not contra_solver.solve():
                 return True
 
+            if len(self.epistemic_state["partition"]) == 1:
+                return False
+
             for index in self.epistemic_state["partition"][-1]:
                 [wcnf_v.append(c) for c in self.epistemic_state["nf_cnf_dict"][index]]
                 [wcnf_f.append(c) for c in self.epistemic_state["nf_cnf_dict"][index]]
@@ -167,6 +170,18 @@ class LexInf(Inference):
         mcs_f = optimizer.minimal_correction_subsets(
             hard_constraints_f, ignore=ignore, deadline=deadline
         )
+        trace = self.epistemic_state.get("diagnostic_trace")
+        if isinstance(trace, list):
+            trace.append(
+                {
+                    "backend": "rc2",
+                    "operator": "lex_inf",
+                    "query": self.epistemic_state.get("diagnostic_query"),
+                    "level": partition_index,
+                    "verification_mcs": [sorted(item) for item in mcs_v],
+                    "falsification_mcs": [sorted(item) for item in mcs_f],
+                }
+            )
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("mcs_v: %s", mcs_v)
             logger.debug("mcs_f: %s", mcs_f)

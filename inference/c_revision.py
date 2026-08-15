@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Protocol, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
 if TYPE_CHECKING:
     from inference.belief_base import BeliefBase
@@ -363,6 +363,15 @@ def _convert_csp_to_z3(csp: list[FNode]) -> list:
     return [converter.convert(expr) for expr in csp]
 
 
+def _integer_model_values(model: z3.ModelRef) -> dict[str, int]:
+    """Extract integer values from a z3 model."""
+    return {
+        declaration.name(): value.as_long()
+        for declaration in model.decls()
+        if z3.is_int_value(value := model[declaration])
+    }
+
+
 def solve_and_get_model(
     csp: list[FNode], minimize_vars: list[str] | None = None
 ) -> dict[str, int] | None:
@@ -385,7 +394,7 @@ def solve_and_get_model(
         s.add(*z3_csp)
         if s.check() == z3.sat:
             m = s.model()
-            return {d.name(): cast(Any, m[d]).as_long() for d in m.decls()}
+            return _integer_model_values(m)
         return None
 
     # Otherwise build an optimiser.
@@ -400,7 +409,7 @@ def solve_and_get_model(
     # Enumerate first Pareto-optimal model (suffices since *priority='pareto'*).
     if opt.check() == z3.sat:
         m = opt.model()
-        return {d.name(): cast(Any, m[d]).as_long() for d in m.decls()}
+        return _integer_model_values(m)
 
     return None
 
@@ -449,7 +458,7 @@ def solve_pareto_front(
     results: list[dict[str, int]] = []
     while opt.check() == z3.sat:
         m = opt.model()
-        results.append({d.name(): cast(Any, m[d]).as_long() for d in m.decls()})
+        results.append(_integer_model_values(m))
         if max_solutions is not None and len(results) >= max_solutions:
             break
 
