@@ -9,9 +9,12 @@ import tempfile
 import unittest
 
 from pysat.formula import WCNF
+from pysat.solvers import Solver as PySatSolver
+from z3 import Bool, BoolVal, Goal, Not, Or
 
 from inference.backend_diagnostics import (
     FiniteWorldOracle,
+    _holds,
     compare_weak_backends,
     normalize_mcs_trace,
 )
@@ -90,6 +93,45 @@ class TestWeakBackendDifferential(unittest.TestCase):
         bottom = next(iter(parse_queries("(Bottom|a)").conditionals.values()))
         self.assertEqual(TseitinTransformation({}).query_to_cnf(top), [[[1]], [[-1]]])
         self.assertEqual(TseitinTransformation({}).query_to_cnf(bottom), [[[]], [[1]]])
+
+    def test_tseitin_preserves_negated_constants(self):
+        for query_string in ("(!Top|a)", "(!Bottom|a)", "(a|!Top)", "(a|!Bottom)"):
+            with self.subTest(query=query_string):
+                query = next(iter(parse_queries(query_string).conditionals.values()))
+                transformation = TseitinTransformation({})
+                verification, falsification = transformation.query_to_cnf(query)
+                atom_id = transformation.epistemic_state["pool"].id(Bool("a"))
+                for value in (False, True):
+                    literal = atom_id if value else -atom_id
+                    with PySatSolver(bootstrap_with=verification) as solver:
+                        solver.add_clause([literal])
+                        self.assertEqual(
+                            solver.solve(),
+                            _holds(query.make_A_then_B(), {"a": value}),
+                        )
+                    with PySatSolver(bootstrap_with=falsification) as solver:
+                        solver.add_clause([literal])
+                        self.assertEqual(
+                            solver.solve(),
+                            _holds(query.make_A_then_not_B(), {"a": value}),
+                        )
+
+    def test_goal_to_cnf_preserves_boolean_constants(self):
+        cases = {
+            BoolVal(True): [],
+            BoolVal(False): [[]],
+            Not(BoolVal(True)): [[]],
+            Not(BoolVal(False)): [],
+            Or(BoolVal(True), Bool("a")): [],
+            Or(BoolVal(False), Bool("a")): [[1]],
+        }
+        for expression, expected in cases.items():
+            with self.subTest(expression=expression):
+                goal = Goal()
+                goal.add(expression)
+                self.assertEqual(
+                    TseitinTransformation({}).goal2intcnf(goal), expected
+                )
 
 
 class TestRC2MCSContracts(unittest.TestCase):
