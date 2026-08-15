@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from itertools import combinations
 import json
 import random
 import tempfile
 import unittest
+from itertools import combinations
 
 from pysat.formula import WCNF
 from pysat.solvers import Solver as PySatSolver
@@ -21,7 +21,6 @@ from inference.backend_diagnostics import (
 from inference.optimizer import OptimizerRC2
 from inference.tseitin_transformation import TseitinTransformation
 from parser.Wrappers import parse_belief_base, parse_queries
-
 
 RULE_POOL = ["(b|a)", "(!b|a)", "(c|b)", "(!c|b)", "(a|c)"]
 QUERIES = "(a|b),(!a|b),(b|c),(!b|c),(c|Top)"

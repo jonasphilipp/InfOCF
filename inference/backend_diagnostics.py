@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass
 from itertools import product
 from pathlib import Path
-import json
 from typing import Any
 
 from pysmt.shortcuts import Bool, simplify
@@ -14,12 +14,14 @@ from inference.belief_base import BeliefBase
 from inference.inference_manager import InferenceManager, create_inference_instance
 from inference.queries import Queries
 
-
 World = dict[str, bool]
 
 
 def _worlds(signature: list[str]) -> list[World]:
-    return [dict(zip(signature, values)) for values in product((False, True), repeat=len(signature))]
+    return [
+        dict(zip(signature, values, strict=False))
+        for values in product((False, True), repeat=len(signature))
+    ]
 
 
 def _holds(formula: Any, world: World) -> bool:
