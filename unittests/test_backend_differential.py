@@ -128,9 +128,7 @@ class TestWeakBackendDifferential(unittest.TestCase):
             with self.subTest(expression=expression):
                 goal = Goal()
                 goal.add(expression)
-                self.assertEqual(
-                    TseitinTransformation({}).goal2intcnf(goal), expected
-                )
+                self.assertEqual(TseitinTransformation({}).goal2intcnf(goal), expected)
 
 
 class TestRC2MCSContracts(unittest.TestCase):
@@ -151,12 +149,16 @@ class TestRC2MCSContracts(unittest.TestCase):
         wcnf.append([-1], weight=1)
         wcnf.append([-1], weight=1)  # Same conditional contributes duplicate clauses.
         wcnf.append([-2], weight=1)
-        result = self.optimizer({1: [[-1], [-1]], 2: [[-2]]}).minimal_correction_subsets(wcnf)
+        result = self.optimizer(
+            {1: [[-1], [-1]], 2: [[-2]]}
+        ).minimal_correction_subsets(wcnf)
         self.assertEqual({frozenset(item) for item in result}, {frozenset({1, 2})})
 
     def test_ignored_indices_are_not_reported(self):
         wcnf = WCNF()
         wcnf.append([1])
         wcnf.append([-1], weight=1)
-        result = self.optimizer({1: [[-1]]}).minimal_correction_subsets(wcnf, ignore=[1])
+        result = self.optimizer({1: [[-1]]}).minimal_correction_subsets(
+            wcnf, ignore=[1]
+        )
         self.assertEqual(result, [[]])

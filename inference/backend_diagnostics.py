@@ -58,7 +58,9 @@ class FiniteWorldOracle:
                 for index in remaining
                 if any(
                     all(self._nf_holds(other, world) for other in remaining)
-                    and _holds(self.belief_base.conditionals[index].make_A_then_B(), world)
+                    and _holds(
+                        self.belief_base.conditionals[index].make_A_then_B(), world
+                    )
                     for world in self.worlds
                 )
             ]
@@ -82,13 +84,19 @@ class FiniteWorldOracle:
             for world in worlds
         }
         return sorted(
-            (candidate for candidate in candidates if not any(other < candidate for other in candidates)),
+            (
+                candidate
+                for candidate in candidates
+                if not any(other < candidate for other in candidates)
+            ),
             key=lambda value: (len(value), tuple(sorted(value))),
         )
 
     @staticmethod
     def _subset_of_all(left: list[frozenset[int]], right: list[frozenset[int]]) -> bool:
-        return all(any(candidate.issubset(target) for candidate in left) for target in right)
+        return all(
+            any(candidate.issubset(target) for candidate in left) for target in right
+        )
 
     def _system_w(self, worlds: list[World], query: Any, level: int) -> bool:
         part = self.partition[level]
@@ -96,9 +104,16 @@ class FiniteWorldOracle:
             [world for world in worlds if _holds(query.make_A_then_B(), world)], part
         )
         falsified = self._mcs(
-            [world for world in worlds if _holds(query.make_A_then_not_B(), world)], part
+            [world for world in worlds if _holds(query.make_A_then_not_B(), world)],
+            part,
         )
-        self.trace.append({"level": level, "verification_mcs": [sorted(v) for v in verified], "falsification_mcs": [sorted(v) for v in falsified]})
+        self.trace.append(
+            {
+                "level": level,
+                "verification_mcs": [sorted(v) for v in verified],
+                "falsification_mcs": [sorted(v) for v in falsified],
+            }
+        )
         if not self._subset_of_all(verified, falsified):
             return False
         for correction in set(verified) & set(falsified):
@@ -108,21 +123,32 @@ class FiniteWorldOracle:
                 world
                 for world in worlds
                 if all(self._f_holds(index, world) for index in correction)
-                and all(self._nf_holds(index, world) for index in set(part) - correction)
+                and all(
+                    self._nf_holds(index, world) for index in set(part) - correction
+                )
             ]
             if not self._system_w(next_worlds, query, level - 1):
                 return False
         return True
 
-    def _lex_inf(self, worlds_v: list[World], worlds_f: list[World], query: Any, level: int) -> bool:
+    def _lex_inf(
+        self, worlds_v: list[World], worlds_f: list[World], query: Any, level: int
+    ) -> bool:
         part = self.partition[level]
         mcs_v = self._mcs(
             [world for world in worlds_v if _holds(query.make_A_then_B(), world)], part
         )
         mcs_f = self._mcs(
-            [world for world in worlds_f if _holds(query.make_A_then_not_B(), world)], part
+            [world for world in worlds_f if _holds(query.make_A_then_not_B(), world)],
+            part,
         )
-        self.trace.append({"level": level, "verification_mcs": [sorted(v) for v in mcs_v], "falsification_mcs": [sorted(v) for v in mcs_f]})
+        self.trace.append(
+            {
+                "level": level,
+                "verification_mcs": [sorted(v) for v in mcs_v],
+                "falsification_mcs": [sorted(v) for v in mcs_f],
+            }
+        )
         if not mcs_v:
             return False
         if not mcs_f:
@@ -138,14 +164,22 @@ class FiniteWorldOracle:
                 if level == 0:
                     return False
                 next_v = [
-                    world for world in worlds_v
+                    world
+                    for world in worlds_v
                     if all(self._f_holds(index, world) for index in correction_v)
-                    and all(self._nf_holds(index, world) for index in set(part) - correction_v)
+                    and all(
+                        self._nf_holds(index, world)
+                        for index in set(part) - correction_v
+                    )
                 ]
                 next_f = [
-                    world for world in worlds_f
+                    world
+                    for world in worlds_f
                     if all(self._f_holds(index, world) for index in correction_f)
-                    and all(self._nf_holds(index, world) for index in set(part) - correction_f)
+                    and all(
+                        self._nf_holds(index, world)
+                        for index in set(part) - correction_f
+                    )
                 ]
                 if not self._lex_inf(next_v, next_f, query, level - 1):
                     return False
@@ -156,13 +190,13 @@ class FiniteWorldOracle:
         self.trace = []
         base_worlds = self.worlds
         for index in self.partition[-1]:
-            base_worlds = [world for world in base_worlds if self._nf_holds(index, world)]
+            base_worlds = [
+                world for world in base_worlds if self._nf_holds(index, world)
+            ]
         # the final weak layer is hard knowledge.
         if not any(_holds(query.antecedence, world) for world in base_worlds):
             result = True
-        elif not any(
-            _holds(query.make_A_then_not_B(), world) for world in base_worlds
-        ):
+        elif not any(_holds(query.make_A_then_not_B(), world) for world in base_worlds):
             result = True
         elif len(self.partition) == 1:
             result = False
@@ -216,6 +250,7 @@ class BackendComparison:
 
 def normalize_mcs_trace(trace: list[dict[str, Any]]) -> list[tuple[Any, ...]]:
     """normalize mcs records for order-independent comparison."""
+
     def mcs_sets(record: dict[str, Any], field: str) -> tuple[tuple[int, ...], ...]:
         return tuple(sorted(tuple(sorted(mcs)) for mcs in record[field]))
 
