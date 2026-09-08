@@ -33,7 +33,7 @@ from .log_setup import get_logger, setup_logging
 # Core inference framework
 try:
     from inference.belief_base import BeliefBase
-    from inference.c_inference import CInference
+    from inference.extinf.cinference import CInference
 
     # Core data structures
     from inference.conditional import Conditional

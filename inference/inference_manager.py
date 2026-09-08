@@ -35,7 +35,8 @@ import pandas as pd
 from pysmt.environment import get_env
 
 from inference.belief_base import BeliefBase
-from inference.c_inference import CInference
+#from inference.c_inference import CInference
+from inference.extinf.cinference import CInference
 from inference.inference import Inference
 from inference.lex_inf import LexInf
 from inference.lex_inf_z3 import LexInfZ3
@@ -214,6 +215,9 @@ def create_inference_instance(epistemic_state: dict[str, Any]) -> Inference:
                     },
                 )
     elif inference_system == "c-inference":
+        print("Overwritting seetings for smt solver and for pmaxsat solver to use z3")
+        epistemic_state["smt_solver"] = 'z3'
+        epistemic_state["pmaxsat_solver"] = 'z3'
         inference_instance = CInference(epistemic_state)
     elif inference_system == "lex_inf":
         if epistemic_state["pmaxsat_solver"] == "z3":

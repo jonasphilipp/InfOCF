@@ -10,13 +10,13 @@
 from typing import cast
 
 from pysmt.shortcuts import Solver
-from z3 import And, BoolRef, Not, Or
+from z3 import And, BoolRef, Not, Or, Implies
 
 # ---------------------------------------------------------------------------
 # Project modules
 # ---------------------------------------------------------------------------
 from inference.conditional import Conditional
-from infocf.log_setup import get_logger
+#from infocf.log_setup import get_logger
 
 logger = get_logger(__name__)
 
@@ -38,6 +38,17 @@ class Conditional_z3(Conditional):
             textRepresentation=textRepresentation,
             weak=weak,
         )
+        self.A = antecedence
+        self.B = consequence
+
+    def verify(self):
+        return And(self.A, self.B)
+
+    def falsify(self):
+        return And(self.A, Not(self.B))
+
+    def imply(self):
+        return Implies(self.A, self.B)
 
     def make_A_then_B(self) -> BoolRef:
         return cast(BoolRef, And(self.antecedence, self.consequence))
