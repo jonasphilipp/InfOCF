@@ -22,8 +22,8 @@ class BeliefBase:
     """
     Represents a conditional belief base containing a set of conditional statements.
 
-    A belief base is a finite set of conditionals that represent the agent's knowledge
-    or beliefs about the domain. Each conditional is of the form (B|A), meaning
+    A belief base is a finite set of conditionals representing knowledge or beliefs
+    about a domain. Each conditional is of the form (B|A), meaning
     "if A then usually B". The belief base serves as the foundation for various inference
     operations in conditional logic.
 
@@ -36,6 +36,8 @@ class BeliefBase:
     conditionals : dict[int, Conditional]
         Dictionary mapping integer indices to Conditional objects.
         The keys serve as unique identifiers for the conditionals.
+        For input belief bases, use indices starting at 1, as the parser does.
+        Index 0 is reserved internally for queries by inference operators.
     name : str
         Human-readable name for this belief base, used for identification
         and debugging purposes.
@@ -87,7 +89,7 @@ class BeliefBase:
     >>> cond2 = Conditional(r, q, '(r|q)')  # if q then r
     >>>
     >>> # Create belief base
-    >>> conditionals = {0: cond1, 1: cond2}
+    >>> conditionals = {1: cond1, 2: cond2}
     >>> bb = BeliefBase(signature, conditionals, 'example_bb')
     >>>
     >>> print(f"Belief base '{bb.name}' has {len(bb.conditionals)} conditionals")
@@ -111,7 +113,9 @@ class BeliefBase:
         signature : list of str
             List of propositional variable names in the domain
         conditionals : dict[int, Conditional]
-            Dictionary of conditionals indexed by integers
+            Dictionary of conditionals indexed by integers. For input belief bases,
+            start at 1; index 0 is reserved internally for queries. The constructor
+            preserves the supplied keys without validating or renumbering them.
         name : str
             Human-readable name for the belief base
         """
