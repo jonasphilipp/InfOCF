@@ -10,7 +10,7 @@ import inference.inference as inf_mod
 class _DummyBeliefBase:
     def __init__(self, name: str = "bb", conditionals: list | None = None) -> None:
         self.name = name
-        self.conditionals = list(conditionals or [])
+        self.conditionals = dict(enumerate(conditionals or [], start=1))
 
 
 class _DummyConditional:
@@ -65,7 +65,10 @@ def _make_state(
     belief_base: _DummyBeliefBase | None = None,
 ) -> dict:
     return {
-        "belief_base": belief_base or _DummyBeliefBase(conditionals=[object()]),
+        "belief_base": belief_base
+        or _DummyBeliefBase(
+            conditionals=[_DummyConditional(antecedence="BASE_A", consequence="BASE_B")]
+        ),
         "smt_solver": "dummy",
         "inference_system": "dummy_system",
         "weakly": weakly,
