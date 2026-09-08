@@ -9,9 +9,11 @@ You will:
 
 ### Create System Z and compute some ranks
 
+*Source: [`scripts/show_preocf.py`](https://github.com/jonasphilipp/InfOCF/blob/main/scripts/show_preocf.py)*
+
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:preocf-basics:system-z:start]"
    end="[docs:preocf-basics:system-z:end]"
 %}
@@ -19,9 +21,11 @@ You will:
 
 ### Compute all ranks and verbose representation
 
+*Source: [`scripts/show_preocf.py`](https://github.com/jonasphilipp/InfOCF/blob/main/scripts/show_preocf.py)*
+
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:preocf-basics:verbose:start]"
    end="[docs:preocf-basics:verbose:end]"
 %}
@@ -29,9 +33,11 @@ You will:
 
 ### Convert ranks to total preorder (TPO)
 
+*Source: [`scripts/show_preocf.py`](https://github.com/jonasphilipp/InfOCF/blob/main/scripts/show_preocf.py)*
+
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:preocf-basics:tpo:start]"
    end="[docs:preocf-basics:tpo:end]"
 %}

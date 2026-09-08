@@ -9,8 +9,6 @@ for easy experimentation with different configurations.
 import os
 import sys
 
-import z3
-
 # Add the project root to the path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -18,9 +16,9 @@ from pysmt.shortcuts import Not, Symbol
 from pysmt.typing import BOOL
 
 from inference.belief_base import BeliefBase
-from inference.c_revision import c_revision
+from inference.c_revision import c_inference_pareto_front, c_revision
 from inference.conditional import Conditional
-from inference.preocf import CustomPreOCF, PreOCF
+from inference.preocf import CustomPreOCF
 
 
 def create_all_zero_ranking(signature):
@@ -94,50 +92,9 @@ def print_results(model, revision_conditionals):
 def calculate_pareto_front(belief_base):
     """Compute the Pareto front of eta-vectors for the given belief base.
 
-    The Pareto front is derived from the optimisation problem that defines
-    the c-representation (RandomMinCRep).  Each vector corresponds to one
-    set of minimal eta values (impacts) such that all KB constraints hold.
-
-    Returns:
-        list[tuple[int, ...]] | None – A list of eta-vectors or *None* if the
-        computation failed (e.g. due to missing external dependencies).
+    Delegates to :func:`inference.c_revision.c_inference_pareto_front`.
     """
-
-    try:
-        # Build the optimisation model via the existing factory method.
-        preocf_c = PreOCF.init_random_min_c_rep(belief_base)
-    except Exception as e:
-        print("\n[Warning] RandomMinCRepPreOCF initialisation failed:", e)
-        return None
-
-    # Prepare a fresh optimiser – we re-create it instead of re-using the
-    # internal one so we can safely iterate through all Pareto-optimal
-    # solutions without disturbing the PreOCF instance.
-    eta_vars = [z3.Int(f"eta_{i}") for i in range(1, len(belief_base.conditionals) + 1)]
-
-    opt = z3.Optimize()
-    opt.set(priority="pareto")
-
-    # Add base CSP (already converted to native z3 expressions).
-    opt.add(*preocf_c._csp)
-
-    # Tell the optimiser to minimise every eta variable.
-    for v in eta_vars:
-        opt.minimize(v)
-
-    pareto_vectors = []
-
-    # Enumerate all Pareto-optimal models.
-    while opt.check() == z3.sat:
-        m = opt.model()
-        vector = tuple(m[v].as_long() for v in eta_vars)
-        pareto_vectors.append(vector)
-
-        # Block the current model to search for another one that strictly
-        # improves at least one objective.
-        opt.add(z3.Or(*[v < val for v, val in zip(eta_vars, vector, strict=False)]))
-
-    return pareto_vectors
+    return c_inference_pareto_front(belief_base) or None
 
 
 def print_pareto_front(pareto_vectors):

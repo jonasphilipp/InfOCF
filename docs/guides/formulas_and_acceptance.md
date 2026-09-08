@@ -9,9 +9,11 @@ You will:
 
 ### Formula ranks
 
+*Source: [`scripts/show_preocf.py`](https://github.com/jonasphilipp/InfOCF/blob/main/scripts/show_preocf.py)*
+
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:formulas-acceptance:formula-ranks:start]"
    end="[docs:formulas-acceptance:formula-ranks:end]"
 %}
@@ -19,9 +21,11 @@ You will:
 
 ### Conditional acceptance
 
+*Source: [`scripts/show_preocf.py`](https://github.com/jonasphilipp/InfOCF/blob/main/scripts/show_preocf.py)*
+
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:formulas-acceptance:conditional-acceptance:start]"
    end="[docs:formulas-acceptance:conditional-acceptance:end]"
 %}

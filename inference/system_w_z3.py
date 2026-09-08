@@ -108,6 +108,14 @@ class SystemWZ3(Inference):
             if contra_solver.check() == unsat:
                 return True
 
+            if len(self.epistemic_state["partition"]) == 1:
+                return False
+
+            # add final weak-layer constraints.
+            [
+                opt.add(c.make_not_A_or_B())
+                for c in self.epistemic_state["partition"][-1]
+            ]
             result = self._rec_inference(
                 opt, len(self.epistemic_state["partition"]) - 2, query_z3
             )
@@ -140,6 +148,30 @@ class SystemWZ3(Inference):
         opt.add(query.make_A_then_not_B())
         xi_i_prime_set = self.get_all_xi_i(opt, part)
         opt.pop()
+        trace = self.epistemic_state.get("diagnostic_trace")
+        if isinstance(trace, list):
+            indices = {
+                str(conditional): index
+                for index, conditional in self.epistemic_state[
+                    "belief_base"
+                ].conditionals.items()
+            }
+            trace.append(
+                {
+                    "backend": "z3",
+                    "operator": "system-w",
+                    "query": self.epistemic_state.get("diagnostic_query"),
+                    "level": partition_index,
+                    "verification_mcs": [
+                        sorted(indices[str(item)] for item in correction)
+                        for correction in xi_i_set
+                    ],
+                    "falsification_mcs": [
+                        sorted(indices[str(item)] for item in correction)
+                        for correction in xi_i_prime_set
+                    ],
+                }
+            )
         if not any_subset_of_all(xi_i_set, xi_i_prime_set):
             return False
         for xi_i in xi_i_set & xi_i_prime_set:

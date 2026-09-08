@@ -20,14 +20,15 @@ Steps:
 
 Example code:
 
+*Source: [`scripts/show_preocf_minimal.py`](https://github.com/jonasphilipp/InfOCF/blob/main/scripts/show_preocf_minimal.py)*
+
 ```python
 {%
-   include "../../show_preocf_minimal.py"
+   include "../../scripts/show_preocf_minimal.py"
    start="[docs:quickstart-minimal:start]"
    end="[docs:quickstart-minimal:end]"
 %}
 ```
 
 Notes:
-- The code above is included from `show_preocf_minimal.py` (single source of truth).
 - For details, see API: `inference.preocf.PreOCF`, `parser.Wrappers`.

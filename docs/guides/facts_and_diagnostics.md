@@ -9,9 +9,11 @@ You will:
 
 ### Extended System Z partition (no facts)
 
+*Source: [`scripts/show_preocf.py`](https://github.com/jonasphilipp/InfOCF/blob/main/scripts/show_preocf.py)*
+
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:diagnostics:extended-no-facts:start]"
    end="[docs:diagnostics:extended-no-facts:end]"
 %}
@@ -19,13 +21,15 @@ You will:
 
 ### System Z with facts (examples A–E)
 
+*Source: [`scripts/show_preocf.py`](https://github.com/jonasphilipp/InfOCF/blob/main/scripts/show_preocf.py)*
+
 Note: When facts are provided, System Z automatically uses extended partitioning (unless you explicitly pass `extended=False`). You typically do not need to set `extended=True` yourself.
 
 Current behavior: facts are represented by adding weak constraints of the form `(Bottom|¬φ)` to the belief base. If the augmented base is inconsistent, initialization raises immediately with verbose diagnostics; the diagnostics are also saved in metadata under `consistency_diagnostics`.
 
 ```python
 {%
-   include "../../show_preocf.py"
+   include "../../scripts/show_preocf.py"
    start="[docs:diagnostics:with-facts:start]"
    end="[docs:diagnostics:with-facts:end]"
 %}

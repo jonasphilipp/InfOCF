@@ -444,6 +444,16 @@ class Inference(ABC):
         if weakly is None:
             weakly = bool(self.epistemic_state.get("weakly", False))
 
+        # direct belief-base queries are entailed.
+        belief_base = self.epistemic_state["belief_base"]
+        if not self.epistemic_state.get("bypass_direct_inference", False) and any(
+            query.antecedence == conditional.antecedence
+            and query.consequence == conditional.consequence
+            for conditional in belief_base.conditionals.values()
+        ):
+            logger.debug("general_inference direct belief-base conditional")
+            return True
+
         if is_unsat(query.antecedence) or is_unsat(
             And(query.antecedence, Not(query.consequence))
         ):

@@ -13,16 +13,24 @@ uv run pytest -q unittests/test_c_revision_fixed_gamma.py
 
 import unittest
 
-from pysmt.shortcuts import Not, Symbol
-from pysmt.typing import BOOL
+from pysmt.shortcuts import Equals, Int, Not, Symbol
+from pysmt.typing import BOOL, INT
 
 from inference.belief_base import BeliefBase
-from inference.c_revision import c_revision
+from inference.c_revision import c_revision, solve_and_get_model
 from inference.conditional import Conditional
 from inference.preocf import CustomPreOCF
 
 
 class TestCRevisionFixedGamma(unittest.TestCase):
+    def test_model_ignores_boolean_assignments(self):
+        boolean = Symbol("c_revision_boolean_assignment", BOOL)
+        integer = Symbol("c_revision_integer_assignment", INT)
+
+        model = solve_and_get_model([boolean, Equals(integer, Int(3))])
+
+        self.assertEqual(model, {"c_revision_integer_assignment": 3})
+
     def setUp(self):
         # Simple signature and all-zero ranks
         self.sig = ["a", "b"]

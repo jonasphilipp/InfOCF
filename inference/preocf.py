@@ -99,6 +99,8 @@ class PreOCF(ABC):
         return {self.bv2strtuple(r): self.ranks[r] for r in self.ranks.keys()}
 
     def bv2strtuple(self, bv: BitVector) -> tuple[str, ...]:
+        if self.signature is None:
+            raise ValueError("bv2strtuple requires a named signature")
         return tuple(
             [
                 self.signature[i] if bv[i] == "1" else "!" + self.signature[i]
@@ -132,7 +134,6 @@ class PreOCF(ABC):
         metadata: dict[str, object] | None = None,
     ):
         self.ranks = ranks
-        assert signature is not None, "signature must not be None"
         self.signature = signature
         # conditionals can be None for CustomPreOCF
         self.conditionals = conditionals
@@ -379,6 +380,8 @@ class PreOCF(ABC):
             A custom PreOCF over the reduced signature whose world ranks
             are the minimum over compatible original worlds.
         """
+        if self.signature is None:
+            raise ValueError("marginalize requires a named signature")
         ranks: dict[str, int | None] = {}
         for world in self.ranks.keys():
             # remove all bits whose index matches the one of the signature elements in marginalization
@@ -454,6 +457,8 @@ class PreOCF(ABC):
         raise NotImplementedError
 
     def symbolize_bitvec(self, bitvec: str) -> list[FNode]:
+        if self.signature is None:
+            raise ValueError("symbolize_bitvec requires a named signature")
         sig = self.signature
         symbols = [
             Symbol(sig[i], BOOL) if int(bitvec[i]) else Not(Symbol(sig[i], BOOL))

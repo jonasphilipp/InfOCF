@@ -197,7 +197,7 @@ class InferenceCorrectnessTest(unittest.TestCase):
                                     inference_system=inference_system,
                                     smt_solver=self.smt_solver,
                                     pmaxsat_solver=pmaxsat_solver,
-                                    weakly=True,
+                                    weakly=False,
                                 )
 
                                 print(

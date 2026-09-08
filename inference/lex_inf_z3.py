@@ -100,6 +100,13 @@ class LexInfZ3(Inference):
             if contra_solver.check() == unsat:
                 return True
 
+            if len(self.epistemic_state["partition"]) == 1:
+                return False
+
+            # add final weak-layer constraints.
+            for c in self.epistemic_state["partition"][-1]:
+                opt_v.add(c.make_not_A_or_B())
+                opt_f.add(c.make_not_A_or_B())
             result = self._rec_inference(
                 opt_v, opt_f, len(self.epistemic_state["partition"]) - 2, query_z3
             )
@@ -132,6 +139,30 @@ class LexInfZ3(Inference):
         opt_f.add(query.make_A_then_not_B())
         xi_i_prime_set = self.get_all_xi_i(opt_f, part)
         opt_f.pop()
+        trace = self.epistemic_state.get("diagnostic_trace")
+        if isinstance(trace, list):
+            indices = {
+                str(conditional): index
+                for index, conditional in self.epistemic_state[
+                    "belief_base"
+                ].conditionals.items()
+            }
+            trace.append(
+                {
+                    "backend": "z3",
+                    "operator": "lex_inf",
+                    "query": self.epistemic_state.get("diagnostic_query"),
+                    "level": partition_index,
+                    "verification_mcs": [
+                        sorted(indices[str(item)] for item in correction)
+                        for correction in xi_i_set
+                    ],
+                    "falsification_mcs": [
+                        sorted(indices[str(item)] for item in correction)
+                        for correction in xi_i_prime_set
+                    ],
+                }
+            )
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("xi_i_set %s", xi_i_set)
             logger.debug("xi_i_prime_set %s", xi_i_prime_set)
