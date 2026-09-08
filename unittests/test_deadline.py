@@ -1,5 +1,5 @@
-from inference.deadline import Deadline
 import inference.deadline as deadline_mod
+from inference.deadline import Deadline
 
 
 def test_deadline_from_duration_negative_is_immediately_expired(monkeypatch):

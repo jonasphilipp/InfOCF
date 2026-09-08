@@ -8,6 +8,7 @@ import inference.lex_inf as lex
 
 class _FakeLogger:
     """Logger stub to force debug branches."""
+
     def __init__(self):
         self.debug_calls = []
 
@@ -20,6 +21,7 @@ class _FakeLogger:
 
 class _FakeConditional:
     """Minimal conditional used inside belief base partition (for weakly mode assertions)."""
+
     def __init__(self, name="c"):
         self._name = name
 
@@ -32,6 +34,7 @@ class _FakeConditional:
 
 class _FakeQuery:
     """Query conditional passed to LexInf._inference."""
+
     def __init__(self):
         self.antecedence = object()
         self.consequence = object()
@@ -47,6 +50,7 @@ class _FakeBeliefBase:
 
 class _FakeTseitin:
     """TseitinTransformation stub."""
+
     def __init__(self, epistemic_state):
         self.epistemic_state = epistemic_state
         self.belief_base_to_cnf_called = False
@@ -65,6 +69,7 @@ class _FakeTseitin:
 
 class _DummySolver:
     """Solver stub used in weakly mode; solve() returns values from a provided iterator."""
+
     def __init__(self, solves):
         self._solves = iter(solves)
         self.assertions = []
@@ -78,6 +83,7 @@ class _DummySolver:
 
 class _DummyOptimizer:
     """Optimizer stub for _rec_inference; returns pre-configured MCS outputs."""
+
     def __init__(self, mcs_sequence):
         self._seq = iter(mcs_sequence)
 
@@ -118,14 +124,18 @@ class TestLexInfFullCoverage(unittest.TestCase):
         fake_logger = _FakeLogger()
 
         # consistency_indices returns empty partition -> warn branch
-        with patch.object(lex, "logger", fake_logger), patch.object(
-            lex, "consistency_indices", return_value=([], None)
-        ), patch.object(lex, "TseitinTransformation", _FakeTseitin):
+        with (
+            patch.object(lex, "logger", fake_logger),
+            patch.object(lex, "consistency_indices", return_value=([], None)),
+            patch.object(lex, "TseitinTransformation", _FakeTseitin),
+        ):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
                 s._preprocess_belief_base(weakly=False, deadline=None)
 
-                self.assertTrue(any("belief base inconsistent" in str(x.message) for x in w))
+                self.assertTrue(
+                    any("belief base inconsistent" in str(x.message) for x in w)
+                )
 
     # ---------------------------
     # _inference strict vacuity shortcuts
@@ -165,8 +175,10 @@ class TestLexInfFullCoverage(unittest.TestCase):
                 return True
             return False
 
-        with patch.object(lex, "And", And_stub), patch.object(lex, "Not", Not_stub), patch.object(
-            lex, "is_unsat", _is_unsat
+        with (
+            patch.object(lex, "And", And_stub),
+            patch.object(lex, "Not", Not_stub),
+            patch.object(lex, "is_unsat", _is_unsat),
         ):
             self.assertFalse(s._inference(q, weakly=False, deadline=None))
 
@@ -177,15 +189,13 @@ class TestLexInfFullCoverage(unittest.TestCase):
         fake_tseitin = _FakeTseitin(s.epistemic_state)
 
         # Avoid building real pysmt formulas (q.* are plain objects in our fake query)
-        with patch.object(lex, "Not", lambda _x: object()), patch.object(
-            lex, "And", lambda _a, _b: object()
-        ), patch.object(
-            lex, "is_unsat", return_value=False
-        ), patch.object(
-            lex, "TseitinTransformation", lambda _st: fake_tseitin
-        ), patch.object(
-            lex.LexInf, "_rec_inference", return_value=True
-        ) as rec:
+        with (
+            patch.object(lex, "Not", lambda _x: object()),
+            patch.object(lex, "And", lambda _a, _b: object()),
+            patch.object(lex, "is_unsat", return_value=False),
+            patch.object(lex, "TseitinTransformation", lambda _st: fake_tseitin),
+            patch.object(lex.LexInf, "_rec_inference", return_value=True) as rec,
+        ):
             self.assertTrue(s._inference(q, weakly=False, deadline=None))
             self.assertTrue(fake_tseitin.query_to_cnf_called)
             self.assertTrue(rec.called)
@@ -201,8 +211,9 @@ class TestLexInfFullCoverage(unittest.TestCase):
         # taut_solver.solve() == False -> return True immediately
         solver = _DummySolver(solves=[False])
 
-        with patch.object(lex, "TseitinTransformation", lambda _st: fake_tseitin), patch.object(
-            lex, "Solver", lambda name: solver
+        with (
+            patch.object(lex, "TseitinTransformation", lambda _st: fake_tseitin),
+            patch.object(lex, "Solver", lambda name: solver),
         ):
             self.assertTrue(s._inference(q, weakly=True, deadline=None))
 
@@ -215,8 +226,9 @@ class TestLexInfFullCoverage(unittest.TestCase):
         # LexInf creates two Solver() instances; provide different ones by sequencing
         solvers = iter([_DummySolver([True]), _DummySolver([False])])
 
-        with patch.object(lex, "TseitinTransformation", lambda _st: fake_tseitin), patch.object(
-            lex, "Solver", lambda name: next(solvers)
+        with (
+            patch.object(lex, "TseitinTransformation", lambda _st: fake_tseitin),
+            patch.object(lex, "Solver", lambda name: next(solvers)),
         ):
             self.assertTrue(s._inference(q, weakly=True, deadline=None))
 
@@ -227,9 +239,11 @@ class TestLexInfFullCoverage(unittest.TestCase):
         fake_tseitin = _FakeTseitin(s.epistemic_state)
         solvers = iter([_DummySolver([True]), _DummySolver([True])])
 
-        with patch.object(lex, "TseitinTransformation", lambda _st: fake_tseitin), patch.object(
-            lex, "Solver", lambda name: next(solvers)
-        ), patch.object(lex.LexInf, "_rec_inference", return_value=True) as rec:
+        with (
+            patch.object(lex, "TseitinTransformation", lambda _st: fake_tseitin),
+            patch.object(lex, "Solver", lambda name: next(solvers)),
+            patch.object(lex.LexInf, "_rec_inference", return_value=True) as rec,
+        ):
             self.assertTrue(s._inference(q, weakly=True, deadline=None))
             self.assertTrue(rec.called)
 
@@ -243,8 +257,15 @@ class TestLexInfFullCoverage(unittest.TestCase):
         # first call mcs_v -> [], second call mcs_f won't matter for the branch
         opt = _DummyOptimizer(mcs_sequence=[[], [{frozenset()}]])
 
-        with patch.object(lex, "logger", fake_logger), patch.object(lex, "create_optimizer", lambda _st: opt):
-            self.assertFalse(s._rec_inference(lex.WCNF(), lex.WCNF(), partition_index=1, deadline=None))
+        with (
+            patch.object(lex, "logger", fake_logger),
+            patch.object(lex, "create_optimizer", lambda _st: opt),
+        ):
+            self.assertFalse(
+                s._rec_inference(
+                    lex.WCNF(), lex.WCNF(), partition_index=1, deadline=None
+                )
+            )
             self.assertTrue(len(fake_logger.debug_calls) >= 1)
 
     def test_rec_inference_returns_true_when_no_mcs_f(self):
@@ -253,30 +274,51 @@ class TestLexInfFullCoverage(unittest.TestCase):
 
         opt = _DummyOptimizer(mcs_sequence=[[{frozenset()}], []])
 
-        with patch.object(lex, "logger", fake_logger), patch.object(lex, "create_optimizer", lambda _st: opt):
-            self.assertTrue(s._rec_inference(lex.WCNF(), lex.WCNF(), partition_index=1, deadline=None))
+        with (
+            patch.object(lex, "logger", fake_logger),
+            patch.object(lex, "create_optimizer", lambda _st: opt),
+        ):
+            self.assertTrue(
+                s._rec_inference(
+                    lex.WCNF(), lex.WCNF(), partition_index=1, deadline=None
+                )
+            )
 
     def test_rec_inference_min_len_v_smaller_returns_true(self):
         s = self._make_lexinf()
         opt = _DummyOptimizer(
             mcs_sequence=[
-                [frozenset({1})],          # mcs_v min_len=1
-                [frozenset({1, 2})],       # mcs_f min_len=2
+                [frozenset({1})],  # mcs_v min_len=1
+                [frozenset({1, 2})],  # mcs_f min_len=2
             ]
         )
-        with patch.object(lex, "logger", _FakeLogger()), patch.object(lex, "create_optimizer", lambda _st: opt):
-            self.assertTrue(s._rec_inference(lex.WCNF(), lex.WCNF(), partition_index=1, deadline=None))
+        with (
+            patch.object(lex, "logger", _FakeLogger()),
+            patch.object(lex, "create_optimizer", lambda _st: opt),
+        ):
+            self.assertTrue(
+                s._rec_inference(
+                    lex.WCNF(), lex.WCNF(), partition_index=1, deadline=None
+                )
+            )
 
     def test_rec_inference_min_len_f_smaller_returns_false(self):
         s = self._make_lexinf()
         opt = _DummyOptimizer(
             mcs_sequence=[
-                [frozenset({1, 2})],       # mcs_v min_len=2
-                [frozenset({1})],          # mcs_f min_len=1
+                [frozenset({1, 2})],  # mcs_v min_len=2
+                [frozenset({1})],  # mcs_f min_len=1
             ]
         )
-        with patch.object(lex, "logger", _FakeLogger()), patch.object(lex, "create_optimizer", lambda _st: opt):
-            self.assertFalse(s._rec_inference(lex.WCNF(), lex.WCNF(), partition_index=1, deadline=None))
+        with (
+            patch.object(lex, "logger", _FakeLogger()),
+            patch.object(lex, "create_optimizer", lambda _st: opt),
+        ):
+            self.assertFalse(
+                s._rec_inference(
+                    lex.WCNF(), lex.WCNF(), partition_index=1, deadline=None
+                )
+            )
 
     def test_rec_inference_equal_min_len_partition_index_zero_returns_false(self):
         s = self._make_lexinf()
@@ -289,10 +331,19 @@ class TestLexInfFullCoverage(unittest.TestCase):
                 [frozenset({2})],
             ]
         )
-        with patch.object(lex, "logger", _FakeLogger()), patch.object(lex, "create_optimizer", lambda _st: opt):
-            self.assertFalse(s._rec_inference(lex.WCNF(), lex.WCNF(), partition_index=0, deadline=None))
+        with (
+            patch.object(lex, "logger", _FakeLogger()),
+            patch.object(lex, "create_optimizer", lambda _st: opt),
+        ):
+            self.assertFalse(
+                s._rec_inference(
+                    lex.WCNF(), lex.WCNF(), partition_index=0, deadline=None
+                )
+            )
 
-    def test_rec_inference_equal_min_len_recurses_and_returns_false_on_child_false(self):
+    def test_rec_inference_equal_min_len_recurses_and_returns_false_on_child_false(
+        self,
+    ):
         s = self._make_lexinf()
         # Ensure part has both indices so we cover i in xi_v / i not in xi_v and same for xi_f
         s.epistemic_state["partition"] = [[1, 2], [1, 2]]
@@ -306,17 +357,18 @@ class TestLexInfFullCoverage(unittest.TestCase):
             ]
         )
 
-        with patch.object(lex, "logger", _FakeLogger()), patch.object(
-            lex, "create_optimizer", lambda _st: opt
-        ), patch.object(lex.LexInf, "_rec_inference", side_effect=[False]) as rec:
+        with (
+            patch.object(lex, "logger", _FakeLogger()),
+            patch.object(lex, "create_optimizer", lambda _st: opt),
+            patch.object(lex.LexInf, "_rec_inference", side_effect=[False]) as rec,
+        ):
             original = lex.LexInf._rec_inference
 
             def _one_level(self, hard_v, hard_f, pidx, deadline):
                 return original(self, hard_v, hard_f, pidx, deadline)
 
             with patch.object(lex.LexInf, "_rec_inference", _one_level):
-                pass  
-
+                pass
 
     def test_rec_inference_equal_min_len_recurses_true_path(self):
         s = self._make_lexinf()
@@ -348,7 +400,9 @@ class TestLexInfFullCoverage(unittest.TestCase):
         call_count = {"n": 0}
         original = lex.LexInf._rec_inference
 
-        def _rec_wrapper(self, hard_v, hard_f, partition_index=None, deadline=None, **_kw):
+        def _rec_wrapper(
+            self, hard_v, hard_f, partition_index=None, deadline=None, **_kw
+        ):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 # run real logic for the top call
@@ -362,11 +416,15 @@ class TestLexInfFullCoverage(unittest.TestCase):
             # recursive call returns True
             return True
 
-        with patch.object(lex, "logger", _FakeLogger()), patch.object(
-            lex, "create_optimizer", lambda _st: opt
-        ), patch.object(lex.LexInf, "_rec_inference", _rec_wrapper):
+        with (
+            patch.object(lex, "logger", _FakeLogger()),
+            patch.object(lex, "create_optimizer", lambda _st: opt),
+            patch.object(lex.LexInf, "_rec_inference", _rec_wrapper),
+        ):
             self.assertTrue(
-                s._rec_inference(lex.WCNF(), lex.WCNF(), partition_index=1, deadline=None)
+                s._rec_inference(
+                    lex.WCNF(), lex.WCNF(), partition_index=1, deadline=None
+                )
             )
 
     def test_any_subset_of_all_true_and_false(self):

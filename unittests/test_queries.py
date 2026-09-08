@@ -15,6 +15,7 @@ def _cond(text: str = "(b|a)") -> Conditional:
 # Standardfälle
 # ---------------------------------------------------------------------------
 
+
 def test_queries_constructed_from_dict_has_expected_fields():
     q0 = _cond("(b|a)")
     q1 = _cond("(b|a)")
@@ -42,6 +43,7 @@ def test_queries_constructed_from_belief_base_has_expected_fields():
 # ---------------------------------------------------------------------------
 # Randfälle / Robustheit
 # ---------------------------------------------------------------------------
+
 
 def test_queries_empty_dict_is_allowed_and_results_empty_conditionals():
     queries = Queries({})

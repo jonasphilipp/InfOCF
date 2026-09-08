@@ -3,8 +3,10 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+
 import pytest
-from pysmt.shortcuts import Symbol, TRUE
+from pysmt.shortcuts import TRUE, Symbol
+
 
 # ========= sys.path Bootstrap (damit Imports ohne Installation funktionieren) =========
 def _add_project_paths():
@@ -28,12 +30,13 @@ def _add_project_paths():
     except Exception:
         pass
 
+
 _add_project_paths()
 # =====================================================================================
 
-from inference.system_w import SystemW
-from inference.conditional import Conditional
 from inference.belief_base import BeliefBase
+from inference.conditional import Conditional
+from inference.system_w import SystemW
 from inference.tseitin_transformation import TseitinTransformation
 
 # ---------------------------
@@ -41,7 +44,8 @@ from inference.tseitin_transformation import TseitinTransformation
 # ---------------------------
 BENCH_ROUNDS = int(os.getenv("BENCH_ROUNDS", "6"))
 BENCH_WARMUP = int(os.getenv("BENCH_WARMUP", "1"))
-BURST_CALLS  = int(os.getenv("BURST_CALLS", "300"))
+BURST_CALLS = int(os.getenv("BURST_CALLS", "300"))
+
 
 # ---------------------------
 # Fixtures / Setup
@@ -87,6 +91,7 @@ def sysw_fixture():
 # Benchmarks
 # ---------------------------
 
+
 @pytest.mark.parametrize("weakly", [False, True], ids=["weaklyFalse", "weaklyTrue"])
 def test_systemw_inference_single_call(benchmark, sysw_fixture, weakly):
     sysw, query = sysw_fixture
@@ -95,7 +100,9 @@ def test_systemw_inference_single_call(benchmark, sysw_fixture, weakly):
     def run():
         return sysw._inference(query=query, weakly=weakly, deadline=None)
 
-    res = benchmark.pedantic(run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP)
+    res = benchmark.pedantic(
+        run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP
+    )
     assert isinstance(res, bool)
 
 
@@ -110,5 +117,7 @@ def test_systemw_inference_burst(benchmark, sysw_fixture, weakly):
             acc += int(bool(sysw._inference(query=query, weakly=weakly, deadline=None)))
         return acc
 
-    res = benchmark.pedantic(run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP)
+    res = benchmark.pedantic(
+        run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP
+    )
     assert isinstance(res, int)

@@ -80,7 +80,9 @@ class TestLexInfZ3EdgeCases(unittest.TestCase):
                 s._preprocess_belief_base(weakly=False, deadline=None)
 
                 self.assertEqual(s.epistemic_state["partition"], [])
-                self.assertTrue(any("belief base inconsistent" in str(x.message) for x in w))
+                self.assertTrue(
+                    any("belief base inconsistent" in str(x.message) for x in w)
+                )
 
     def test_inference_not_weakly_calls_rec_inference(self):
         """
@@ -92,9 +94,15 @@ class TestLexInfZ3EdgeCases(unittest.TestCase):
         s.epistemic_state["partition"] = [[_DummyConditionalZ3("p1")]]
 
         # patch translation to avoid constructing real z3 conditionals
-        with patch.object(lz3.Conditional_z3, "translate_from_existing", return_value=_DummyQueryZ3()), patch.object(
-            lz3, "makeOptimizer", return_value=_DummyOpt()
-        ), patch.object(lz3.LexInfZ3, "_rec_inference", return_value=True) as rec:
+        with (
+            patch.object(
+                lz3.Conditional_z3,
+                "translate_from_existing",
+                return_value=_DummyQueryZ3(),
+            ),
+            patch.object(lz3, "makeOptimizer", return_value=_DummyOpt()),
+            patch.object(lz3.LexInfZ3, "_rec_inference", return_value=True) as rec,
+        ):
             # query argument can be anything; translate_from_existing is patched
             res = s._inference(query=object(), weakly=False, deadline=None)
             self.assertTrue(res)
@@ -123,11 +131,14 @@ class TestLexInfZ3EdgeCases(unittest.TestCase):
             call_no["n"] += 1
             return xi_i_set if call_no["n"] == 1 else xi_i_prime_set
 
-        with patch.object(lz3, "logger", fake_logger), patch.object(
-            lz3.LexInfZ3, "get_all_xi_i", side_effect=_get_all_xi_i
+        with (
+            patch.object(lz3, "logger", fake_logger),
+            patch.object(lz3.LexInfZ3, "get_all_xi_i", side_effect=_get_all_xi_i),
         ):
             # choose partition_index=0 so part exists; query/opts are dummies
-            res = s._rec_inference(_DummyOpt(), _DummyOpt(), partition_index=0, query=_DummyQueryZ3())
+            res = s._rec_inference(
+                _DummyOpt(), _DummyOpt(), partition_index=0, query=_DummyQueryZ3()
+            )
             self.assertIsInstance(res, bool)
 
         # verify both debug statements executed
@@ -156,13 +167,18 @@ class TestLexInfZ3EdgeCases(unittest.TestCase):
             call_no["n"] += 1
             return xi_i_set if call_no["n"] == 1 else xi_i_prime_set
 
-        with patch.object(lz3, "logger", fake_logger), patch.object(
-            lz3.LexInfZ3, "get_all_xi_i", side_effect=_get_all_xi_i
+        with (
+            patch.object(lz3, "logger", fake_logger),
+            patch.object(lz3.LexInfZ3, "get_all_xi_i", side_effect=_get_all_xi_i),
         ):
-            res = s._rec_inference(_DummyOpt(), _DummyOpt(), partition_index=0, query=_DummyQueryZ3())
+            res = s._rec_inference(
+                _DummyOpt(), _DummyOpt(), partition_index=0, query=_DummyQueryZ3()
+            )
             self.assertTrue(res)
 
-        self.assertTrue(any("no verification mcs" in str(m) for (m, _a) in fake_logger.debug_calls))
+        self.assertTrue(
+            any("no verification mcs" in str(m) for (m, _a) in fake_logger.debug_calls)
+        )
 
     def test_any_subset_of_all_line_228(self):
         """

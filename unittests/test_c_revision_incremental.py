@@ -108,17 +108,14 @@ class TestCRevisionIncremental(unittest.TestCase):
         for i in range(1, len(extended) + 1):
             self.assertEqual(legacy.get(f"gamma-_{i}"), via_model.get(f"gamma-_{i}"))
 
+
 # ---------------------------------------------------------------------------
 # Additional edge-case tests for CRevisionModel coverage gaps
 # ---------------------------------------------------------------------------
 
 import pytest
-from pysmt.shortcuts import Symbol
-from pysmt.typing import BOOL
 
-from inference.c_revision_model import CRevisionModel, _extract_cond_masks
-from inference.conditional import Conditional
-from inference.preocf import CustomPreOCF
+from inference.c_revision_model import _extract_cond_masks
 
 
 def test_extract_cond_masks_unknown_signature_var_returns_none():
@@ -213,7 +210,10 @@ def test_to_csp_uses_translate_to_csp(monkeypatch):
     import inference.c_revision as cr
 
     called = {"ok": False}
-    def fake_translate(compilation, gamma_plus_zero, fixed_gamma_plus=None, fixed_gamma_minus=None):
+
+    def fake_translate(
+        compilation, gamma_plus_zero, fixed_gamma_plus=None, fixed_gamma_minus=None
+    ):
         called["ok"] = True
         return []
 
@@ -221,12 +221,6 @@ def test_to_csp_uses_translate_to_csp(monkeypatch):
     out = model.to_csp(gamma_plus_zero=True)
     assert called["ok"] is True
     assert out == []
-
-import pytest
-
-from pysmt.shortcuts import Symbol
-from inference.conditional import Conditional
-from inference.c_revision_model import CRevisionModel
 
 
 class _TinyRanking:
@@ -251,9 +245,9 @@ def test_c_revision_model_add_conditional_requires_index():
 
 def test_c_revision_model_add_conditional_rejects_duplicate_index():
     r = _TinyRanking()
-    c1 = Conditional(Symbol("A"), Symbol("B"), "(A|B)")  
+    c1 = Conditional(Symbol("A"), Symbol("B"), "(A|B)")
     c1.index = 1
-    c2 = Conditional(Symbol("A"), Symbol("B"), "(A|B)")  
+    c2 = Conditional(Symbol("A"), Symbol("B"), "(A|B)")
     c2.index = 1
 
     m = CRevisionModel(r, [c1])
@@ -299,4 +293,3 @@ def test_c_revision_model_to_csp_calls_translate(monkeypatch):
     monkeypatch.setattr(cr, "translate_to_csp", lambda *_a, **_k: ["ok"])
     out = m.to_csp()
     assert out == ["ok"]
-

@@ -297,8 +297,10 @@ class TestCompileFunction(unittest.TestCase):
 
                 for world in dict1.keys():
                     self.assertEqual(dict1[world], dict2[world])
-                    
+
+
 import types
+
 import pytest
 
 import inference.c_revision as cr
@@ -325,6 +327,7 @@ def test_compile_alt_raises_if_missing_index_attr():
 def test_compile_alt_fast_raises_if_invalid_index():
     # index None oder nicht int
     from pysmt.shortcuts import Symbol
+
     from inference.conditional import Conditional
 
     A = Symbol("A")
@@ -379,7 +382,6 @@ def test_encoding_emits_debug_logs_when_enabled(monkeypatch):
 def test_translate_to_csp_fixed_gamma_plus_branch():
     # fixed_gamma_plus wird als Int(const) gesetzt
     compilation = ({1: []}, {1: []})
-    from pysmt.shortcuts import Int
 
     csp = cr.translate_to_csp(compilation, fixed_gamma_plus={1: 5})
     assert isinstance(csp, list)
@@ -393,9 +395,9 @@ def test_solve_and_get_model_returns_none_when_unsat_no_opt():
 
 
 def test_c_revision_uses_model_to_csp_and_injects_fixed_gamma_plus(monkeypatch):
-    from pysmt.shortcuts import TRUE
+    from pysmt.shortcuts import TRUE, Symbol
+
     from inference.conditional import Conditional
-    from pysmt.shortcuts import Symbol
 
     A = Symbol("A")
     B = Symbol("B")
@@ -409,9 +411,7 @@ def test_c_revision_uses_model_to_csp_and_injects_fixed_gamma_plus(monkeypatch):
     # vermeide echte Optimierung: gib leeres Model zurück
     monkeypatch.setattr(cr, "solve_and_get_model", lambda _csp, _min: {})
 
-    out = cr.c_revision(
-        _DummyRanking(), [c], model=_Model(), fixed_gamma_plus={1: 9}
-    )
+    out = cr.c_revision(_DummyRanking(), [c], model=_Model(), fixed_gamma_plus={1: 9})
     assert out is not None
     assert out["gamma+_1"] == 9
 
@@ -419,6 +419,7 @@ def test_c_revision_uses_model_to_csp_and_injects_fixed_gamma_plus(monkeypatch):
 def test_extract_cond_masks_returns_none_on_signature_miss():
     # KeyError -> None
     from pysmt.shortcuts import Symbol
+
     from inference.conditional import Conditional
 
     A = Symbol("A")

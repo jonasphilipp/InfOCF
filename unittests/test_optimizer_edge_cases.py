@@ -1,5 +1,6 @@
-import pytest
 import types
+
+import pytest
 
 import inference.optimizer as opt_mod
 
@@ -45,20 +46,33 @@ def test_create_optimizer_rc2_and_invalid_branch():
 def test_optimizer_rc2_deadline_timeout(monkeypatch):
     # deadline expired => TimeoutError
     class _FakeRC2:
-        def __init__(self, *_a, **_k): pass
-        def __enter__(self): return self
-        def __exit__(self, *_a): return False
-        def compute(self): return [1]  # würde sonst weiterlaufen
+        def __init__(self, *_a, **_k):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+        def compute(self):
+            return [1]  # würde sonst weiterlaufen
+
         @property
-        def cost(self): return 0
-        def add_clause(self, *_a, **_k): return None
+        def cost(self):
+            return 0
+
+        def add_clause(self, *_a, **_k):
+            return None
 
     monkeypatch.setattr(opt_mod, "RC2", _FakeRC2)
 
     state = {"pmaxsat_solver": "rc2g3", "pool": object(), "nf_cnf_dict": {}}
     o = opt_mod.OptimizerRC2(state)
     with pytest.raises(TimeoutError):
-        o.minimal_correction_subsets(wcnf=types.SimpleNamespace(), deadline=_DummyDeadline(True))  # type: ignore[arg-type]
+        o.minimal_correction_subsets(
+            wcnf=types.SimpleNamespace(), deadline=_DummyDeadline(True)
+        )  # type: ignore[arg-type]
 
 
 def test_optimizer_rc2_debug_models_found(monkeypatch):
@@ -66,19 +80,33 @@ def test_optimizer_rc2_debug_models_found(monkeypatch):
     logs = {"debug": []}
 
     class _L:
-        def isEnabledFor(self, *_a, **_k): return True
-        def debug(self, msg, *args): logs["debug"].append((msg, args))
+        def isEnabledFor(self, *_a, **_k):
+            return True
+
+        def debug(self, msg, *args):
+            logs["debug"].append((msg, args))
 
     monkeypatch.setattr(opt_mod, "logger", _L())
 
     class _FakeRC2:
-        def __init__(self, *_a, **_k): pass
-        def __enter__(self): return self
-        def __exit__(self, *_a): return False
-        def compute(self): return None  # sofort None => debug("models found") und break
+        def __init__(self, *_a, **_k):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+        def compute(self):
+            return None  # sofort None => debug("models found") und break
+
         @property
-        def cost(self): return 0
-        def add_clause(self, *_a, **_k): return None
+        def cost(self):
+            return 0
+
+        def add_clause(self, *_a, **_k):
+            return None
 
     monkeypatch.setattr(opt_mod, "RC2", _FakeRC2)
 
@@ -88,9 +116,11 @@ def test_optimizer_rc2_debug_models_found(monkeypatch):
     assert isinstance(out, list)
     assert any("models found" in m for m, _ in logs["debug"])
 
+
 def test_optimizer_base_minimal_correction_subsets_hits_default_return():
-    import inference.optimizer as opt
     from pysat.formula import WCNF
+
+    import inference.optimizer as opt
 
     class _Concrete(opt.Optimizer):
         # make it concrete but still execute the base-class line 75

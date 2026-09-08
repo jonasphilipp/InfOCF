@@ -1,15 +1,17 @@
 from pysmt.shortcuts import FALSE, Not, Symbol
 from pysmt.typing import BOOL
 
+import inference.consistency_sat as cs
 from inference.belief_base import BeliefBase
 from inference.conditional import Conditional
-import inference.consistency_sat as cs
 
 
 def test_checkTautologies_detects_impossible_antecedent():
     a = Symbol("a", BOOL)
     b = Symbol("b", BOOL)
-    cond = Conditional(consequence=b, antecedence=FALSE(), textRepresentation="(b|Bottom)")
+    cond = Conditional(
+        consequence=b, antecedence=FALSE(), textRepresentation="(b|Bottom)"
+    )
     assert cs.checkTautologies({0: cond}) is True
 
 
@@ -57,6 +59,7 @@ def test_set_core_minimize_sets_flag():
     class DummySolver:
         def __init__(self):
             self.calls = []
+
         def set(self, k, v):
             self.calls.append((k, v))
 
@@ -64,8 +67,10 @@ def test_set_core_minimize_sets_flag():
     cs.set_core_minimize(s)
     assert ("sat.core.minimize", True) in s.calls
 
+
 def test_consistency_indices_hits_consistent_debug_line_120(monkeypatch):
     import logging
+
     import inference.consistency_sat as cs
 
     # Fake logger to force debug branch and record calls
@@ -86,8 +91,11 @@ def test_consistency_indices_hits_consistent_debug_line_120(monkeypatch):
 
     # Dummy Solver context manager
     class _DummySolver:
-        def __enter__(self): return self
-        def __exit__(self, exc_type, exc, tb): return False
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
 
     monkeypatch.setattr(cs, "logger", _FakeLogger())
     monkeypatch.setattr(cs, "Solver", lambda *a, **k: _DummySolver())

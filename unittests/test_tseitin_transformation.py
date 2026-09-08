@@ -1,4 +1,3 @@
-import pytest
 from z3 import z3
 
 from inference.tseitin_transformation import TseitinTransformation
@@ -22,7 +21,7 @@ def test_goal2intcnf_handles_or_and_unit_literals():
 
     g = z3.Goal()
     g.add(z3.Or(x, z3.Not(y)))  # OR branch
-    g.add(z3.Not(x))           # unit literal branch
+    g.add(z3.Not(x))  # unit literal branch
 
     cnf = tt.goal2intcnf(g)
 

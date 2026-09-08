@@ -15,10 +15,12 @@
 from __future__ import annotations
 
 import os
-import sys
 import random
+import sys
 from pathlib import Path
+
 import pytest
+
 
 # ========= sys.path Bootstrap (damit Imports ohne Installation funktionieren) =========
 def _add_project_paths():
@@ -43,15 +45,14 @@ def _add_project_paths():
     except Exception:
         pass
 
+
 _add_project_paths()
 # =====================================================================================
 
 from pysat.card import IDPool
 from pysat.formula import WCNF
 
-from inference.deadline import Deadline
 from inference.optimizer import OptimizerRC2, remove_supersets
-
 
 # ---------------------------
 # Tuning per Umgebungsvariablen
@@ -60,10 +61,10 @@ BENCH_ROUNDS = int(os.getenv("BENCH_ROUNDS", "6"))
 BENCH_WARMUP = int(os.getenv("BENCH_WARMUP", "1"))
 
 # Größensteuerung
-N_SETS = int(os.getenv("N_SETS", "400"))                 # remove_supersets workload
-SET_UNIVERSE = int(os.getenv("SET_UNIVERSE", "120"))     # Element-Range in Sets
+N_SETS = int(os.getenv("N_SETS", "400"))  # remove_supersets workload
+SET_UNIVERSE = int(os.getenv("SET_UNIVERSE", "120"))  # Element-Range in Sets
 
-N_COND = int(os.getenv("N_COND", "60"))                  # nf_cnf_dict Größe
+N_COND = int(os.getenv("N_COND", "60"))  # nf_cnf_dict Größe
 CLAUSES_PER_COND = int(os.getenv("CLAUSES_PER_COND", "3"))
 LITS_PER_CLAUSE = int(os.getenv("LITS_PER_CLAUSE", "3"))
 
@@ -74,7 +75,9 @@ RC2_VARS = int(os.getenv("RC2_VARS", "40"))
 # ---------------------------
 # Helper: Testdaten
 # ---------------------------
-def _make_sets_with_supersets(n_sets: int, universe: int, seed: int = 1) -> list[set[int]]:
+def _make_sets_with_supersets(
+    n_sets: int, universe: int, seed: int = 1
+) -> list[set[int]]:
     """
     Erzeugt viele Sets mit absichtlich eingebauten Supersets.
     remove_supersets ist O(n^2) in der Anzahl Sets → n_sets steuert Laufzeit.
@@ -83,13 +86,16 @@ def _make_sets_with_supersets(n_sets: int, universe: int, seed: int = 1) -> list
     base = []
     for _ in range(n_sets):
         k = rnd.randint(1, 10)
-        s = set(rnd.randrange(universe) for _ in range(k))
+        s = {rnd.randrange(universe) for _ in range(k)}
         base.append(s)
 
     # baue absichtlich Supersets: jedes 5. Set wird ein Superset von einem früheren
     for i in range(0, n_sets, 5):
         if i >= 3:
-            base[i] = set(base[i - 3]) | {rnd.randrange(universe), rnd.randrange(universe)}
+            base[i] = set(base[i - 3]) | {
+                rnd.randrange(universe),
+                rnd.randrange(universe),
+            }
     return base
 
 
@@ -118,7 +124,7 @@ def _make_epistemic_state_with_nf_cnf_dict(
     return {
         "pool": pool,
         "nf_cnf_dict": nf_cnf_dict,
-        # optional: pmaxsat_solver steuert RC2-Backend 
+        # optional: pmaxsat_solver steuert RC2-Backend
         "pmaxsat_solver": "rc2g3",
     }
 
@@ -137,7 +143,7 @@ def _make_trivial_wcnf(n_vars: int, n_hard: int, seed: int = 4) -> WCNF:
         for _ in range(3):
             v = rnd.randint(1, n_vars)
             clause.append(v if rnd.random() < 0.5 else -v)
-        w.append(clause)  
+        w.append(clause)
     return w
 
 
@@ -181,19 +187,22 @@ def trivial_wcnf():
 # Benchmarks
 # ---------------------------
 
+
 def test_remove_supersets_benchmark(benchmark, sets_workload):
     benchmark.group = "optimizer-remove_supersets"
 
     def run():
         return remove_supersets(sets_workload)
 
-    res = benchmark.pedantic(run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP)
+    res = benchmark.pedantic(
+        run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP
+    )
     assert isinstance(res, list)
 
 
 def test_get_violated_conditional_benchmark(benchmark, optimizer_obj, model_and_cost):
     """
-    Misst Optimizer.get_violated_conditional() 
+    Misst Optimizer.get_violated_conditional()
     """
     model, cost = model_and_cost
     benchmark.group = "optimizer-get_violated"
@@ -201,13 +210,15 @@ def test_get_violated_conditional_benchmark(benchmark, optimizer_obj, model_and_
     def run():
         return optimizer_obj.get_violated_conditional(model=model, cost=cost, ignore=[])
 
-    violated = benchmark.pedantic(run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP)
+    violated = benchmark.pedantic(
+        run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP
+    )
     assert isinstance(violated, set)
 
 
 def test_exclude_violated_benchmark(benchmark, optimizer_obj):
     """
-    Misst Optimizer.exclude_violated() 
+    Misst Optimizer.exclude_violated()
     """
     benchmark.group = "optimizer-exclude_violated"
 
@@ -216,5 +227,7 @@ def test_exclude_violated_benchmark(benchmark, optimizer_obj):
     def run():
         return optimizer_obj.exclude_violated(violated)
 
-    constraints = benchmark.pedantic(run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP)
+    constraints = benchmark.pedantic(
+        run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP
+    )
     assert isinstance(constraints, list) and constraints

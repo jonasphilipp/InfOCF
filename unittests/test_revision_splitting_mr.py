@@ -1,18 +1,18 @@
 import pytest
-from pysmt.shortcuts import Symbol, Or, TRUE, Not
+from pysmt.shortcuts import TRUE, Not, Or, Symbol
 
-from inference.preocf import PreOCF
-from inference.conditional import Conditional
-from inference.c_revision_model import (
-    _literal_info,
-    _extract_cond_masks,
-    CRevisionModel,
-)
 from inference.c_revision import (
     compile_alt_fast,
-    translate_to_csp,
     solve_and_get_model,
+    translate_to_csp,
 )
+from inference.c_revision_model import (
+    CRevisionModel,
+    _extract_cond_masks,
+    _literal_info,
+)
+from inference.conditional import Conditional
+from inference.preocf import PreOCF
 
 # ------------------------------
 # Eingaben (aus deiner Vorgabe)
@@ -30,22 +30,33 @@ PSI_HUMAN = {
     "¬a¬b¬c": 0,
 }
 
+
 def to_bitstring(name: str) -> str:
     # name wie "ab¬c" -> "110" in Reihenfolge SIGMA=["a","b","c"]
     bits = []
-    bits.append("1" if "a" in name and "¬a" not in name else ("0" if "¬a" in name else None))
-    bits.append("1" if "b" in name and "¬b" not in name else ("0" if "¬b" in name else None))
-    bits.append("1" if "c" in name and "¬c" not in name else ("0" if "¬c" in name else None))
+    bits.append(
+        "1" if "a" in name and "¬a" not in name else ("0" if "¬a" in name else None)
+    )
+    bits.append(
+        "1" if "b" in name and "¬b" not in name else ("0" if "¬b" in name else None)
+    )
+    bits.append(
+        "1" if "c" in name and "¬c" not in name else ("0" if "¬c" in name else None)
+    )
     s = "".join(bits)
-    assert set(s) <= {"0","1"} and len(s) == 3, f"Ungültiger Weltname: {name} -> {s}"
+    assert set(s) <= {"0", "1"} and len(s) == 3, f"Ungültiger Weltname: {name} -> {s}"
     return s
+
 
 PSI_BITS = {to_bitstring(k): v for k, v in PSI_HUMAN.items()}
 
 # Revisions-Konditional: A = a ∨ b als (A | ⊤)
 A_FORMULA = Or(Symbol("a"), Symbol("b"))
-COND_A_TRUE = Conditional(consequence=A_FORMULA, antecedence=TRUE(), textRepresentation="(a∨b|⊤)")
+COND_A_TRUE = Conditional(
+    consequence=A_FORMULA, antecedence=TRUE(), textRepresentation="(a∨b|⊤)"
+)
 COND_A_TRUE.index = 1  # eindeutiger Index
+
 
 # ------------------------------
 # Minimal valide PreOCF-Implementierung für Tests
@@ -55,8 +66,11 @@ class ManualPreOCF(PreOCF):
     PreOCF mit fixen Rängen: erwartet 'ranks' als dict {bitstring: int},
     z.B. {"111": 3, "110": 1, ..., "000": 0}.
     """
+
     def __init__(self, ranks: dict[str, int], signature: list[str]):
-        super().__init__(ranks=ranks, signature=signature, conditionals=None, ranking_system="manual")
+        super().__init__(
+            ranks=ranks, signature=signature, conditionals=None, ranking_system="manual"
+        )
         self._ranks = ranks
         self.signature = signature  # sicherstellen, dass Attribut existiert
 
@@ -69,15 +83,18 @@ class ManualPreOCF(PreOCF):
         bitstr = "".join("1" if int(b) else "0" for b in world_bits)
         return self._ranks[bitstr]
 
+
 @pytest.fixture(scope="module")
 def pre():
     return ManualPreOCF(PSI_BITS, SIGMA)
+
 
 # ------------------------------
 # Tests: Syntax-Splitting
 # ------------------------------
 def test_literal_info_and_extract_masks():
-    a = Symbol("a"); b = Symbol("b")
+    a = Symbol("a")
+    b = Symbol("b")
     # _literal_info
     assert _literal_info(a) == ("a", 1)
     assert _literal_info(Not(a)) == ("a", 0)
@@ -94,6 +111,7 @@ def test_literal_info_and_extract_masks():
     # Für (a∨b|⊤) -> Nicht-Literale: None (fällt später auf Welt-Solver zurück)
     mask_none = _extract_cond_masks(COND_A_TRUE, sig_index)
     assert mask_none is None
+
 
 # ------------------------------
 # Tests: Kompilation (Model vs. Referenz)
@@ -117,6 +135,7 @@ def test_compilation_model_matches_fast(pre):
     assert norm(vMin_model[idx]) == norm(vMin_fast[idx])
     assert norm(fMin_model[idx]) == norm(fMin_fast[idx])
 
+
 # ------------------------------
 # Tests: CSP bauen und lösen
 # ------------------------------
@@ -133,17 +152,31 @@ def test_translate_to_csp_and_solve(pre):
     # Es gibt gamma+_i und gamma-_i Variablen; prüfe auf beide Präfixe
     assert any(k.startswith(("gamma+_", "gamma-_")) for k in m.keys())
 
+
 # ------------------------------
 # Tests: Fallback (Nicht-Literal-Formeln)
 # ------------------------------
 def test_world_satisfaction_fallback(pre):
     # Welt (0,0,0) verletzt A=a∨b; Welt (1,0,0) erfüllt A
-    w000 = "000"; w100 = "100"
+    w000 = "000"
+    w100 = "100"
 
     # In w100: A ist wahr, ¬A ist falsch
-    assert pre.world_satisfies_conditionalization(w100, COND_A_TRUE.make_A_then_B()) is True
-    assert pre.world_satisfies_conditionalization(w100, COND_A_TRUE.make_A_then_not_B()) is False
+    assert (
+        pre.world_satisfies_conditionalization(w100, COND_A_TRUE.make_A_then_B())
+        is True
+    )
+    assert (
+        pre.world_satisfies_conditionalization(w100, COND_A_TRUE.make_A_then_not_B())
+        is False
+    )
 
     # In w000: A ist falsch, ¬A ist wahr
-    assert pre.world_satisfies_conditionalization(w000, COND_A_TRUE.make_A_then_B()) is False
-    assert pre.world_satisfies_conditionalization(w000, COND_A_TRUE.make_A_then_not_B()) is True
+    assert (
+        pre.world_satisfies_conditionalization(w000, COND_A_TRUE.make_A_then_B())
+        is False
+    )
+    assert (
+        pre.world_satisfies_conditionalization(w000, COND_A_TRUE.make_A_then_not_B())
+        is True
+    )

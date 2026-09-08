@@ -327,7 +327,6 @@ class TestPreOCFAdditional(unittest.TestCase):
         self.assertEqual(preocf.load_meta("direct_key"), "direct_value")
 
         # Test metadata persistence
-        import tempfile
 
         with tempfile.TemporaryDirectory() as temp_dir:
             meta_path = os.path.join(temp_dir, "metadata.pkl")
@@ -356,7 +355,6 @@ class TestPreOCFAdditional(unittest.TestCase):
 
     def test_object_state_operations(self):
         """Test full object state save/load operations."""
-        import tempfile
 
         # Create and configure a PreOCF
         preocf = PreOCF.init_system_z(self.belief_base_birds)
@@ -410,7 +408,6 @@ class TestPreOCFAdditional(unittest.TestCase):
 
     def test_object_state_with_different_preocf_types(self):
         """Test object state operations with different PreOCF types."""
-        import tempfile
 
         with tempfile.TemporaryDirectory() as temp_dir:
             # Test with SystemZ PreOCF
@@ -547,7 +544,6 @@ class TestPreOCFAdditional(unittest.TestCase):
 
     def test_error_handling_in_persistence(self):
         """Test error handling in persistence operations."""
-        import tempfile
 
         # Test loading non-existent file
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -586,7 +582,6 @@ class TestPreOCFAdditional(unittest.TestCase):
 
     def test_impact_persistence(self):
         """Test impact vector export/import functionality for RandomMinCRepPreOCF."""
-        import tempfile
 
         try:
             # Create a RandomMinCRepPreOCF with computed impacts
@@ -728,8 +723,6 @@ class TestPreOCFAdditional(unittest.TestCase):
             self.skipTest(f"Simple impact load/save test skipped due to: {e}")
 
     def test_save_and_load_metadata_pickle_format(self):
-        import tempfile
-        import pickle
         from pathlib import Path
 
         preocf = PreOCF.init_custom({"0": 1, "1": 0}, belief_base=None, signature=["a"])
@@ -739,7 +732,9 @@ class TestPreOCFAdditional(unittest.TestCase):
             p = Path(td) / "meta.pkl"
             preocf.save_metadata(p)  # suffix .pkl -> pickle branch
 
-            preocf2 = PreOCF.init_custom({"0": 1, "1": 0}, belief_base=None, signature=["a"])
+            preocf2 = PreOCF.init_custom(
+                {"0": 1, "1": 0}, belief_base=None, signature=["a"]
+            )
             preocf2.load_metadata(p)
             assert preocf2.load_meta("k") == "v"
 
@@ -754,24 +749,29 @@ class TestPreOCFAdditional(unittest.TestCase):
 
     def test_system_z_extended_true_without_facts(self):
         from unittest import mock
+
         from inference.preocf import SystemZPreOCF
 
         a = Symbol("a", BOOL)
         b = Symbol("b", BOOL)
         bb = BeliefBase(["a", "b"], {1: Conditional(b, a, "(b|a)")}, "bb")
 
-        with mock.patch("inference.preocf.consistency", return_value=([[bb.conditionals[1]]], (1, 1, 1))):
-            with mock.patch("inference.preocf.consistency_diagnostics", return_value={}):
+        with mock.patch(
+            "inference.preocf.consistency",
+            return_value=([[bb.conditionals[1]]], (1, 1, 1)),
+        ):
+            with mock.patch(
+                "inference.preocf.consistency_diagnostics", return_value={}
+            ):
                 sz = SystemZPreOCF(bb, extended=True)
                 assert sz.uses_extended_partition is True
                 assert sz.has_infinity_partition is True
 
     def test_random_min_c_rep_import_impacts_pickle_branch(self):
-        import tempfile
-        import pickle
         from pathlib import Path
-        from inference.preocf import PreOCF, RandomMinCRepPreOCF
+
         from inference.conditional import Conditional
+        from inference.preocf import PreOCF, RandomMinCRepPreOCF
 
         a = Symbol("a", BOOL)
         b = Symbol("b", BOOL)
@@ -779,7 +779,9 @@ class TestPreOCFAdditional(unittest.TestCase):
 
         inst = RandomMinCRepPreOCF.__new__(RandomMinCRepPreOCF)
         ranks = PreOCF.create_bitvec_world_dict(bb.signature)
-        PreOCF.__init__(inst, ranks, bb.signature, bb.conditionals, "random_min_c_rep", None)
+        PreOCF.__init__(
+            inst, ranks, bb.signature, bb.conditionals, "random_min_c_rep", None
+        )
         inst._csp = None
         inst._optimizer = None
 
@@ -796,27 +798,22 @@ class TestPreOCFAdditional(unittest.TestCase):
                 pickle.dump(impact_data, fd)
 
             inst.import_impacts(p)
-            assert inst._impacts == [0]        
+            assert inst._impacts == [0]
 
     # ---------------------------------------------------------------------------
+
+
 # Additional branch/edge coverage for inference/preocf.py
 # ---------------------------------------------------------------------------
 
-import pathlib
 import pickle
 import tempfile
 
 import pytest
-import warnings
+from pysmt.shortcuts import TRUE
 
-import inference.preocf as pr
 import inference.consistency_diagnostics as diag_mod
-
-from pysmt.shortcuts import FALSE, TRUE, Symbol
-from pysmt.typing import BOOL
-
-from inference.belief_base import BeliefBase
-from inference.conditional import Conditional
+import inference.preocf as pr
 
 
 def _bb(sig=("a",), conds=None, name="bb"):
@@ -871,7 +868,9 @@ def test_preocf_base_z_partition_recursion_paths():
 
     # UNSAT in last partition -> returns partition_index+1 (hits line 480)
     ocf1 = pr.CustomPreOCF({"0": 0, "1": 0}, None, ["a"])
-    cond_unsat = Conditional(consequence=a, antecedence=TRUE(), textRepresentation="(a|Top)")
+    cond_unsat = Conditional(
+        consequence=a, antecedence=TRUE(), textRepresentation="(a|Top)"
+    )
     ocf1._z_partition = [[], [cond_unsat]]
     assert ocf1.z_part2ocf("0") == 2
 
@@ -886,7 +885,9 @@ def test_preocf_c_vec2ocf_counts_violations_with_impacts():
     # Covers lines 484-498
     b = Symbol("b", BOOL)
     ocf = pr.CustomPreOCF({"0": 0, "1": 0}, None, ["b"])
-    ocf.conditionals = {1: Conditional(consequence=b, antecedence=TRUE(), textRepresentation="(b|Top)")}
+    ocf.conditionals = {
+        1: Conditional(consequence=b, antecedence=TRUE(), textRepresentation="(b|Top)")
+    }
     ocf._impacts = [5]
     assert ocf.c_vec2ocf("0") == 5  # world "0" violates (b|Top)
 
@@ -895,7 +896,9 @@ def test_preocf_impacts2ocf_unsat_adds_vector_value():
     # Covers lines 565-574
     b = Symbol("b", BOOL)
     ocf = pr.CustomPreOCF({"0": 0, "1": 0}, None, ["b"])
-    ocf.conditionals = {1: Conditional(consequence=b, antecedence=TRUE(), textRepresentation="(b|Top)")}
+    ocf.conditionals = {
+        1: Conditional(consequence=b, antecedence=TRUE(), textRepresentation="(b|Top)")
+    }
     vector = {1: 7}
     assert ocf.impacts2ocf("0", vector) == 7  # unsat -> adds vector[last_index]
 
@@ -916,10 +919,16 @@ def test_systemz_preocf_facts_success_sets_state_and_metadata(monkeypatch):
     ocf = pr.SystemZPreOCF(bb, signature=("a",), facts=[a, "a"], extended=None)
 
     assert ocf.uses_extended_partition is True
-    assert ocf.z_partition_stats == {"layers": 1, "calls": 2, "levels": 3}  # hits line 828
+    assert ocf.z_partition_stats == {
+        "layers": 1,
+        "calls": 2,
+        "levels": 3,
+    }  # hits line 828
     assert ocf.has_infinity_partition is True
-    assert ocf.infinity_partition_index == len(part) - 1  # hits 838-840 in "true" path elsewhere
-    assert ocf.infinity_partition == part[-1]            # hits 845-849 in "idx not None" path
+    assert (
+        ocf.infinity_partition_index == len(part) - 1
+    )  # hits 838-840 in "true" path elsewhere
+    assert ocf.infinity_partition == part[-1]  # hits 845-849 in "idx not None" path
 
     # diagnostics dict path + formatting
     monkeypatch.setattr(pr, "format_diagnostics_verbose", lambda _d: "DIAG")
@@ -970,7 +979,9 @@ def test_systemz_preocf_facts_unknown_vars_raises(monkeypatch):
 def test_systemz_preocf_facts_wrong_entry_type_raises():
     bb = _bb(sig=("a",), conds={})
     with pytest.raises(TypeError):
-        _ = pr.SystemZPreOCF(bb, signature=("a",), facts=[123], extended=None)  # hits line 684
+        _ = pr.SystemZPreOCF(
+            bb, signature=("a",), facts=[123], extended=None
+        )  # hits line 684
 
 
 def test_systemz_preocf_facts_inconsistent_partition_raises_with_diag(monkeypatch):
@@ -1042,21 +1053,36 @@ def test_random_min_c_rep_signature_else_branch_is_executed(monkeypatch):
 def test_random_min_c_rep_no_solution_raises(monkeypatch):
     # Hits line 978 by forcing Optimize.check() != sat
     a = Symbol("a", BOOL)
-    bb = _bb(sig=("a",), conds={1: Conditional(consequence=a, antecedence=a, textRepresentation="(a|a)")})
+    bb = _bb(
+        sig=("a",),
+        conds={
+            1: Conditional(consequence=a, antecedence=a, textRepresentation="(a|a)")
+        },
+    )
 
     monkeypatch.setattr(pr, "create_epistemic_state", lambda *a, **k: {"dummy": True})
 
     class DummyCInf:
-        def __init__(self, _state): self.base_csp = []
-        def preprocess_belief_base(self, _timeout): return None
+        def __init__(self, _state):
+            self.base_csp = []
+
+        def preprocess_belief_base(self, _timeout):
+            return None
 
     monkeypatch.setattr(pr, "CInference", DummyCInf)
 
     class DummyOptimize:
-        def set(self, **k): return None
-        def add(self, *a): return None
-        def minimize(self, *a): return None
-        def check(self): return "not-sat"  # != z3.sat
+        def set(self, **k):
+            return None
+
+        def add(self, *a):
+            return None
+
+        def minimize(self, *a):
+            return None
+
+        def check(self):
+            return "not-sat"  # != z3.sat
 
     monkeypatch.setattr(pr, "Optimize", DummyOptimize)
 
@@ -1082,25 +1108,31 @@ def test_export_import_impacts_error_paths(tmp_path):
 
     # import_impacts invalid data structure (line 1046)
     bad_json = tmp_path / "bad.json"
-    bad_json.write_text('[1,2,3]')
+    bad_json.write_text("[1,2,3]")
     with pytest.raises(ValueError, match="does not contain a valid"):
         inst.import_impacts(bad_json)
 
     # import_impacts missing key (line 1052)
     missing_key = tmp_path / "missing.json"
-    missing_key.write_text('{"impacts":[0],"conditionals_count":1,"ranking_system":"random_min_c_rep"}')
+    missing_key.write_text(
+        '{"impacts":[0],"conditionals_count":1,"ranking_system":"random_min_c_rep"}'
+    )
     with pytest.raises(ValueError, match="missing required key"):
         inst.import_impacts(missing_key)
 
     # import_impacts size mismatch (line 1056)
     mismatch = tmp_path / "mismatch.json"
-    mismatch.write_text('{"impacts":[0],"conditionals_count":2,"ranking_system":"random_min_c_rep","signature":["a"]}')
+    mismatch.write_text(
+        '{"impacts":[0],"conditionals_count":2,"ranking_system":"random_min_c_rep","signature":["a"]}'
+    )
     with pytest.raises(ValueError, match="size mismatch"):
         inst.import_impacts(mismatch)
 
     # import_impacts warnings (lines 1062, 1069) but still imports
     warnfile = tmp_path / "warn.json"
-    warnfile.write_text('{"impacts":[0],"conditionals_count":1,"ranking_system":"other","signature":["x"]}')
+    warnfile.write_text(
+        '{"impacts":[0],"conditionals_count":1,"ranking_system":"other","signature":["x"]}'
+    )
     with pytest.warns(RuntimeWarning) as rec:
         inst.import_impacts(warnfile)
     assert len(rec) >= 2
@@ -1126,6 +1158,7 @@ def test_create_preocf_factory_branches(monkeypatch):
 
     with pytest.raises(ValueError, match="Unknown ranking system"):
         pr.create_preocf("nope", 1)
+
 
 import unittest
 
@@ -1155,7 +1188,9 @@ class TestPreOCFEdgeCases(unittest.TestCase):
         # Avoid heavy SystemZPreOCF __init__: build instance without calling it.
         z = SystemZPreOCF.__new__(SystemZPreOCF)
         z.signature = ["a", "b"]  # used by summary, harmless here
-        z._state = {"z_partition_extended": False}  # => uses_extended_partition == False
+        z._state = {
+            "z_partition_extended": False
+        }  # => uses_extended_partition == False
         z._z_partition = [
             [_DummyCond("(b|a)"), _DummyCond("(!b|a)")],
             [_DummyCond("(c|a)")],
@@ -1176,14 +1211,14 @@ class TestPreOCFEdgeCases(unittest.TestCase):
         # (safe even if one of them is unused)
         z._metadata = {}
         try:
-            setattr(z, "_SystemZPreOCF__metadata", {})
+            z._SystemZPreOCF__metadata = {}
         except Exception:
             pass
 
         # diagnostics also often a read-only property; set backing field(s)
         z._diagnostics = None
         try:
-            setattr(z, "_SystemZPreOCF__diagnostics", None)
+            z._SystemZPreOCF__diagnostics = None
         except Exception:
             pass
 
@@ -1197,6 +1232,7 @@ class TestPreOCFEdgeCases(unittest.TestCase):
         z._z_partition = None  # not a list -> triggers "(no partition)"
 
         self.assertEqual(z.format_layers_with_conditionals(), "(no partition)")
+
 
 if __name__ == "__main__":
     unittest.main()

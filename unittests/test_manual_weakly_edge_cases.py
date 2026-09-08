@@ -100,17 +100,18 @@ class TestWeaklyEdgeCases(unittest.TestCase):
                 )
                 _ = manager.inference(qs)
 
+
 # ---------------------------------------------------------------------------
 # Additional edge-case tests for inference.inference_manager
 # ---------------------------------------------------------------------------
 
 import pytest
+from pysmt.shortcuts import Symbol
 
-from pysmt.shortcuts import Symbol, TRUE
+import inference.inference_manager as im
 from inference.belief_base import BeliefBase
 from inference.conditional import Conditional
 from inference.queries import Queries
-import inference.inference_manager as im
 
 
 def _patch_env(monkeypatch, solvers=("z3",)):
@@ -200,13 +201,15 @@ def test_inference_timeout_math_handles_overrun_preprocessing(monkeypatch):
             # keys must be str(q) for InferenceManager's bookkeeping
             return {str(c): (i, True, False, 123.456) for i, c in conds.items()}
 
-    monkeypatch.setattr(im, "create_inference_instance", lambda state: DummyInference(state))
+    monkeypatch.setattr(
+        im, "create_inference_instance", lambda state: DummyInference(state)
+    )
 
     df = mgr.inference(
         queries,
         total_timeout=10,
         preprocessing_timeout=20,  # => min(10,20)=10
-        inference_timeout=9,       # => min(10-15, 9) = -5
+        inference_timeout=9,  # => min(10-15, 9) = -5
         queries_name="my_queries",
         multi_inference=True,
         decimals=1,
@@ -243,7 +246,9 @@ def test_inference_with_empty_queries_returns_empty_df(monkeypatch):
         def inference(self, conds, timeout, multi_inference):
             return {}
 
-    monkeypatch.setattr(im, "create_inference_instance", lambda state: DummyInference(state))
+    monkeypatch.setattr(
+        im, "create_inference_instance", lambda state: DummyInference(state)
+    )
 
     df = mgr.inference(empty_queries)
     assert df.empty
@@ -251,14 +256,11 @@ def test_inference_with_empty_queries_returns_empty_df(monkeypatch):
     assert "inference_system" in df.columns
     assert "query" in df.columns
 
+
 # ---------------------------------------------------------------------------
 # Additional edge-case tests for inference_manager debug-only branches
 # ---------------------------------------------------------------------------
 
-import inference.inference_manager as im
-from inference.belief_base import BeliefBase
-from inference.conditional import Conditional
-from pysmt.shortcuts import Symbol
 from pysmt.typing import BOOL
 
 
@@ -269,7 +271,8 @@ def test_create_inference_instance_debug_branches(monkeypatch):
 
     # Patch implementations to avoid heavy init
     class Dummy:  # noqa: D401
-        def __init__(self, state): self.state = state
+        def __init__(self, state):
+            self.state = state
 
     monkeypatch.setattr(im, "SystemWZ3", Dummy)
     monkeypatch.setattr(im, "SystemW", Dummy)
@@ -281,19 +284,27 @@ def test_create_inference_instance_debug_branches(monkeypatch):
     bb = BeliefBase(["a", "b"], {0: Conditional(b, a, "(b|a)")}, "bb")
 
     # system-w z3 branch
-    s = im.create_epistemic_state(bb, "system-w", "z3", pmaxsat_solver="z3", weakly=False)
+    s = im.create_epistemic_state(
+        bb, "system-w", "z3", pmaxsat_solver="z3", weakly=False
+    )
     assert isinstance(im.create_inference_instance(s), Dummy)
 
     # system-w non-z3 branch
-    s = im.create_epistemic_state(bb, "system-w", "z3", pmaxsat_solver="rc2", weakly=False)
+    s = im.create_epistemic_state(
+        bb, "system-w", "z3", pmaxsat_solver="rc2", weakly=False
+    )
     assert isinstance(im.create_inference_instance(s), Dummy)
 
     # lex_inf z3 branch
-    s = im.create_epistemic_state(bb, "lex_inf", "z3", pmaxsat_solver="z3", weakly=False)
+    s = im.create_epistemic_state(
+        bb, "lex_inf", "z3", pmaxsat_solver="z3", weakly=False
+    )
     assert isinstance(im.create_inference_instance(s), Dummy)
 
     # lex_inf non-z3 branch
-    s = im.create_epistemic_state(bb, "lex_inf", "z3", pmaxsat_solver="rc2", weakly=False)
+    s = im.create_epistemic_state(
+        bb, "lex_inf", "z3", pmaxsat_solver="rc2", weakly=False
+    )
     assert isinstance(im.create_inference_instance(s), Dummy)
 
 
@@ -308,11 +319,14 @@ def test_inference_manager_results_debug_summary(monkeypatch):
     mgr = im.InferenceManager(bb, "system-z", smt_solver="z3", weakly=False)
 
     class DummyInference:
-        def __init__(self, state): self.epistemic_state = state
+        def __init__(self, state):
+            self.epistemic_state = state
+
         def preprocess_belief_base(self, timeout):
             self.epistemic_state["preprocessing_time"] = 0
             self.epistemic_state["preprocessing_done"] = True
             self.epistemic_state["preprocessing_timed_out"] = False
+
         def inference(self, conds, timeout, multi_inference):
             # one ok, one timeout-like
             items = list(conds.items())
@@ -321,12 +335,16 @@ def test_inference_manager_results_debug_summary(monkeypatch):
                 out[str(c)] = (i, True, False, 1.0)
             return out
 
-    monkeypatch.setattr(im, "create_inference_instance", lambda state: DummyInference(state))
+    monkeypatch.setattr(
+        im, "create_inference_instance", lambda state: DummyInference(state)
+    )
 
     from inference.queries import Queries
+
     q = Conditional(b, a, "(b|a)")
     df = mgr.inference(Queries({0: q}))
     assert df.at[0, "result"] in (True, False)
+
 
 def test_ci_preprocess_belief_base_calls_tseitin_compile_translate(monkeypatch):
     import inference.c_inference as ci
@@ -341,7 +359,9 @@ def test_ci_preprocess_belief_base_calls_tseitin_compile_translate(monkeypatch):
     called = {"tseitin": False, "compile": False, "translate": False}
 
     class DummyTseitin:
-        def __init__(self, state): self.state = state
+        def __init__(self, state):
+            self.state = state
+
         def belief_base_to_cnf(self, *args):
             called["tseitin"] = True
 
@@ -363,12 +383,17 @@ def test_ci_preprocess_belief_base_calls_tseitin_compile_translate(monkeypatch):
     assert called["tseitin"] is True
     assert called["compile"] is True
     assert called["translate"] is True
-    assert inf.base_csp == ["CSP"]  
+    assert inf.base_csp == ["CSP"]
+
+
+from pysmt.shortcuts import LE, Int
 
 import inference.c_inference as ci
-from pysmt.shortcuts import Int, LE
 
-def test_c_inference_debug_branches_makeSummation_freshVars_minima_encoding(monkeypatch):
+
+def test_c_inference_debug_branches_makeSummation_freshVars_minima_encoding(
+    monkeypatch,
+):
     # Force debug branches in c_inference.py to execute
     monkeypatch.setattr(ci.logger, "isEnabledFor", lambda *_: True)
     monkeypatch.setattr(ci.logger, "debug", lambda *a, **k: None)
@@ -396,7 +421,9 @@ def test_c_inference_debug_branches_encoding_and_translate(monkeypatch):
     b = Symbol("b", BOOL)
 
     # BeliefBase with one conditional; translate() enumerates starting at 1
-    bb = BeliefBase(signature=["a", "b"], conditionals={0: Conditional(b, a, "(b|a)")}, name="bb")
+    bb = BeliefBase(
+        signature=["a", "b"], conditionals={0: Conditional(b, a, "(b|a)")}, name="bb"
+    )
 
     state = {
         "belief_base": bb,
@@ -411,7 +438,9 @@ def test_c_inference_debug_branches_encoding_and_translate(monkeypatch):
     assert isinstance(csp, list) and len(csp) > 0
 
 
-def test_compile_and_encode_query_edge_case_verification_only_returns_impossible(monkeypatch):
+def test_compile_and_encode_query_edge_case_verification_only_returns_impossible(
+    monkeypatch,
+):
     # Covers: if not fMin and vMin -> return [LE(Int(1), Int(0))]
     a = Symbol("a", BOOL)
     b = Symbol("b", BOOL)
@@ -467,15 +496,14 @@ def test_compile_and_encode_query_edge_case_both_empty_returns_empty(monkeypatch
     csp, _t = inf.compile_and_encode_query(q)
     assert csp == []
 
-import warnings
-import pytest
-import types
 
-import inference.system_z as sysz
+import warnings
+
+import inference.consistency_sat as cs
+import inference.lex_inf as lex
 import inference.system_w as sysw
 import inference.system_w_z3 as syswz3
-import inference.lex_inf as lex
-import inference.consistency_sat as cs
+import inference.system_z as sysz
 
 
 def test_system_z_warns_on_inconsistent_partition(monkeypatch):
@@ -489,13 +517,16 @@ def test_system_z_warns_on_inconsistent_partition(monkeypatch):
 
 
 def test_system_w_warns_on_inconsistent_partition(monkeypatch):
-    # triggert system_w.py 
+    # triggert system_w.py
     monkeypatch.setattr(sysw, "consistency_indices", lambda *_a, **_k: ([], None))
 
     # vermeide echte Tseitin-Logik
     class _TT:
-        def __init__(self, *_a, **_k): pass
-        def belief_base_to_cnf(self, *_a, **_k): return None
+        def __init__(self, *_a, **_k):
+            pass
+
+        def belief_base_to_cnf(self, *_a, **_k):
+            return None
 
     monkeypatch.setattr(sysw, "TseitinTransformation", _TT)
 
@@ -518,7 +549,7 @@ def test_system_w_warns_on_inconsistent_partition(monkeypatch):
 
 
 def test_system_w_z3_inconsistent_partition_returns_empty(monkeypatch):
-    # triggert system_w_z3.py 
+    # triggert system_w_z3.py
     monkeypatch.setattr(syswz3, "consistency", lambda *_a, **_k: (False, None))
     s = syswz3.SystemWZ3({"belief_base": object(), "smt_solver": "z3", "weakly": False})
     with warnings.catch_warnings(record=True) as w:
@@ -529,7 +560,7 @@ def test_system_w_z3_inconsistent_partition_returns_empty(monkeypatch):
 
 
 def test_system_w_z3_not_weakly_calls_rec_inference(monkeypatch):
-    # triggert system_w_z3.py 
+    # triggert system_w_z3.py
     s = syswz3.SystemWZ3({"belief_base": object(), "smt_solver": "z3", "weakly": False})
     s.epistemic_state["partition"] = [[object()]]
 
@@ -540,8 +571,10 @@ def test_system_w_z3_not_weakly_calls_rec_inference(monkeypatch):
         lambda *_a, **_k: called.__setitem__("n", called["n"] + 1) or True,
     )
 
-    from inference.conditional import Conditional
     from pysmt.shortcuts import Symbol
+
+    from inference.conditional import Conditional
+
     q = Conditional(Symbol("A"), Symbol("B"), "(A|B)")
 
     assert s._inference(q, weakly=False, deadline=None) is True
@@ -549,12 +582,15 @@ def test_system_w_z3_not_weakly_calls_rec_inference(monkeypatch):
 
 
 def test_lexinf_warns_on_inconsistent_partition(monkeypatch):
-    # triggert lex_inf.py 
+    # triggert lex_inf.py
     monkeypatch.setattr(lex, "consistency_indices", lambda *_a, **_k: ([], None))
 
     class _TT:
-        def __init__(self, *_a, **_k): pass
-        def belief_base_to_cnf(self, *_a, **_k): return None
+        def __init__(self, *_a, **_k):
+            pass
+
+        def belief_base_to_cnf(self, *_a, **_k):
+            return None
 
     monkeypatch.setattr(lex, "TseitinTransformation", _TT)
 
@@ -576,9 +612,10 @@ def test_lexinf_warns_on_inconsistent_partition(monkeypatch):
 
 
 def test_lexinf_vacuity_shortcuts_true_false(monkeypatch):
+    from pysmt.shortcuts import Symbol
+
     import inference.lex_inf as lex
     from inference.conditional import Conditional
-    from pysmt.shortcuts import Symbol
 
     A = Symbol("A")
     B = Symbol("B")
@@ -589,7 +626,9 @@ def test_lexinf_vacuity_shortcuts_true_false(monkeypatch):
             "belief_base": object(),
             "smt_solver": "z3",
             "weakly": False,
-            "partition": [[0]],  # only needs to exist / be non-empty for strict shortcuts
+            "partition": [
+                [0]
+            ],  # only needs to exist / be non-empty for strict shortcuts
             "v_cnf_dict": {},
             "f_cnf_dict": {},
             "nf_cnf_dict": {},
@@ -639,20 +678,29 @@ def test_lexinf_vacuity_shortcuts_true_false(monkeypatch):
     monkeypatch.setattr(lex, "is_unsat", is_unsat_case2)
     assert s._inference(q, weakly=False, deadline=None) is False
 
+
 def test_consistency_sat_checkTautologies_branch(monkeypatch):
-    # triggert consistency_sat.py 
+    # triggert consistency_sat.py
     called = {"n": 0}
 
     # is_sat so faken, dass case1 False wird
-    monkeypatch.setattr(cs, "is_sat", lambda *_a, **_k: (called.__setitem__("n", called["n"] + 1) or False))
+    monkeypatch.setattr(
+        cs,
+        "is_sat",
+        lambda *_a, **_k: (called.__setitem__("n", called["n"] + 1) or False),
+    )
 
     # Dummy-Conditional mit benötigten Methoden
     class _C:
-        def make_A_then_B(self): return object()
-        def make_A_then_not_B(self): return object()
+        def make_A_then_B(self):
+            return object()
+
+        def make_A_then_not_B(self):
+            return object()
 
     assert cs.checkTautologies({0: _C()}) is True
     assert called["n"] >= 1
+
 
 if __name__ == "__main__":
     unittest.main()

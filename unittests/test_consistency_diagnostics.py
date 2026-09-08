@@ -101,13 +101,15 @@ def test_formatter_runs():
     for key in ["facts=", "bb=", "bb_w=", "combined=", "inf_inc="]:
         assert key in s
 
+
 # ---------------------------------------------------------------------------
 # Additional edge-case tests for consistency_diagnostics coverage gaps
 # ---------------------------------------------------------------------------
 
-import inference.consistency_diagnostics as cd
 from pysmt.shortcuts import Symbol
 from pysmt.typing import BOOL
+
+import inference.consistency_diagnostics as cd
 
 
 def test_facts_jointly_satisfiable_empty_list_true():
@@ -123,11 +125,8 @@ def test_parse_fact_accepts_fnode():
 
 def test_parse_fact_invalid_type_raises_typeerror():
     bb = _birds_bb()
-    try:
+    with pytest.raises(TypeError):
         cd.facts_jointly_satisfiable(bb.signature, [object()])  # type: ignore[list-item]
-        assert False, "expected TypeError"
-    except TypeError:
-        pass
 
 
 def test_augment_belief_base_with_empty_facts_returns_same_object():
@@ -140,7 +139,9 @@ def test_inconsistent_facts_warn_path(monkeypatch):
     bb = _birds_bb()
     warned = {"called": False}
 
-    monkeypatch.setattr(cd.logger, "warning", lambda *a, **k: warned.__setitem__("called", True))
+    monkeypatch.setattr(
+        cd.logger, "warning", lambda *a, **k: warned.__setitem__("called", True)
+    )
 
     diag = cd.consistency_diagnostics(
         bb,

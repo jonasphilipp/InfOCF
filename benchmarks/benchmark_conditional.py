@@ -9,10 +9,12 @@
 from __future__ import annotations
 
 import os
-import sys
 import random
+import sys
 from pathlib import Path
+
 import pytest
+
 
 # ========= sys.path Bootstrap (damit Imports ohne Installation funktionieren) =========
 def _add_project_paths():
@@ -37,12 +39,13 @@ def _add_project_paths():
     except Exception:
         pass
 
+
 _add_project_paths()
 # =====================================================================================
 
-from pysmt.shortcuts import Symbol, TRUE, Not, And, Or
-from inference.conditional import Conditional
+from pysmt.shortcuts import TRUE, And, Not, Or, Symbol
 
+from inference.conditional import Conditional
 
 # ---------------------------
 # Tuning per Umgebungsvariablen
@@ -50,9 +53,13 @@ from inference.conditional import Conditional
 BENCH_ROUNDS = int(os.getenv("BENCH_ROUNDS", "6"))
 BENCH_WARMUP = int(os.getenv("BENCH_WARMUP", "1"))
 
-N_OBJECTS = int(os.getenv("N_OBJECTS", "20000"))   # wie viele Conditionals erzeugt/inserted werden
-N_VARS = int(os.getenv("N_VARS", "200"))           # Variablenpool
-COMPLEX_RATE = float(os.getenv("COMPLEX_RATE", "0.20"))  # Anteil komplexerer Konsequenzen
+N_OBJECTS = int(
+    os.getenv("N_OBJECTS", "20000")
+)  # wie viele Conditionals erzeugt/inserted werden
+N_VARS = int(os.getenv("N_VARS", "200"))  # Variablenpool
+COMPLEX_RATE = float(
+    os.getenv("COMPLEX_RATE", "0.20")
+)  # Anteil komplexerer Konsequenzen
 
 
 # ---------------------------
@@ -60,6 +67,7 @@ COMPLEX_RATE = float(os.getenv("COMPLEX_RATE", "0.20"))  # Anteil komplexerer Ko
 # ---------------------------
 def _make_symbols(n: int):
     return [Symbol(f"p{i}") for i in range(n)]
+
 
 def _make_conditionals(n_objects: int, n_vars: int, complex_rate: float, seed: int = 1):
     """
@@ -81,7 +89,9 @@ def _make_conditionals(n_objects: int, n_vars: int, complex_rate: float, seed: i
         else:
             cons = s if rnd.random() < 0.7 else Not(s)
 
-        c = Conditional(consequence=cons, antecedence=TRUE(), textRepresentation="(…|⊤)")
+        c = Conditional(
+            consequence=cons, antecedence=TRUE(), textRepresentation="(…|⊤)"
+        )
         c.index = i
         out.append(c)
 
@@ -98,6 +108,7 @@ def conditional_list():
 # Benchmarks
 # ---------------------------
 
+
 def test_conditional_construction(benchmark):
     """
     Misst: reines Erzeugen von Conditional-Objekten.
@@ -108,7 +119,9 @@ def test_conditional_construction(benchmark):
         conds = _make_conditionals(N_OBJECTS, N_VARS, COMPLEX_RATE, seed=1)
         return len(conds)
 
-    res = benchmark.pedantic(run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP)
+    res = benchmark.pedantic(
+        run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP
+    )
     assert isinstance(res, int) and res == N_OBJECTS
 
 
@@ -124,7 +137,9 @@ def test_conditional_set_insert(benchmark, conditional_list):
             s.add(c)
         return len(s)
 
-    res = benchmark.pedantic(run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP)
+    res = benchmark.pedantic(
+        run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP
+    )
     assert isinstance(res, int) and res > 0
 
 
@@ -140,7 +155,9 @@ def test_conditional_dict_keys(benchmark, conditional_list):
             d[c] = c.index
         return len(d)
 
-    res = benchmark.pedantic(run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP)
+    res = benchmark.pedantic(
+        run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP
+    )
     assert isinstance(res, int) and res > 0
 
 
@@ -165,13 +182,15 @@ def test_conditional_equality_pairs(benchmark, conditional_list):
             acc += int(a == b)
         return acc
 
-    res = benchmark.pedantic(run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP)
+    res = benchmark.pedantic(
+        run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP
+    )
     assert isinstance(res, int)
 
 
 def test_conditional_string_access(benchmark, conditional_list):
     """
-    Misst: Zugriff auf textRepresentation 
+    Misst: Zugriff auf textRepresentation
     """
     benchmark.group = "conditional-textrepr"
 
@@ -182,5 +201,7 @@ def test_conditional_string_access(benchmark, conditional_list):
             total += len(tr) if isinstance(tr, str) else 0
         return total
 
-    res = benchmark.pedantic(run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP)
+    res = benchmark.pedantic(
+        run, iterations=1, rounds=BENCH_ROUNDS, warmup_rounds=BENCH_WARMUP
+    )
     assert isinstance(res, int) and res >= 0

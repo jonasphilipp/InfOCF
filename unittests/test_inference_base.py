@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import types
 
+import pytest
+
 import inference.inference as inf_mod
 
 
@@ -91,11 +93,8 @@ def test_preprocess_belief_base_asserts_on_empty_belief_base(monkeypatch):
     state = _make_state(belief_base=_DummyBeliefBase(conditionals=[]))
     inf = _DummyInference(state)
 
-    try:
+    with pytest.raises(AssertionError, match="belief base empty"):
         inf.preprocess_belief_base(preprocessing_timeout=5)
-        assert False, "expected AssertionError"
-    except AssertionError as e:
-        assert "belief base empty" in str(e)
 
 
 def test_preprocess_belief_base_asserts_on_inconsistent_belief_base(monkeypatch):
@@ -109,11 +108,8 @@ def test_preprocess_belief_base_asserts_on_inconsistent_belief_base(monkeypatch)
     state = _make_state()
     inf = _DummyInference(state)
 
-    try:
+    with pytest.raises(AssertionError, match="belief base inconsistent"):
         inf.preprocess_belief_base(preprocessing_timeout=5)
-        assert False, "expected AssertionError"
-    except AssertionError as e:
-        assert "belief base inconsistent" in str(e)
 
 
 def test_preprocess_belief_base_success_sets_flags_and_time(monkeypatch):
@@ -169,11 +165,10 @@ def test_inference_requires_preprocessing_done_or_timed_out(monkeypatch):
     state = _make_state(preprocessing_done=False, preprocessing_timed_out=False)
     inf = _DummyInference(state)
 
-    try:
-        inf.inference({0: _DummyConditional(label="q0")}, timeout=1, multi_inference=False)
-        assert False, "expected Exception"
-    except Exception as e:
-        assert "preprocess belief_base" in str(e)
+    with pytest.raises(Exception, match="preprocess belief_base"):
+        inf.inference(
+            {0: _DummyConditional(label="q0")}, timeout=1, multi_inference=False
+        )
 
 
 def test_inference_returns_all_false_if_preprocessing_timed_out(monkeypatch):
@@ -320,7 +315,9 @@ def test_multi_inference_uses_processes_and_marks_timeouts(monkeypatch):
         call_no["n"] += 1
         return _FakeProcess(target=target, args=args, run_target=(call_no["n"] == 1))
 
-    fake_mp = types.SimpleNamespace(Manager=lambda: _FakeManager(), Process=_fake_process_ctor)
+    fake_mp = types.SimpleNamespace(
+        Manager=lambda: _FakeManager(), Process=_fake_process_ctor
+    )
     monkeypatch.setattr(inf_mod, "mp", fake_mp)
 
     # keep inference deterministic
@@ -338,7 +335,7 @@ def test_multi_inference_uses_processes_and_marks_timeouts(monkeypatch):
     assert res["q0"][2] is False  # not timed out
 
     assert res["q1"][0] == 6
-    assert res["q1"][2] is True   # timed out (fallback path)
+    assert res["q1"][2] is True  # timed out (fallback path)
     assert res["q1"][3] == 2000.0
 
 
@@ -377,8 +374,6 @@ def test_general_inference_calls_concrete_inference(monkeypatch):
     assert called_query is q
     assert called_weakly is True
     assert called_deadline == "dl"
-
-import pytest
 
 
 def test_preprocess_belief_base_reraises_generic_exception(monkeypatch):
@@ -447,7 +442,9 @@ def test_multi_inference_worker_reraises_generic_exception(monkeypatch):
 
     monkeypatch.setattr(inf_mod, "Deadline", _D)
 
-    inf.general_inference = lambda *_a, **_k: (_ for _ in ()).throw(ValueError("worker-fail"))
+    inf.general_inference = lambda *_a, **_k: (_ for _ in ()).throw(
+        ValueError("worker-fail")
+    )
 
     q0 = _DummyConditional(label="q0")
     out: dict[int, tuple[int, bool, bool, float]] = {}
