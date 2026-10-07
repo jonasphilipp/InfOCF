@@ -1,15 +1,11 @@
-from inference.conditional import Conditional
-from inference.inference import Inference
-from warnings import warn
-from time import process_time
-from inference.belief_base import BeliefBase
+
 import z3
-import math
-from inference.z3tools import *
-from pysmt.shortcuts import Solver,Implies
+
 from inference.extinf.ezp import EZP, get_J_delta
 from inference.extinf.weak_z_rank import SystemZRank
-from time import perf_counter
+from inference.inference import Inference
+from inference.z3tools import transform_conditional_to_z3
+
 
 def simplyfy(d):
     ## only simplifies view onto the dict, does not do any rewriting
@@ -28,17 +24,17 @@ class CInference(Inference):
 
     #def __init__(self,bb, timeout = 600) -> None:
     def __init__(self,epistemic_state) -> None:
-            self.epistemic_state = epistemic_state
-            bb = epistemic_state['belief_base']
-            self.bb = bb.transform_to_z3_objects()
+        self.epistemic_state = epistemic_state
+        bb = epistemic_state['belief_base']
+        self.bb = bb.transform_to_z3_objects()
 
     def _preprocess_belief_base(self, weakly,deadline):
-            bb = self.epistemic_state['belief_base']
-            self.sysZ = SystemZRank(bb)
-            self.ezp = EZP(bb)
-            self.J_delta = get_J_delta(self.ezp)
-            self.compile_constraints()
-            self.base_csp = self.translate()
+        bb = self.epistemic_state['belief_base']
+        self.sysZ = SystemZRank(bb)
+        self.ezp = EZP(bb)
+        self.J_delta = get_J_delta(self.ezp)
+        self.compile_constraints()
+        self.base_csp = self.translate()
 
 
 
@@ -46,13 +42,14 @@ class CInference(Inference):
         V,F = dict(), dict()
         for i,c in self.bb.conditionals.items():
             #t1 = time()
-            if i not in self.J_delta.keys(): continue
+            if i not in self.J_delta.keys():
+                continue
             vMin, fMin = self.compile_query_into_psr(c,i)
             V[i] = vMin
             F[i]= fMin
         self.vMin, self.fMin = V,F
         return V,F
-                            
+
 
     def compile_and_encode_query(self, query):
         vMin,fMin = self.compile_query_into_psr(query, -1)
@@ -74,16 +71,19 @@ class CInference(Inference):
         if weakly:
             assert self.ezp.weak_consistency, "weak query, but belief base not weakly consistent"
 
-	if len(self.bb.conditionals) == 0:
+        if len(self.bb.conditionals) == 0:
             zvf, zff = self.sysZ.rank_query(query)
-            if zff == float('inf'): return True
-	    return False
+            if zff == float('inf'):
+                return True
+            return False
 
         if len(self.J_delta) != len(self.bb.conditionals):
             zvf, zff = self.sysZ.rank_query(query)
-            if zff == float('inf'): return True
-            if zvf == float('inf'): return False
-	
+            if zff == float('inf'):
+                return True
+            if zvf == float('inf'):
+                return False
+
         query = transform_conditional_to_z3(query)
         base_csp = self.base_csp
         query_csp = self.compile_and_encode_query(query)
@@ -139,7 +139,7 @@ class CInference(Inference):
         opt = getOptimizer()
         J_delta_keys = self.J_delta.keys()
         [opt.add(z3.Not(c.falsify())) for j,c in self.bb.conditionals.items() if j not in J_delta_keys]
-        objectives = {j:opt.add_soft(z3.Not(c.falsify()), weight=1,id=j) for j,c in self.bb.conditionals.items() if j in J_delta_keys} 
+        objectives = {j:opt.add_soft(z3.Not(c.falsify()), weight=1,id=j) for j,c in self.bb.conditionals.items() if j in J_delta_keys}
         opt.push()
         opt.add(query.verify())
         vMin, fMin = [], []

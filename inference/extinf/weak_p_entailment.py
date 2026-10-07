@@ -1,20 +1,14 @@
-from inference.conditional import Conditional
-from inference.conditional_z3 import Conditional_z3
-from inference.inference import Inference
-from inference.consistency_sat import consistency
-from warnings import warn
-from time import process_time
-from inference.belief_base import BeliefBase
-import z3
-from pysmt.shortcuts import Not
-import math
-from inference.extinf.z3tools import *
-from inference.extinf.weak_z_rank import SystemZRank
 
+from pysmt.shortcuts import Not
+
+from inference.belief_base import BeliefBase
+from inference.conditional import Conditional
+from inference.extinf.weak_z_rank import SystemZRank
+from inference.extinf.z3tools import transform_conditional_to_z3
 
 
 class ExtendedPEntailment():
-    ## TODO refactor to use lexinf 
+    ## TODO refactor to use lexinf
 
     def __init__(self,bb) -> None:
         self.bb = bb
@@ -22,7 +16,6 @@ class ExtendedPEntailment():
 
 
     def rank_query(self, query):
-        #TODO
         tmp = {i:c for i,c in self.bb.conditionals.items()}
         tmpConditional = Conditional(Not(query.B), query.A, "", "")
         tmp[len(tmp)+1]=tmpConditional

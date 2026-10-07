@@ -1,8 +1,5 @@
 
 from inference.conditional_z3 import Conditional_z3
-from inference.belief_base import BeliefBase
-
-
 
 
 def transform_partition_to_z3(partition):

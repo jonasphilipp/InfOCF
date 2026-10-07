@@ -1,10 +1,7 @@
-from warnings import warn
-from time import process_time
-from inference.belief_base import BeliefBase
-from inference.extinf.ezp import EZP
-from inference.conditional_z3 import Conditional_z3
-from z3 import Optimize, Not, unsat, sat, BoolVal
+from z3 import BoolVal, Optimize, unsat
 
+from inference.conditional_z3 import Conditional_z3
+from inference.extinf.ezp import EZP
 
 
 def lex_less(x,y):
@@ -13,9 +10,12 @@ def lex_less(x,y):
     due to recursion, it only works for reasonibly small inputs (smth like length 1800 iirc)
     is good enough for current research, which scales up to about length 100
     """
-    if len(x) == len(y) == 0: return False
-    if (x[0]) == (y[0]): return lex_less(x[1:], y[1:])
-    if x[0] < y[0] : return True
+    if len(x) == len(y) == 0:
+        return False
+    if (x[0]) == (y[0]):
+        return lex_less(x[1:], y[1:])
+    if x[0] < y[0] :
+        return True
     return False
 
 
@@ -44,7 +44,8 @@ class LexInf():
                 goal =opt.add_soft(c.imply(), weight=1, id=i)
             goals.append(goal)
         result = opt.check()
-        if result == unsat: return [float('inf')]*len(goals)
+        if result == unsat:
+            return [float('inf')]*len(goals)
         #print([dir(s.value()) for s in goals])
         return [s.value().py_value() for s in goals]
 
@@ -58,10 +59,11 @@ class LexInf():
         query = Conditional_z3.translate_from_existing(query)
         v,f = self.rank_query(query)
         #print(v,f,a)
-       
+
         inf = float('inf')
         #if inf in a: return True
-        if v[0] > 0 and f[0] > 0: return True
+        if v[0] > 0 and f[0] > 0:
+            return True
         #if (inf in v and inf in f) or : return True
         return lex_less(v,f)
 

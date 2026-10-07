@@ -1,6 +1,8 @@
 #from pysmt.shortcuts import Solver, Implies, is_sat
-from z3 import Solver, Implies, sat
+from z3 import Solver, sat
+
 from inference.conditional_z3 import Conditional_z3
+
 
 def toImplicit(conditionals):
     """
@@ -34,8 +36,10 @@ def get_J_delta(ezp):
 
 def getEZP(ckb):
     conditionals = [Conditional_z3.translate_from_existing(i) for i in ckb.conditionals.values()]
-    if test_weakly(ckb) == False: return [[],conditionals]
-    if len(conditionals) == 0: return [[],[]]
+    if test_weakly(ckb) == False:
+        return [[],conditionals]
+    if len(conditionals) == 0:
+        return [[],[]]
     #partition is a list of lists
     partition = []
     while True:
@@ -52,7 +56,7 @@ def getEZP(ckb):
                 C.append(c)
         partition.append(T)
         conditionals = C
-        #if no conditionals remain, the ckb is consistent 
+        #if no conditionals remain, the ckb is consistent
         if len(conditionals) == 0:
             ## is remainder always []?
             return partition + [[]]

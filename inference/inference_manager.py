@@ -35,6 +35,7 @@ import pandas as pd
 from pysmt.environment import get_env
 
 from inference.belief_base import BeliefBase
+
 #from inference.c_inference import CInference
 from inference.extinf.cinference import CInference
 from inference.inference import Inference
