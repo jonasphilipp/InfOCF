@@ -4,7 +4,7 @@ from inference.conditional_z3 import Conditional_z3
 from inference.extinf.ezp import EZP
 
 
-def lex_less(x,y):
+def lex_less(x, y):
     """
     assumes |x| =|y|
     due to recursion, it only works for reasonibly small inputs (smth like length 1800 iirc)
@@ -14,56 +14,54 @@ def lex_less(x,y):
         return False
     if (x[0]) == (y[0]):
         return lex_less(x[1:], y[1:])
-    if x[0] < y[0] :
+    if x[0] < y[0]:
         return True
     return False
 
 
 def getOptimizer():
     opt = Optimize()
-    opt.set(priority='lexicographic')
-    opt.set(maxsat_engine='rc2')
+    opt.set(priority="lexicographic")
+    opt.set(maxsat_engine="rc2")
     return opt
 
 
-class LexInf():
-
-    def __init__(self,bb) -> None:
-            self.ezp = EZP(bb)
+class LexInf:
+    def __init__(self, bb) -> None:
+        self.ezp = EZP(bb)
 
     def rank(self, formula):
         opt = getOptimizer()
         opt.add(formula)
         soft = self.ezp.partition[::-1]
         goals = []
-        #print(len(soft))
-        for i,s in enumerate(soft):
+        # print(len(soft))
+        for i, s in enumerate(soft):
             if len(s) == 0:
-                goal =opt.add_soft(BoolVal(True), weight=1, id=i)
+                goal = opt.add_soft(BoolVal(True), weight=1, id=i)
             for c in s:
-                goal =opt.add_soft(c.imply(), weight=1, id=i)
+                goal = opt.add_soft(c.imply(), weight=1, id=i)
             goals.append(goal)
         result = opt.check()
         if result == unsat:
-            return [float('inf')]*len(goals)
-        #print([dir(s.value()) for s in goals])
+            return [float("inf")] * len(goals)
+        # print([dir(s.value()) for s in goals])
         return [s.value().py_value() for s in goals]
 
     def rank_query(self, query):
         vf = query.verify()
         ff = query.falsify()
-        v,f = self.rank(vf), self.rank(ff)
-        return v,f
+        v, f = self.rank(vf), self.rank(ff)
+        return v, f
 
     def inference(self, query):
         query = Conditional_z3.translate_from_existing(query)
-        v,f = self.rank_query(query)
-        #print(v,f,a)
+        v, f = self.rank_query(query)
+        # print(v,f,a)
 
-        inf = float('inf')
-        #if inf in a: return True
+        inf = float("inf")
+        # if inf in a: return True
         if v[0] > 0 and f[0] > 0:
             return True
-        #if (inf in v and inf in f) or : return True
-        return lex_less(v,f)
-
+        # if (inf in v and inf in f) or : return True
+        return lex_less(v, f)

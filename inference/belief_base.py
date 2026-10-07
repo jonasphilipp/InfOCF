@@ -122,6 +122,8 @@ class BeliefBase:
 
     def transform_to_z3_objects(self):
         signature = self.signature
-        conditionals = {i:Cond.translate_from_existing(c) for i,c in self.conditionals.items()}
+        conditionals = {
+            i: Cond.translate_from_existing(c) for i, c in self.conditionals.items()
+        }
         name = self.name
         return BeliefBase(signature, conditionals, name)

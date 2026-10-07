@@ -16,7 +16,7 @@ birds_ecsqaru_23_paper_45
 (w|b),
 (Bottom|!b)
 }"""
-#belief_base_string = "signature\nb,p,f,w\n\nconditionals\nbirds_ecsqaru_23_paper_45{\n(f|b),\n(!f|p),\n(b|p),\n(w|b)\n}"
+# belief_base_string = "signature\nb,p,f,w\n\nconditionals\nbirds_ecsqaru_23_paper_45{\n(f|b),\n(!f|p),\n(b|p),\n(w|b)\n}"
 belief_base_string = "signature\nb,p,f,w\n\nconditionals\nbirds_ecsqaru_23_paper_45{\n(f|b),\n(!f|p),\n(b|p),\n(w|b),\n(Bottom|!b)}"
 queries_string = "(w|p),(!w|p)"
 
